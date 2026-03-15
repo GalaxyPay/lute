@@ -8,7 +8,7 @@ By participating in this project, you agree to treat all contributors and mainta
 
 ## Security Vulnerabilities
 
-**Do not open public issues for security vulnerabilities.** Please follow our [Security Policy](SECURITY) and report vulnerabilities to **<security@lute.app>**. This is especially critical given that Lute handles private keys and financial transactions.
+**Do not open public issues for security vulnerabilities.** Please follow our [Security Policy](SECURITY.md) and report vulnerabilities to **<security@lute.app>**. This is especially critical given that Lute handles private keys and financial transactions.
 
 ## Getting Started
 
@@ -82,7 +82,7 @@ Lute runs as both a PWA and a browser extension. When contributing, keep in mind
 
 ## Contribution Licensing
 
-By submitting a contribution to Lute, you agree that your contribution will be licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE), the same license that covers the project. You also certify that you have the right to submit the contribution under this license.
+By submitting a contribution to Lute, you agree that your contribution will be licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE.md), the same license that covers the project. You also certify that you have the right to submit the contribution under this license.
 
 ## Questions?
 

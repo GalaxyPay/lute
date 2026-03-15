@@ -24,22 +24,22 @@ Requires **Node.js >= 22.16.0** and **pnpm**.
 pnpm i
 ```
 
-| Command       | Description                |
-| ------------- | -------------------------- |
-| `pnpm dev`    | Web app with HMR           |
-| `pnpm devx`   | Browser extension with HMR |
-| `pnpm build`  | Production web build       |
-| `pnpm buildx` | Production extension build |
-| `pnpm lint`   | Lint and auto-fix          |
+| Command       | Description                                |
+| ------------- | ------------------------------------------ |
+| `pnpm dev`    | Web app with HMR                           |
+| `pnpm devx`   | Browser extension with HMR                 |
+| `pnpm build`  | Production web build to `/dist`            |
+| `pnpm buildx` | Production extension build to `/extension` |
+| `pnpm lint`   | Lint and auto-fix                          |
 
 ## Contributing
 
-See [CONTRIBUTING](CONTRIBUTING).
+See [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Security
 
-If you discover a vulnerability, **do not open a public issue**. See [SECURITY](SECURITY).
+If you discover a vulnerability, **do not open a public issue**. See [SECURITY](SECURITY.md).
 
 ## License
 
-[AGPL-3.0](LICENSE)
+[AGPL-3.0](LICENSE.md)
