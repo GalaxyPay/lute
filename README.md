@@ -2,7 +2,7 @@
 
 # Lute
 
-[![Snyk Security Monitored](https://img.shields.io/badge/Security-monitored-8A2BE2?logo=snyk)](https://snyk.io/test/github/GalaxyPay/lute) [![License](https://img.shields.io/badge/License-AGPL--3.0-3DA639?logo=opensourceinitiative&logoColor=white)](LICENSE)
+[![CodeQL](https://github.com/GalaxyPay/lute/actions/workflows/codeql.yml/badge.svg)](https://github.com/GalaxyPay/lute/actions/workflows/codeql.yml) [![Snyk Security Monitored](https://img.shields.io/badge/Security-monitored-8A2BE2?logo=snyk)](https://snyk.io/test/github/GalaxyPay/lute) [![License](https://img.shields.io/badge/License-AGPL--3.0-3DA639?logo=opensourceinitiative&logoColor=white)](LICENSE)
 
 An open-source wallet for the [Algorand](https://algorand.co) blockchain, available as a **progressive web app** and **browser extension**.
 
