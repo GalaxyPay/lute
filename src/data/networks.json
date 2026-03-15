@@ -1,0 +1,145 @@
+[
+  {
+    "name": "MainNet",
+    "algod": {
+      "url": "https://mainnet-api.4160.nodely.io",
+      "port": "",
+      "token": ""
+    },
+    "indexer": {
+      "url": "https://mainnet-idx.4160.nodely.io",
+      "port": "",
+      "token": ""
+    },
+    "fallback": {
+      "algod": {
+        "url": "https://mainnet-api.algonode.network",
+        "port": "",
+        "token": ""
+      },
+      "indexer": {
+        "url": "https://mainnet-idx.algonode.network",
+        "port": "",
+        "token": ""
+      }
+    },
+    "genesisID": "mainnet-v1.0",
+    "genesisHash": "wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+    "explorer": "https://allo.info",
+    "nfdUrl": "https://api.nf.domains",
+    "inboxRouter": 2449590623,
+    "lutier": { "app": 1904476259, "asset": 1904472606 }
+  },
+  {
+    "name": "TestNet",
+    "algod": {
+      "url": "https://testnet-api.4160.nodely.io",
+      "port": "",
+      "token": ""
+    },
+    "indexer": {
+      "url": "https://testnet-idx.4160.nodely.io",
+      "port": "",
+      "token": ""
+    },
+    "fallback": {
+      "algod": {
+        "url": "https://testnet-api.algonode.network",
+        "port": "",
+        "token": ""
+      },
+      "indexer": {
+        "url": "https://testnet-idx.algonode.network",
+        "port": "",
+        "token": ""
+      }
+    },
+    "genesisID": "testnet-v1.0",
+    "genesisHash": "SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=",
+    "explorer": "https://lora.algokit.io/testnet",
+    "nfdUrl": "https://api.testnet.nf.domains",
+    "inboxRouter": 643020148
+  },
+  {
+    "name": "BetaNet",
+    "algod": {
+      "url": "https://betanet-api.4160.nodely.io",
+      "port": "",
+      "token": ""
+    },
+    "indexer": {
+      "url": "https://betanet-idx.4160.nodely.io",
+      "port": "",
+      "token": ""
+    },
+    "fallback": {
+      "algod": {
+        "url": "https://betanet-api.4160.nodely.dev",
+        "port": "",
+        "token": ""
+      },
+      "indexer": {
+        "url": "https://betanet-idx.4160.nodely.dev",
+        "port": "",
+        "token": ""
+      }
+    },
+    "genesisID": "betanet-v1.0",
+    "genesisHash": "mFgazF+2uRS1tMiL9dsj01hJGySEmPN28B/TjjvpVW0=",
+    "explorer": "https://lora.algokit.io/betanet",
+    "nfdUrl": "https://api.betanet.nf.domains"
+  },
+  {
+    "name": "FNet",
+    "algod": {
+      "url": "https://fnet-api.4160.nodely.dev",
+      "port": "",
+      "token": ""
+    },
+    "indexer": {
+      "url": "https://fnet-idx.4160.nodely.dev",
+      "port": "",
+      "token": ""
+    },
+    "genesisID": "fnet-v1",
+    "explorer": "https://lora.algokit.io/fnet"
+  },
+  {
+    "name": "LocalNet",
+    "algod": {
+      "url": "http://localhost",
+      "port": "4001",
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "indexer": {
+      "url": "http://localhost",
+      "port": "8980",
+      "token": ""
+    },
+    "kmd": {
+      "url": "http://localhost",
+      "port": "4002",
+      "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "genesisID": "dockernet-v1",
+    "explorer": "https://lora.algokit.io/localnet"
+  },
+  {
+    "name": "Voi MainNet",
+    "algod": {
+      "url": "https://mainnet-api.voi.nodely.dev",
+      "port": "",
+      "token": ""
+    },
+    "indexer": {
+      "url": "https://mainnet-idx.voi.nodely.dev",
+      "port": "",
+      "token": ""
+    },
+    "genesisID": "voimain-v1.0",
+    "genesisHash": "r20fSQI8gWe/kFZziNonSPCXLwcQmH/nxROvnnueWOk=",
+    "explorer": "https://explorer.voi.network/explorer",
+    "envoiUrl": "https://api.envoi.sh/api",
+    "lutier": { "app": 399577, "asset": 399049 }
+  }
+]

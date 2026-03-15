@@ -1,0 +1,433 @@
+{
+  "name": "MsigApp",
+  "desc": "",
+  "methods": [
+    {
+      "name": "arc55_getThreshold",
+      "desc": "Retrieve the signature threshold required for the multisignature to be submitted",
+      "readonly": true,
+      "args": [],
+      "returns": {
+        "type": "uint64",
+        "desc": "Multisignature threshold"
+      }
+    },
+    {
+      "name": "arc55_getAdmin",
+      "desc": "Retrieves the admin address, responsible for calling arc55_setup",
+      "readonly": true,
+      "args": [],
+      "returns": {
+        "type": "address",
+        "desc": "Admin address"
+      }
+    },
+    {
+      "name": "arc55_nextTransactionGroup",
+      "readonly": true,
+      "args": [],
+      "returns": {
+        "type": "uint64",
+        "desc": "Next expected Transaction Group nonce"
+      }
+    },
+    {
+      "name": "arc55_getTransaction",
+      "desc": "Retrieve a transaction from a given transaction group",
+      "readonly": true,
+      "args": [
+        {
+          "name": "transactionGroup",
+          "type": "uint64",
+          "desc": "Transaction Group nonce"
+        },
+        {
+          "name": "transactionIndex",
+          "type": "uint8",
+          "desc": "Index of transaction within group"
+        }
+      ],
+      "returns": {
+        "type": "byte[]",
+        "desc": "A single transaction at the specified index for the transaction group nonce"
+      }
+    },
+    {
+      "name": "arc55_getSignatures",
+      "desc": "Retrieve a list of signatures for a given transaction group nonce and address",
+      "readonly": true,
+      "args": [
+        {
+          "name": "transactionGroup",
+          "type": "uint64",
+          "desc": "Transaction Group nonce"
+        },
+        {
+          "name": "signer",
+          "type": "address",
+          "desc": "Address you want to retrieve signatures for"
+        }
+      ],
+      "returns": {
+        "type": "byte[64][]",
+        "desc": "Array of signatures"
+      }
+    },
+    {
+      "name": "arc55_getSignerByIndex",
+      "desc": "Find out which address is at this index of the multisignature",
+      "readonly": true,
+      "args": [
+        {
+          "name": "index",
+          "type": "uint64",
+          "desc": "Address at this index of the multisignature"
+        }
+      ],
+      "returns": {
+        "type": "address",
+        "desc": "Address at index"
+      }
+    },
+    {
+      "name": "arc55_isSigner",
+      "desc": "Check if an address is a member of the multisignature",
+      "readonly": true,
+      "args": [
+        {
+          "name": "address",
+          "type": "address",
+          "desc": "Address to check is a signer"
+        }
+      ],
+      "returns": {
+        "type": "bool",
+        "desc": "True if address is a signer"
+      }
+    },
+    {
+      "name": "arc55_mbrSigIncrease",
+      "desc": "Calculate the minimum balance requirement for storing a signature",
+      "readonly": true,
+      "args": [
+        {
+          "name": "signaturesSize",
+          "type": "uint64",
+          "desc": "Size (in bytes) of the signatures to store"
+        }
+      ],
+      "returns": {
+        "type": "uint64",
+        "desc": "Minimum balance requirement increase"
+      }
+    },
+    {
+      "name": "arc55_mbrTxnIncrease",
+      "desc": "Calculate the minimum balance requirement for storing a transaction",
+      "readonly": true,
+      "args": [
+        {
+          "name": "transactionSize",
+          "type": "uint64",
+          "desc": "Size (in bytes) of the transaction to store"
+        }
+      ],
+      "returns": {
+        "type": "uint64",
+        "desc": "Minimum balance requirement increase"
+      }
+    },
+    {
+      "name": "arc55_setup",
+      "desc": "Setup On-Chain Msig App. This can only be called whilst no transaction groups have been created.",
+      "args": [
+        {
+          "name": "threshold",
+          "type": "uint8",
+          "desc": "Initial multisig threshold, must be greater than 0"
+        },
+        {
+          "name": "addresses",
+          "type": "address[]",
+          "desc": "Array of addresses that make up the multisig"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "arc55_newTransactionGroup",
+      "desc": "Generate a new transaction group nonce for holding pending transactions",
+      "args": [],
+      "returns": {
+        "type": "uint64",
+        "desc": "transactionGroup Transaction Group nonce"
+      }
+    },
+    {
+      "name": "arc55_addTransaction",
+      "desc": "Add a transaction to an existing group. Only one transaction should be included per call",
+      "args": [
+        {
+          "name": "costs",
+          "type": "pay",
+          "desc": "Minimum Balance Requirement for associated box storage costs: (2500) + (400 * (9 + transaction.length))"
+        },
+        {
+          "name": "transactionGroup",
+          "type": "uint64",
+          "desc": "Transaction Group nonce"
+        },
+        {
+          "name": "index",
+          "type": "uint8",
+          "desc": "Transaction position within atomic group to add"
+        },
+        {
+          "name": "transaction",
+          "type": "byte[]",
+          "desc": "Transaction to add"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "events": [
+        {
+          "name": "TransactionAdded",
+          "args": [
+            {
+              "name": "transactionGroup",
+              "type": "uint64"
+            },
+            {
+              "name": "transactionIndex",
+              "type": "uint8"
+            }
+          ],
+          "desc": "Emitted when a new transaction is added to a transaction group"
+        }
+      ]
+    },
+    {
+      "name": "arc55_addTransactionContinued",
+      "args": [
+        {
+          "name": "transaction",
+          "type": "byte[]"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "arc55_removeTransaction",
+      "desc": "Remove transaction from the app. The MBR associated with the transaction will be returned to the transaction sender.",
+      "args": [
+        {
+          "name": "transactionGroup",
+          "type": "uint64",
+          "desc": "Transaction Group nonce"
+        },
+        {
+          "name": "index",
+          "type": "uint8",
+          "desc": "Transaction position within atomic group to remove"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "events": [
+        {
+          "name": "TransactionRemoved",
+          "args": [
+            {
+              "name": "transactionGroup",
+              "type": "uint64"
+            },
+            {
+              "name": "transactionIndex",
+              "type": "uint8"
+            }
+          ],
+          "desc": "Emitted when a transaction has been removed from a transaction group"
+        }
+      ]
+    },
+    {
+      "name": "arc55_setSignatures",
+      "desc": "Set signatures for a particular transaction group. Signatures must be included as an array of byte-arrays",
+      "args": [
+        {
+          "name": "costs",
+          "type": "pay",
+          "desc": "Minimum Balance Requirement for associated box storage costs: (2500) + (400 * (40 + signatures.length))"
+        },
+        {
+          "name": "transactionGroup",
+          "type": "uint64",
+          "desc": "Transaction Group nonce"
+        },
+        {
+          "name": "signatures",
+          "type": "byte[64][]",
+          "desc": "Array of signatures"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "events": [
+        {
+          "name": "SignatureSet",
+          "args": [
+            {
+              "name": "transactionGroup",
+              "type": "uint64"
+            },
+            {
+              "name": "signer",
+              "type": "address"
+            }
+          ],
+          "desc": "Emitted when a new signature is added to a transaction group"
+        }
+      ]
+    },
+    {
+      "name": "arc55_clearSignatures",
+      "desc": "Clear signatures for an address. Be aware this only removes it from the current state of the ledger, and indexers will still know and could use your signature",
+      "args": [
+        {
+          "name": "transactionGroup",
+          "type": "uint64",
+          "desc": "Transaction Group nonce"
+        },
+        {
+          "name": "address",
+          "type": "address",
+          "desc": "Address whose signatures to clear"
+        }
+      ],
+      "returns": {
+        "type": "void"
+      },
+      "events": [
+        {
+          "name": "SignatureSet",
+          "args": [
+            {
+              "name": "transactionGroup",
+              "type": "uint64"
+            },
+            {
+              "name": "signer",
+              "type": "address"
+            }
+          ],
+          "desc": "Emitted when a new signature is added to a transaction group"
+        }
+      ]
+    },
+    {
+      "name": "deploy",
+      "desc": "Deploy a new On-Chain Msig App.",
+      "args": [
+        {
+          "name": "admin",
+          "type": "address",
+          "desc": "Address of person responsible for calling`arc55_setup`"
+        },
+        {
+          "name": "threshold",
+          "type": "uint8"
+        },
+        {
+          "name": "addresses",
+          "type": "address[]"
+        }
+      ],
+      "returns": {
+        "type": "uint64",
+        "desc": "Msig App Application ID"
+      }
+    },
+    {
+      "name": "update",
+      "desc": "Update the application",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    },
+    {
+      "name": "destroy",
+      "desc": "Destroy the application and return funds to creator address. All transactions must be removed before calling destroy",
+      "args": [],
+      "returns": {
+        "type": "void"
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "TransactionAdded",
+      "args": [
+        {
+          "name": "transactionGroup",
+          "type": "uint64"
+        },
+        {
+          "name": "transactionIndex",
+          "type": "uint8"
+        }
+      ],
+      "desc": "Emitted when a new transaction is added to a transaction group"
+    },
+    {
+      "name": "TransactionRemoved",
+      "args": [
+        {
+          "name": "transactionGroup",
+          "type": "uint64"
+        },
+        {
+          "name": "transactionIndex",
+          "type": "uint8"
+        }
+      ],
+      "desc": "Emitted when a transaction has been removed from a transaction group"
+    },
+    {
+      "name": "SignatureSet",
+      "args": [
+        {
+          "name": "transactionGroup",
+          "type": "uint64"
+        },
+        {
+          "name": "signer",
+          "type": "address"
+        }
+      ],
+      "desc": "Emitted when a new signature is added to a transaction group"
+    },
+    {
+      "name": "SignatureCleared",
+      "args": [
+        {
+          "name": "transactionGroup",
+          "type": "uint64"
+        },
+        {
+          "name": "signer",
+          "type": "address"
+        }
+      ],
+      "desc": "Emitted when a signature has been removed from a transaction group"
+    }
+  ]
+}

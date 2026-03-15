@@ -1,0 +1,9 @@
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; connect-src 'self' *.nf.domains api.envoi.sh ipfs.algonode.dev asa-list.tinyman.org *.lute.app *.nodely.dev *.nodely.io *.algonode.xyz *.algonode.network *.algorand.foundation www.google-analytics.com http://localhost:*; img-src data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval' www.googletagmanager.com"

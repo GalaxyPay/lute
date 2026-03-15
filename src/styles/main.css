@@ -1,0 +1,20 @@
+body {
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.no-uppercase {
+  text-transform: unset !important;
+}
+.pointer {
+  cursor: pointer;
+}
+.no-select {
+  user-select: none;
+}
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}

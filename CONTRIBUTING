@@ -1,0 +1,91 @@
+# Contributing to Lute
+
+Thank you for your interest in contributing to Lute! This guide explains how to get involved, what we expect from contributions, and how the process works.
+
+## Code of Conduct
+
+By participating in this project, you agree to treat all contributors and maintainers with respect. We are committed to providing a welcoming, inclusive, and harassment-free experience for everyone.
+
+## Security Vulnerabilities
+
+**Do not open public issues for security vulnerabilities.** Please follow our [Security Policy](SECURITY) and report vulnerabilities to **<security@lute.app>**. This is especially critical given that Lute handles private keys and financial transactions.
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) >= 22.16.0
+- [pnpm](https://pnpm.io/) (recommended package manager)
+
+## How to Contribute
+
+### Reporting Bugs
+
+Before filing a bug report, please search existing issues to avoid duplicates. When reporting a bug, include:
+
+- A clear, descriptive title
+- Steps to reproduce the issue
+- Expected vs. actual behavior
+- Browser and OS information
+- Console errors or screenshots, if applicable
+- **Never include private keys, seed phrases, or wallet addresses with real funds in bug reports**
+
+### Suggesting Features
+
+Feature requests are welcome. Please open an issue and describe:
+
+- The problem your feature would solve
+- Your proposed solution
+- Any alternatives you have considered
+
+### Submitting Changes
+
+1. **Fork the repository** and create a feature branch from `main`.
+2. **Make your changes** in focused, logical commits.
+3. **Run the linter** (`pnpm lint`) and fix any issues.
+4. **Test your changes** thoroughly in both the web app and browser extension, if applicable.
+5. **Open a pull request** against `main` with a clear description of your changes.
+
+### Pull Request Guidelines
+
+- Keep PRs focused on a single change. Avoid mixing unrelated modifications.
+- Write clear commit messages that explain _why_, not just _what_.
+- Reference related issues in your PR description (e.g., "Closes #42").
+- Update documentation if your change affects user-facing behavior.
+- Be responsive to review feedback.
+
+## Development Guidelines
+
+### Code Style
+
+- Follow the existing code conventions in the project.
+- Use TypeScript for all new code.
+- Run `pnpm lint` before committing. ESLint is configured to auto-fix common issues.
+
+### Crypto & Security Considerations
+
+Lute is a cryptocurrency wallet. Contributions that touch security-sensitive areas require extra scrutiny:
+
+- **Key management**: Any changes to key generation, derivation, storage, or signing must be reviewed by a maintainer with cryptography experience.
+- **Transaction handling**: Changes to transaction construction, signing, or submission must include thorough testing on testnet before review.
+- **Dependencies**: New dependencies that handle cryptographic operations, network requests, or data storage require explicit maintainer approval. Prefer well-audited, widely-used libraries.
+- **No secrets in code**: Never commit API keys, private keys, seed phrases, or other sensitive material. Use environment variables for configuration.
+- **Input validation**: Validate and sanitize all user inputs, especially addresses, amounts, and transaction parameters.
+
+### Browser Extension Considerations
+
+Lute runs as both a PWA and a browser extension. When contributing, keep in mind:
+
+- Changes should work in both contexts unless explicitly scoped to one.
+- Browser extension APIs have different security and permission models than web APIs.
+- Test in both environments when possible.
+
+## Contribution Licensing
+
+By submitting a contribution to Lute, you agree that your contribution will be licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE), the same license that covers the project. You also certify that you have the right to submit the contribution under this license.
+
+## Questions?
+
+If you have questions about contributing, feel free to open a discussion or reach out by opening an issue.
+
+Thank you for helping make Lute better!
