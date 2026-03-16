@@ -8,7 +8,7 @@ import mkcert from "vite-plugin-mkcert";
 import { VitePWA } from "vite-plugin-pwa";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import sri from "vite-plugin-sri-gen";
-
+import basicSsl from "@vitejs/plugin-basic-ssl";
 // Utilities
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
@@ -68,7 +68,7 @@ export default defineConfig({
     Vuetify({
       autoImport: true,
     }),
-    mkcert(),
+    process.platform === "linux" ? basicSsl() : mkcert(),
     nodePolyfills(),
     VitePWA({
       registerType: "autoUpdate",

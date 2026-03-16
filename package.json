@@ -53,6 +53,7 @@
     "@types/w3c-web-hid": "^1.0.6",
     "@types/w3c-web-usb": "^1.0.13",
     "@types/webextension-polyfill": "^0.12.5",
+    "@vitejs/plugin-basic-ssl": "^2.2.0",
     "@vitejs/plugin-vue": "^6.0.4",
     "@vue/eslint-config-typescript": "^14.7.0",
     "@vue/tsconfig": "^0.8.1",
