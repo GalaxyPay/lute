@@ -94,8 +94,8 @@ const theme = useTheme();
 const ns = store.network.nfdUrl
   ? " or NFD"
   : store.network.envoiUrl
-  ? " or EnVoi"
-  : "";
+    ? " or EnVoi"
+    : "";
 
 const theirClass = computed(
   () => `text-blue-${theme.name.value == "light" ? "darken-2" : "lighten-2"}`
@@ -106,16 +106,11 @@ const required = (v: any) => !!v || v === 0 || "Required";
 const validAddress = (v: string) =>
   algosdk.isValidAddress(v) || "Invalid Address";
 
-const NATIVE = {
-  index: 0n,
-  params: { name: store.isVoi ? "Voi" : "Algo" },
-} as modelsv2.Asset;
-
 const receiver = ref<string>();
 const nsLookups = ref<NsLookup[]>();
-const senderAssets = ref<modelsv2.Asset[]>([NATIVE]);
+const senderAssets = ref<modelsv2.Asset[]>([store.nativeAsset]);
 const senderAsset = ref<modelsv2.Asset>();
-const receiverAssets = ref<modelsv2.Asset[]>([NATIVE]);
+const receiverAssets = ref<modelsv2.Asset[]>([store.nativeAsset]);
 const receiverAsset = ref<modelsv2.Asset>();
 const sendAmount = ref();
 const receiveAmount = ref();
@@ -131,7 +126,7 @@ defineExpose({
 watch(
   () => props.sender,
   async (val) => {
-    senderAssets.value = [NATIVE];
+    senderAssets.value = [store.nativeAsset];
     senderAsset.value = undefined;
     sendAmount.value = undefined;
     if (!val?.info?.assets) return;
@@ -149,7 +144,7 @@ watch(
 
 watch(receiver, async (val) => {
   if (!val || !algosdk.isValidAddress(val)) return;
-  receiverAssets.value = [NATIVE];
+  receiverAssets.value = [store.nativeAsset];
   receiverAsset.value = undefined;
   receiveAmount.value = undefined;
   const info = await Algo.algod.accountInformation(val).do();

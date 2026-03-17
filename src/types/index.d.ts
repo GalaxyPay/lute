@@ -363,9 +363,3 @@ export interface Siwa {
   resources?: string[];
   type: "ed25519";
 }
-
-interface SendType {
-  title: string;
-  key: "pay" | "axfer" | "keyreg" | "rekey" | "swap";
-  fields?: string[];
-}
