@@ -14,6 +14,7 @@ import type {
   TinyAsset,
 } from "@/types";
 import { deepClone, formatAddr } from "@/utils";
+import type { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
 
 export const useAppStore = defineStore("app", {
@@ -168,6 +169,12 @@ export const useAppStore = defineStore("app", {
         !!this.luteTxns &&
         !this.snackbar.text.includes("Awaiting Signatures...")
       );
+    },
+    nativeAsset(): modelsv2.Asset {
+      return {
+        index: 0n,
+        params: { name: this.isVoi ? "Voi" : "Algo" },
+      } as modelsv2.Asset;
     },
   },
   actions: {

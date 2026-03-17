@@ -6,47 +6,100 @@
     autocomplete="off"
   >
     <v-container class="px-0 pt-6">
-      <v-autocomplete
-        v-if="txnType.fields?.includes('assetId')"
-        v-model="asset"
-        :items="assets"
-        :item-props="assetProps"
-        label="Asset"
-        :rules="[required]"
-        :hint="itemBalance"
-        persistent-hint
-        variant="outlined"
-        class="pb-3"
-      />
+      <template v-if="!rekey">
+        <v-row>
+          <v-col cols="12" sm="6">
+            <v-autocomplete
+              v-model="asset"
+              :items="assets"
+              :item-props="assetProps"
+              label="Asset"
+              :rules="[required]"
+              :hint="itemBalance"
+              persistent-hint
+              variant="outlined"
+              class="pb-3"
+            />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="amount"
+              type="number"
+              :label="amountLabel"
+              :rules="[required]"
+            >
+              <template #append-inner>
+                <v-btn text="Max" @click="maxAmount()" />
+              </template>
+            </v-text-field>
+          </v-col>
+        </v-row>
+
+        <v-combobox
+          v-model="to"
+          :items="toAuto"
+          :item-props="toProps"
+          :return-object="false"
+          :label="`To Address${ns}`"
+          spellcheck="false"
+          @keyup="lookupNs(to)"
+          :rules="[required, validAddress]"
+          class="pb-2"
+        />
+        <v-checkbox-btn
+          v-model="showNote"
+          label="Note"
+          @update:model-value="note = undefined"
+        />
+        <v-textarea v-if="showNote" v-model="note" rows="2" label="Note" />
+        <v-checkbox-btn
+          v-model="showCloseRemainderTo"
+          @update:model-value="closeRemainderTo = undefined"
+        >
+          <template #label>
+            Close Remainder To
+            <span>
+              <v-icon size="x-small" class="ml-2" :icon="mdiInformation" />
+              <v-tooltip
+                activator="parent"
+                location="bottom"
+                :text="closeRemainderToTip"
+              />
+            </span>
+          </template>
+        </v-checkbox-btn>
+        <v-text-field
+          v-if="showCloseRemainderTo"
+          v-model="closeRemainderTo"
+          label="Close Remainder To"
+          :rules="[validAddress]"
+        />
+        <v-checkbox-btn
+          v-model="showRevocationTarget"
+          @update:model-value="assetSender = undefined"
+        >
+          <template #label>
+            Revocation Target
+            <span>
+              <v-icon size="x-small" class="ml-2" :icon="mdiInformation" />
+              <v-tooltip
+                activator="parent"
+                location="bottom"
+                text="Specify this field to indicate a clawback transaction. This is
+                  the address from which the funds will be withdrawn."
+              />
+            </span>
+          </template>
+        </v-checkbox-btn>
+        <v-text-field
+          v-if="showRevocationTarget"
+          v-model="assetSender"
+          label="Revocation Target"
+          :rules="[validAddress]"
+        />
+      </template>
       <v-combobox
-        v-if="txnType.fields?.includes('to')"
-        v-model="to"
-        :items="toAuto"
-        :item-props="toProps"
-        :return-object="false"
-        :label="`To Address${ns}`"
-        spellcheck="false"
-        @keyup="lookupNs(to)"
-        :rules="[required, validAddress]"
-        class="pb-2"
-      />
-      <v-text-field
-        v-if="txnType.fields?.includes('amount')"
-        v-model="amount"
-        type="number"
-        :label="amountLabel"
-        :rules="[required]"
-      >
-        <template #append-inner>
-          <v-btn
-            text="Max"
-            :disabled="txnType.title === 'Asset Transfer' && !asset"
-            @click="maxAmount()"
-          />
-        </template>
-      </v-text-field>
-      <v-combobox
-        v-if="txnType.fields?.includes('rekey')"
+        v-if="rekey"
         v-model="rekeyTo"
         :items="rekeyToAuto"
         :return-object="false"
@@ -55,60 +108,6 @@
         @keyup="lookupNs(rekeyTo)"
         :rules="[required, validAddress]"
         class="pb-2"
-      />
-      <v-checkbox-btn
-        v-if="txnType.fields?.includes('note')"
-        v-model="showNote"
-        label="Note"
-        @update:model-value="note = undefined"
-      />
-      <v-textarea v-if="showNote" v-model="note" rows="2" label="Note" />
-      <v-checkbox-btn
-        v-if="txnType.fields?.includes('close')"
-        v-model="showCloseRemainderTo"
-        @update:model-value="closeRemainderTo = undefined"
-      >
-        <template #label>
-          Close Remainder To
-          <span>
-            <v-icon size="x-small" class="ml-2" :icon="mdiInformation" />
-            <v-tooltip
-              activator="parent"
-              location="bottom"
-              :text="closeRemainderToTip"
-            />
-          </span>
-        </template>
-      </v-checkbox-btn>
-      <v-text-field
-        v-if="showCloseRemainderTo"
-        v-model="closeRemainderTo"
-        label="Close Remainder To"
-        :rules="[validAddress]"
-      />
-      <v-checkbox-btn
-        v-if="txnType.fields?.includes('revoke')"
-        v-model="showRevocationTarget"
-        @update:model-value="assetSender = undefined"
-      >
-        <template #label>
-          Revocation Target
-          <span>
-            <v-icon size="x-small" class="ml-2" :icon="mdiInformation" />
-            <v-tooltip
-              activator="parent"
-              location="bottom"
-              text="Specify this field to indicate a clawback transaction. This is
-                  the address from which the funds will be withdrawn."
-            />
-          </span>
-        </template>
-      </v-checkbox-btn>
-      <v-text-field
-        v-if="showRevocationTarget"
-        v-model="assetSender"
-        label="Revocation Target"
-        :rules="[validAddress]"
       />
     </v-container>
     <v-card-actions>
@@ -134,7 +133,7 @@
 import { Arc59Factory } from "@/clients/Arc59Client";
 import Algo from "@/services/Algo";
 import NameService from "@/services/NameService";
-import type { AccountInfo, SendType } from "@/types";
+import type { AccountInfo } from "@/types";
 import {
   bigintToString,
   getAssetInfo,
@@ -147,7 +146,7 @@ import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import { mdiInformation } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 
-const props = defineProps<{ acct: AccountInfo; txnType: SendType }>();
+const props = defineProps<{ acct: AccountInfo; rekey: boolean }>();
 
 const store = useAppStore();
 const form = ref();
@@ -174,21 +173,15 @@ const addrs = computed(() =>
 );
 const toAuto = ref();
 const rekeyToAuto = ref();
-const assets = ref<modelsv2.Asset[]>([]);
-const asset = ref<modelsv2.Asset>();
+const assets = ref<modelsv2.Asset[]>([store.nativeAsset]);
+const asset = ref<modelsv2.Asset>(store.nativeAsset);
 const showInboxWarning = ref(false);
 
 const amountLabel = computed(() => {
-  let val = "Amount";
-  if (props.txnType.title === "Payment") {
-    val += store.isVoi ? " (Voi)" : " (Algo)";
-  } else if (asset.value) {
-    val += ` (${asset.value.params.unitName})`;
-  }
-  return val;
+  return `Amount (${asset.value.params.unitName || asset.value.params.name})`;
 });
 const closeRemainderToTip = computed(() =>
-  props.txnType.title === "Payment"
+  asset.value.index === 0n
     ? `Specify this field to close the sending account, and transfer all
       remaining funds, after the fee and amount are paid, to this address.`
     : `Specify this field to remove the asset holding from the sending
@@ -197,10 +190,9 @@ const closeRemainderToTip = computed(() =>
 );
 
 watch(
-  () => props.txnType,
+  () => props.rekey,
   () => {
-    toAuto.value = addrs.value;
-    rekeyToAuto.value = addrs.value;
+    refresh();
   },
   { immediate: true }
 );
@@ -214,15 +206,20 @@ function toProps(item: any) {
 function assetProps(item: modelsv2.Asset) {
   return {
     title: item.params.name,
-    subtitle: Number(item.index),
+    subtitle: item.index ? Number(item.index) : undefined,
   };
 }
 
 const itemBalance = computed(() => {
-  if (!asset.value) return "";
-  return `Balance:
-  ${assetBalance()}
+  let val = "Balance: ";
+  if (!asset.value?.index) {
+    const amt = props.acct.info?.amount || 0n;
+    val += bigintToString(amt, 6, false);
+  } else {
+    val += `${assetBalance()}
   ${asset.value.params.unitName}`;
+  }
+  return val;
 });
 
 function assetBalance(plain = false) {
@@ -246,7 +243,7 @@ async function lookupNs(q: string) {
 }
 
 function maxAmount() {
-  if (props.txnType.title === "Payment") {
+  if (!asset.value?.index) {
     const bal = props.acct.info?.amount;
     if (bal && bal > 101000)
       amount.value = bigintToString(bal - 101000n, 6, true);
@@ -265,9 +262,35 @@ async function submit() {
     const suggestedParams = await Algo.algod.getTransactionParams().do();
     const note64 = note.value ? enc.encode(note.value) : undefined;
     let txn;
-
-    switch (props.txnType.key) {
-      case "pay":
+    if (asset.value.index) {
+      txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+        assetIndex: asset.value.index,
+        receiver: to.value,
+        sender: props.acct.addr,
+        note: note64,
+        suggestedParams,
+        amount: stringToBigint(amount.value, asset.value.params.decimals),
+        closeRemainderTo: closeRemainderTo.value,
+        assetSender: assetSender.value,
+      });
+      const toInfo = await Algo.algod.accountInformation(to.value).do();
+      const receiverOptedIn = toInfo.assets?.some(
+        (a) => a.assetId === asset.value!.index
+      );
+      if (!receiverOptedIn && store.network.inboxRouter) {
+        showInboxWarning.value = true;
+        return;
+      }
+    } else {
+      if (props.rekey) {
+        txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+          receiver: props.acct.addr,
+          sender: props.acct.addr,
+          suggestedParams,
+          amount: 0,
+          rekeyTo: rekeyTo.value,
+        });
+      } else {
         txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
           receiver: to.value,
           sender: props.acct.addr,
@@ -276,38 +299,6 @@ async function submit() {
           amount: stringToBigint(amount.value, 6),
           closeRemainderTo: closeRemainderTo.value,
         });
-        break;
-      case "rekey":
-        txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-          receiver: props.acct.addr,
-          sender: props.acct.addr,
-          note: note64,
-          suggestedParams,
-          amount: 0,
-          rekeyTo: rekeyTo.value,
-        });
-        break;
-      case "axfer": {
-        if (!asset.value) throw Error("Invalid Asset");
-        txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-          assetIndex: asset.value.index,
-          receiver: to.value,
-          sender: props.acct.addr,
-          note: note64,
-          suggestedParams,
-          amount: stringToBigint(amount.value, asset.value.params.decimals),
-          closeRemainderTo: closeRemainderTo.value,
-          assetSender: assetSender.value,
-        });
-        const toInfo = await Algo.algod.accountInformation(to.value).do();
-        const receiverOptedIn = toInfo.assets?.some(
-          (a) => a.assetId === asset.value!.index
-        );
-        if (!receiverOptedIn && store.network.inboxRouter) {
-          showInboxWarning.value = true;
-          return;
-        }
-        break;
       }
     }
     if (!txn) throw Error("Invalid Transaction");
@@ -423,7 +414,12 @@ async function arc59SendAsset() {
 }
 
 async function refresh() {
-  assets.value = [];
+  showNote.value = false;
+  showCloseRemainderTo.value = false;
+  showRevocationTarget.value = false;
+  form.value?.reset();
+  assets.value = [store.nativeAsset];
+  asset.value = store.nativeAsset;
   toAuto.value = addrs.value;
   rekeyToAuto.value = addrs.value;
   if (!props.acct.info?.assets) return;

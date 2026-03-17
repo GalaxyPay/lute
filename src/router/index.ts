@@ -37,15 +37,14 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to) => {
   const actions = ["connect", "sign", "auth", "swap", "network"];
   const action = to.query.action?.toString();
   if (action && actions.includes(action)) {
     delete to.query.action;
-    return next({ path: `/${action}`, query: to.query });
+    return { path: `/${action}`, query: to.query };
   }
-  if (to.path.includes("/main/index.html")) return next({ path: "/" });
-  next();
+  if (to.path.includes("/main/index.html")) return { path: "/" };
 });
 
 export default router;
