@@ -71,7 +71,7 @@
         </template>
       </v-list-item>
       <v-list-item
-        title="Github"
+        title="GitHub"
         href="https://github.com/GalaxyPay/lute"
         target="_blank"
       >
