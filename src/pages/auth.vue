@@ -68,13 +68,15 @@ async function ready() {
   let domain: string | null;
   const message = { action: "ready", debug: store.debug };
   if (store.isWeb) {
+    domain = document.referrer.split("/")[2]!;
+    authenticatorData = hashDomain(domain);
     window.opener.postMessage(message, "*");
     window.addEventListener("message", messageHandler);
-    domain = document.referrer.split("/")[2]!;
   } else {
     browser.runtime.connect({ name: "luteSidepanel" });
     const params = new URLSearchParams(document.location.search);
     domain = params.get("name");
+    authenticatorData = hashDomain(domain);
     tabId = Number(params.get("tabId"));
     browser.runtime.onMessage.addListener(messageHandler);
     try {
@@ -83,10 +85,11 @@ async function ready() {
       await resetSidePanel();
     }
   }
+}
+
+function hashDomain(domain: string | null) {
   if (!domain) throw Error("Invalid Domain");
-  authenticatorData = new Uint8Array(
-    createHash("sha256").update(domain).digest()
-  );
+  return new Uint8Array(createHash("sha256").update(domain).digest());
 }
 
 async function messageHandler(event: any) {
