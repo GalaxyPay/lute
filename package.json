@@ -24,8 +24,8 @@
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^9.2.0",
-    "@ledgerhq/hw-transport-webhid": "6.31.0",
-    "@ledgerhq/hw-transport-webusb": "6.30.0",
+    "@ledgerhq/hw-transport-webhid": "^6.33.0",
+    "@ledgerhq/hw-transport-webusb": "^6.32.0",
     "@mdi/js": "^7.4.47",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
