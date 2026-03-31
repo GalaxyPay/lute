@@ -42,7 +42,7 @@ export const useAppStore = defineStore("app", {
     experimental: false,
     tinyman: undefined as TinyAsset[] | undefined,
     sandboxRouter: undefined as number | undefined,
-    isWeb: document.location.protocol === "https:",
+    isWeb: document.location.protocol.startsWith("http"),
     customNetworks: [] as Network[],
     signData: false,
     luteTxns: undefined as LuteTxns | undefined,
