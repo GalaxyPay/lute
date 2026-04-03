@@ -67,7 +67,6 @@ export default defineConfig({
     Vuetify({
       autoImport: true,
     }),
-    // process.platform === "win32" ? mkcert() : basicSsl(),
     nodePolyfills(),
     VitePWA({
       registerType: "autoUpdate",
