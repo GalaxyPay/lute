@@ -4,11 +4,10 @@ import Components from "unplugin-vue-components/vite";
 import Vue from "@vitejs/plugin-vue";
 import VueRouter from "vue-router/vite";
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
-import mkcert from "vite-plugin-mkcert";
 import { VitePWA } from "vite-plugin-pwa";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import sri from "vite-plugin-sri-gen";
-import basicSsl from "@vitejs/plugin-basic-ssl";
+
 // Utilities
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
@@ -32,7 +31,7 @@ const connect = [
 const csp = [
   "default-src 'self'",
   `connect-src ${connect.join(" ")}`,
-  "img-src data: https:",
+  "img-src data: https: http:",
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'wasm-unsafe-eval' www.googletagmanager.com blob:",
 ].join("; ");
@@ -68,7 +67,6 @@ export default defineConfig({
     Vuetify({
       autoImport: true,
     }),
-    process.platform === "linux" ? basicSsl() : mkcert(),
     nodePolyfills(),
     VitePWA({
       registerType: "autoUpdate",

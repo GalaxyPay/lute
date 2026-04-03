@@ -15,7 +15,6 @@ for (const route of routes) {
   }
 }
 
-//@ts-expect-error
 routes.push(
   {
     path: "/:addr",
