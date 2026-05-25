@@ -52,7 +52,7 @@ const Falcon = {
         new Uint8Array(Buffer.from(compiledSig.result, "base64"))
       );
       try {
-        ed25519.Point.fromBytes(logicSig.address().publicKey).assertValidity();
+        ed25519.Point.fromBytes(logicSig.address().publicKey, true);
       } catch {
         break;
       }
