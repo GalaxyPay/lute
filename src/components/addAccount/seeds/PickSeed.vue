@@ -43,7 +43,7 @@
             <v-col>
               Local
               <div class="text-grey">
-                The seed is generated and stored encrypted in the browser
+                The seed is stored encrypted in the browser
               </div>
             </v-col>
           </v-row>
@@ -63,7 +63,7 @@
             <v-col>
               Passkey
               <div class="text-grey">
-                The seed is generated and stored on an authenticator device
+                The seed is stored on an authenticator device
               </div>
             </v-col>
           </v-row>
