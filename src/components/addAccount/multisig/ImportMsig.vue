@@ -34,7 +34,7 @@ const required = (v: string) => !!v || "Required";
 const validApp = () => !!app?.info || "Invalid AppID";
 const isArc55 = () =>
   app?.info.params.globalState?.some(
-    (gs) => Buffer.from(gs.key).toString() === "arc55_admin"
+    (gs) => new TextDecoder().decode(gs.key) === "arc55_admin"
   ) || "Not ARC-55";
 const isMember = () =>
   store.signAcctInfo.some(

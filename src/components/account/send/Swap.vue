@@ -231,8 +231,8 @@ async function propose() {
     const resp = await luteSigner([txn1, txn2], [0]);
     store.snackbar.display = false;
     const query = {
-      tx1: b64url(Buffer.from(resp[0]!).toString("base64")),
-      tx2: b64url(Buffer.from(txn2.toByte()).toString("base64")),
+      tx1: b64url(resp[0]!.toBase64()),
+      tx2: b64url(txn2.toByte().toBase64()),
     };
     form.value?.reset();
     await router.push({ path: "/swap", query });

@@ -3,7 +3,7 @@ import Algo from "@/services/Algo";
 import Falcon from "@/services/Falcon";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
-import { decodeField, send, sendOrPostMessage } from "@/utils";
+import { send, sendOrPostMessage } from "@/utils";
 import { signer } from "@/utils/signers";
 import algosdk from "algosdk";
 
@@ -27,7 +27,7 @@ export default class LuteTxns {
 
   private decode() {
     return this.txns.map((t) =>
-      algosdk.decodeUnsignedTransaction(Buffer.from(t.txn, "base64"))
+      algosdk.decodeUnsignedTransaction(Uint8Array.fromBase64(t.txn))
     );
   }
 
@@ -54,7 +54,7 @@ export default class LuteTxns {
       this.store.setSnackbar("Processing...", "info", -1);
       const txns = this.store.isWeb
         ? message.txns
-        : message.txns.map((txn: string) => Buffer.from(txn, "base64"));
+        : message.txns.map((txn: string) => Uint8Array.fromBase64(txn));
       await send(txns);
       const errMessage = {
         action: "error",
@@ -80,13 +80,10 @@ export default class LuteTxns {
 
   async validateNetwork() {
     try {
-      const firstHash: Base64 = decodeField(
-        this.dtxns[0]!.genesisHash!,
-        "base64"
-      );
+      const firstHash: Base64 = this.dtxns[0]!.genesisHash!.toBase64();
       const sameNetwork = this.dtxns.filter(
         (t) =>
-          decodeField(t.genesisHash!, "base64") === firstHash &&
+          t.genesisHash?.toBase64() === firstHash &&
           t.genesisID === this.dtxns[0]?.genesisID
       ).length;
       if (this.txns.length !== sameNetwork)
@@ -112,9 +109,7 @@ export default class LuteTxns {
       if (!this.txns.length) throw Error("Empty Transaction Array", INVALID);
       if (this.txns.length > 512)
         throw Error("Too Many Transactions", { cause: 4201 });
-      const gidMap = this.dtxns.map((t) =>
-        t.group ? decodeField(t.group, "base64") : ""
-      );
+      const gidMap = this.dtxns.map((t) => (t.group ? t.group.toBase64() : ""));
       if (this.txns.length > 1 || gidMap[0]) {
         const cleanTxns = this.decode().map((t) => {
           delete t.group;
@@ -136,10 +131,7 @@ export default class LuteTxns {
         // validate groupIDs
         groups.forEach((grp) => {
           if (grp.gid) {
-            const groupID = decodeField(
-              algosdk.computeGroupID(grp.txns),
-              "base64"
-            );
+            const groupID = algosdk.computeGroupID(grp.txns).toBase64();
             if (groupID !== grp.gid) throw Error("Invalid Group", INVALID);
           }
         });
@@ -222,7 +214,7 @@ export default class LuteTxns {
 
         let txn: Uint8Array;
         if (this.txns[idx]?.stxn && !this.toSign(idx)) {
-          txn = Buffer.from(this.txns[idx].stxn, "base64");
+          txn = Uint8Array.fromBase64(this.txns[idx].stxn);
         } else {
           txn = dtxn.toByte();
         }
@@ -288,14 +280,14 @@ export default class LuteTxns {
     // alter txns and dtxns
     newTxns.map((t, i) => {
       if (i < this.txns.length) {
-        this.txns[i]!.txn = Buffer.from(t.toByte()).toString("base64");
+        this.txns[i]!.txn = t.toByte().toBase64();
       } else {
         const wt: WalletTransaction = {
-          txn: Buffer.from(t.toByte()).toString("base64"),
+          txn: t.toByte().toBase64(),
           signers: [],
-          stxn: Buffer.from(
-            algosdk.signLogicSigTransactionObject(t, dummyLsig).blob
-          ).toString("base64"),
+          stxn: algosdk
+            .signLogicSigTransactionObject(t, dummyLsig)
+            .blob.toBase64(),
         };
         this.txns.push(wt);
       }
@@ -339,9 +331,7 @@ export default class LuteTxns {
         ) {
           tracking = false;
           const signedTxns = await Msig.buildGroup(app, this.nonce);
-          const signedTxns64 = signedTxns.map((txn) =>
-            Buffer.from(txn).toString("base64")
-          );
+          const signedTxns64 = signedTxns.map((txn) => txn.toBase64());
           const message = {
             action: "signed",
             txns: this.store.isWeb ? signedTxns : signedTxns64,
@@ -378,12 +368,10 @@ export default class LuteTxns {
             if (!txn.signers.length) {
               if (txn.stxn) {
                 const dstxn = algosdk.decodeSignedTransaction(
-                  Buffer.from(txn.stxn, "base64")
+                  Uint8Array.fromBase64(txn.stxn)
                 );
-                if (
-                  txn.txn === Buffer.from(dstxn.txn.toByte()).toString("base64")
-                ) {
-                  signedTxns[idx] = Buffer.from(txn.stxn, "base64");
+                if (txn.txn === dstxn.txn.toByte().toBase64()) {
+                  signedTxns[idx] = Uint8Array.fromBase64(txn.stxn);
                   continue;
                 } else throw Error("Signed Transaction Mismatch", INVALID);
               } else {
@@ -415,7 +403,7 @@ export default class LuteTxns {
           signedTxns[indexesToSign[ix]!] = arr;
         });
         const signedTxns64 = signedTxns.map((txn) =>
-          txn ? Buffer.from(txn).toString("base64") : null
+          txn ? txn.toBase64() : null
         );
         const message = {
           action: "signed",

@@ -21,16 +21,9 @@ export async function fetchAsync(url: string) {
   }
 }
 
-export function decodeField(
-  val: Uint8Array,
-  enc: BufferEncoding | undefined = undefined
-) {
-  return Buffer.from(val).toString(enc);
-}
-
 export async function storeKey(acct: algosdk.Account) {
   const b64prefix = "MC4CAQAwBQYDK2VwBCIEIA==";
-  const pkcs8Prefix = Buffer.from(b64prefix, "base64");
+  const pkcs8Prefix = Uint8Array.fromBase64(b64prefix);
   const pkcs8 = new Uint8Array([...pkcs8Prefix, ...acct.sk.slice(0, 32)]);
   const key = await crypto.subtle.importKey(
     "pkcs8",

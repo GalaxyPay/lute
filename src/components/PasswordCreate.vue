@@ -42,7 +42,6 @@
 
 <script lang="ts" setup>
 import { set } from "@/dbLute";
-import { decodeField } from "@/utils";
 import { mdiClose } from "@mdi/js";
 
 const store = useAppStore();
@@ -60,12 +59,12 @@ async function confirmPassword() {
     if (!valid) return;
 
     const saltArray = crypto.getRandomValues(new Uint8Array(12));
-    const salt = decodeField(saltArray, "base64");
+    const salt = saltArray.toBase64();
     const passwordArray = new TextEncoder().encode(pass1.value);
     const concatArray = new Uint8Array([...passwordArray, ...saltArray]);
     const hashBuffer = await crypto.subtle.digest("SHA-256", concatArray);
     const hashArray = new Uint8Array(hashBuffer);
-    const hash = decodeField(hashArray, "base64");
+    const hash = hashArray.toBase64();
     await set("app", "password", { salt, hash });
     emit("close");
   } catch (err: any) {

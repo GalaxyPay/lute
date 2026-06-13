@@ -14,7 +14,7 @@ import getAppName from "@/utils/getAppName";
   window.addEventListener("lute-connect", messageHandler);
 
   function b64ToArr(b64: string) {
-    return new Uint8Array(Buffer.from(b64, "base64"));
+    return Uint8Array.fromBase64(b64);
   }
 
   function messageHandler(e: any) {

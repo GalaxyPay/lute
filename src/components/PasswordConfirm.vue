@@ -72,14 +72,14 @@ async function confirmPassword() {
 
     const pass = await get("app", "password");
     if (!pass) throw Error("Password not found");
-    const saltArr = Buffer.from(pass.salt, "base64");
+    const saltArr = Uint8Array.fromBase64(pass.salt);
     const passArr = new TextEncoder().encode(password.value);
     const hash = Buffer.from(
       await crypto.subtle.digest(
         "SHA-256",
         new Uint8Array([...passArr, ...saltArr])
       )
-    ).toString("base64");
+    ).toBase64();
 
     if (hash === pass.hash) emit("close", true, password.value);
     else emit("close", false);

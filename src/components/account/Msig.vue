@@ -362,7 +362,7 @@ async function gatherSigs() {
     const grp = app.value.groups[Number(signGroup.value?.nonce) - 1]!;
     const walletTxns: WalletTransaction[] = grp.txns.map((txn, idx) => {
       const wt: WalletTransaction = {
-        txn: Buffer.from(txn.toByte()).toString("base64"),
+        txn: txn.toByte().toBase64(),
         authAddr: signingAddr.value,
       };
       const stxn = grp.stxns[idx];

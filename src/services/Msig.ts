@@ -28,7 +28,7 @@ const Msig = {
             s.value.bytes
           );
         } else {
-          const key = Buffer.from(k).toString();
+          const key = new TextDecoder().decode(k);
           if (key === "arc55_admin")
             app[key] = algosdk.encodeAddress(s.value.bytes);
           else if (key.startsWith("arc55_")) {
@@ -60,7 +60,7 @@ const Msig = {
             let txn: algosdk.Transaction;
             let stxn: string | null;
             if (test.txn) {
-              stxn = Buffer.from(boxInfo.value).toString("base64");
+              stxn = boxInfo.value.toBase64();
               txn = algosdk.decodeSignedTransaction(boxInfo.value).txn;
             } else {
               stxn = null;
@@ -76,9 +76,7 @@ const Msig = {
 
             const abiType = algosdk.ABIType.from("byte[64][]");
             const abiData = abiType.decode(boxInfo.value) as Uint8Array[];
-            abiData.forEach((sig) =>
-              sigs.push(Buffer.from(sig).toString("base64"))
-            );
+            abiData.forEach((sig) => sigs.push(sig.toBase64()));
             groups[nonce - 1]!.sigs.push({
               addr,
               sigs,
@@ -115,7 +113,7 @@ const Msig = {
 
       const txns = grp.txns.map((txn, idx) =>
         grp.stxns[idx]
-          ? Buffer.from(grp.stxns[idx]!, "base64")
+          ? Uint8Array.fromBase64(grp.stxns[idx]!)
           : algosdk.createMultisigTransaction(txn, mparams)
       );
       const txnsSigs = txns.map((txn, idx) =>
@@ -127,7 +125,7 @@ const Msig = {
                   txn,
                   mparams,
                   s.addr,
-                  Buffer.from(s.sigs[idx]!, "base64")
+                  Uint8Array.fromBase64(s.sigs[idx]!)
                 ).blob
             )
       );

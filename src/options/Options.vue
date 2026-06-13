@@ -51,7 +51,7 @@ watch(
     await refresh();
     const info: MsgpackHD[] = store.info.map((i) => ({
       hd: { addrIdx: i.addrIdx, sibling: i.sibling },
-      ai: Buffer.from(encodeMsgpack(i)).toString("base64"),
+      ai: encodeMsgpack(i).toBase64(),
     }));
     browser.runtime.sendMessage({
       action: "optionsRefresh",

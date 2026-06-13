@@ -24,10 +24,7 @@ const Falcon = {
   getLsigTeal(counter: number, falconPublic: Uint8Array) {
     return lsigTealTMPL
       .replace("TMPL_COUNTER", counter.toString(16).padStart(2, "0"))
-      .replace(
-        "TMPL_FALCON_PUBLIC_KEY",
-        Buffer.from(falconPublic).toString("hex")
-      );
+      .replace("TMPL_FALCON_PUBLIC_KEY", falconPublic.toHex());
   },
   keyPair(seed: Uint8Array) {
     const enc = new TextEncoder();
@@ -42,14 +39,14 @@ const Falcon = {
   },
   async algoAccount(seed: Uint8Array) {
     const falconPair = this.keyPair(seed);
-    const publicKey = Buffer.from(falconPair.publicKey).toString("base64");
+    const publicKey = falconPair.publicKey.toBase64();
     let counter: number;
     let logicSig: algosdk.LogicSigAccount | undefined = undefined;
     for (counter = 0; counter < 256; counter++) {
       const lsigTeal = this.getLsigTeal(counter, falconPair.publicKey);
       const compiledSig = await Algo.algod.compile(lsigTeal).do();
       logicSig = new algosdk.LogicSigAccount(
-        new Uint8Array(Buffer.from(compiledSig.result, "base64"))
+        Uint8Array.fromBase64(compiledSig.result)
       );
       try {
         ed25519.Point.fromBytes(logicSig.address().publicKey, true);
@@ -67,7 +64,7 @@ const Falcon = {
   async getDummy(suggestedParams: algosdk.SuggestedParams, count: number) {
     const enc = new TextEncoder();
     const dummyCompiled = await Algo.algod.compile(dummyTeal).do();
-    const dummyBytes = Buffer.from(dummyCompiled.result, "base64");
+    const dummyBytes = Uint8Array.fromBase64(dummyCompiled.result);
     const dummyLsig = new algosdk.LogicSigAccount(dummyBytes);
     const dummyAddress = dummyLsig.address();
     const dummyTxns = [...Array(count).keys()].map((i) =>
