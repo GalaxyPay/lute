@@ -8,7 +8,7 @@ import {
   harden,
   KeyContext,
   XHDWalletAPI,
-} from "@/utils/xhd";
+} from "@algorandfoundation/xhd-wallet-api";
 import algosdk from "algosdk";
 
 const HdWallet = {

@@ -11,6 +11,9 @@ importers:
       '@algorandfoundation/algokit-utils':
         specifier: ^9.2.0
         version: 9.2.0(algosdk@3.5.2)
+      '@algorandfoundation/xhd-wallet-api':
+        specifier: 2.0.0-canary.1
+        version: 2.0.0-canary.1
       '@ledgerhq/hw-transport-webhid':
         specifier: ^6.34.0
         version: 6.34.0
@@ -35,9 +38,6 @@ importers:
       algosdk:
         specifier: ^3.5.2
         version: 3.5.2
-      bn.js:
-        specifier: ^5.2.3
-        version: 5.2.3
       canonify:
         specifier: ^2.1.1
         version: 2.1.1
@@ -170,6 +170,9 @@ packages:
     engines: {node: '>=20.0'}
     peerDependencies:
       algosdk: ^3.5.2
+
+  '@algorandfoundation/xhd-wallet-api@2.0.0-canary.1':
+    resolution: {integrity: sha512-U6rSWMO6FKDLvMxWtfKyW5ctqSy2NrONWTU/jOA+BX0SGru0GPXsxwzFdcPa5w+X055V/xVVsr8eA3xA+m/5jA==}
 
   '@apideck/better-ajv-errors@0.3.7':
     resolution: {integrity: sha512-TajUJwGWbDwkCx/CZi7tRE8PVB7simCvKJfHUsSdvps+aTM/PDPP4gkLmKnc+x3CE//y9i/nj74GqdL/hwk7Iw==}
@@ -1395,6 +1398,10 @@ packages:
 
   ajv@8.18.0:
     resolution: {integrity: sha512-PlXPeEWMXMZ7sPYOHqmDyCJzcfNrUr3fGNKtezX14ykXOEIvyK81d+qydx89KY5O71FKMPaQ2vBfBFI5NHR63A==}
+
+  algo-msgpack-with-bigint@2.1.1:
+    resolution: {integrity: sha512-F1tGh056XczEaEAqu7s+hlZUDWwOBT70Eq0lfMpBP2YguSQVyxRbprLq5rELXKQOyOaixTWYhMeMQMzP0U5FoQ==}
+    engines: {node: '>= 10'}
 
   algorand-msgpack@1.1.0:
     resolution: {integrity: sha512-08k7pBQnkaUB5p+jL7f1TRaUIlTSDE0cesFu1mD7llLao+1cAhtvvZmGE3OnisTd0xOn118QMw74SRqddqaYvw==}
@@ -3458,6 +3465,15 @@ snapshots:
       algosdk: 3.5.2
       buffer: 6.0.3
 
+  '@algorandfoundation/xhd-wallet-api@2.0.0-canary.1':
+    dependencies:
+      '@noble/ciphers': 2.1.1
+      '@noble/curves': 2.0.1
+      '@noble/hashes': 2.0.1
+      ajv: 8.18.0
+      algo-msgpack-with-bigint: 2.1.1
+      bn.js: 5.2.3
+
   '@apideck/better-ajv-errors@0.3.7(ajv@8.18.0)':
     dependencies:
       ajv: 8.18.0
@@ -4802,6 +4818,8 @@ snapshots:
       fast-uri: 3.1.0
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
+
+  algo-msgpack-with-bigint@2.1.1: {}
 
   algorand-msgpack@1.1.0: {}
 
