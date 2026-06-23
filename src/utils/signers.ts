@@ -63,23 +63,19 @@ export async function signer(
           }
           sig = new Uint8Array();
           if (acct.slot != null) {
-            const prefixedTx = new Uint8Array([
-              ...new TextEncoder().encode("TX"),
-              ...txn.toByte(),
-            ]);
             sig = await HdWallet.sign(
               Buffer.from(seeds[acct.seedId]!),
               acct.slot,
-              prefixedTx,
+              txn.bytesToSign(),
               acct.info?.addrIdx
             );
           } else if (acct.falcon) {
             const lsigTeal = Falcon.getLsigTeal(
               acct.falcon.counter,
-              Buffer.from(acct.falcon.publicKey, "base64")
+              Uint8Array.fromBase64(acct.falcon.publicKey)
             );
             const lsigCompiled = await Algo.algod.compile(lsigTeal).do();
-            const lsigBytes = Buffer.from(lsigCompiled.result, "base64");
+            const lsigBytes = Uint8Array.fromBase64(lsigCompiled.result);
             const falconPair = Falcon.keyPair(seeds[acct.seedId]!);
             const arg = signCompressed(falconPair.privateKey, txn.rawTxID());
             const logicSig = new algosdk.LogicSigAccount(lsigBytes, [arg]);
@@ -180,7 +176,7 @@ export async function luteSigner(
   indexesToSign?: number[]
 ) {
   const walletTxns: WalletTransaction[] = txnGroup.map((tx, idx) => {
-    const txn = Buffer.from(tx.toByte()).toString("base64");
+    const txn = tx.toByte().toBase64();
     if (!indexesToSign || indexesToSign.includes(idx)) return { txn };
     else return { txn, signers: [] };
   });
@@ -198,11 +194,7 @@ export async function luteSignerWT(walletTxns: WalletTransaction[]) {
       switch (message.detail.action) {
         case "signed": {
           window.removeEventListener("modal-signer", listener);
-          resolve(
-            message.detail.txns.map((txn: string) =>
-              txn ? Buffer.from(txn, "base64") : null
-            )
-          );
+          resolve(message.detail.txns);
           break;
         }
         case "error": {

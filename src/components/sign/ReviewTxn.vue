@@ -63,7 +63,7 @@
 </template>
 
 <script lang="ts" setup>
-import { decodeField, formatAddr, bigintToString } from "@/utils";
+import { formatAddr, bigintToString } from "@/utils";
 import algosdk, { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
@@ -112,19 +112,19 @@ const ftxn = computed(() => ({
   voteLast: props.txn.keyreg?.voteLast,
   voteKeyDilution: props.txn.keyreg?.voteKeyDilution,
   selectionKey: props.txn.keyreg?.selectionKey
-    ? Buffer.from(props.txn.keyreg.selectionKey).toString("base64")
+    ? props.txn.keyreg.selectionKey.toBase64()
     : undefined,
   voteKey: props.txn.keyreg?.voteKey
-    ? Buffer.from(props.txn.keyreg.voteKey).toString("base64")
+    ? props.txn.keyreg.voteKey.toBase64()
     : undefined,
   stateProofKey: props.txn.keyreg?.stateProofKey
-    ? Buffer.from(props.txn.keyreg.stateProofKey).toString("base64")
+    ? props.txn.keyreg.stateProofKey.toBase64()
     : undefined,
   rekeyTo: props.txn.rekeyTo?.toString(),
   closeRemainderTo: formatAddr(
     props.txn.payment?.closeRemainderTo?.toString() ||
       props.txn.assetTransfer?.closeRemainderTo?.toString()
   ),
-  note: decodeField(props.txn.note),
+  note: new TextDecoder().decode(props.txn.note),
 }));
 </script>

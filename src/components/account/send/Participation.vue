@@ -117,8 +117,8 @@ const incentiveHint = computed(() =>
   props.acct?.info?.incentiveEligible
     ? "Already Eligible"
     : incentiveEligible.value
-    ? "This will increase the fee of this transaction to 2 Algo"
-    : ""
+      ? "This will increase the fee of this transaction to 2 Algo"
+      : ""
 );
 
 const lastRound = ref<bigint>();
@@ -224,7 +224,7 @@ async function offline() {
 }
 
 function b64ToUint8(b64: string | undefined) {
-  return b64 ? Buffer.from(b64, "base64") : undefined;
+  return b64 ? Uint8Array.fromBase64(b64) : undefined;
 }
 
 async function submit() {

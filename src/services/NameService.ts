@@ -44,8 +44,8 @@ export async function sendFromVault(name: string, data: SendFromVaultRequest) {
   const json = JSON.parse(await resp.json()) as [string, string][];
   const txns = json.map((x) =>
     x[0] === "u"
-      ? algosdk.decodeUnsignedTransaction(Buffer.from(x[1], "base64"))
-      : algosdk.decodeSignedTransaction(Buffer.from(x[1], "base64")).txn
+      ? algosdk.decodeUnsignedTransaction(Uint8Array.fromBase64(x[1]))
+      : algosdk.decodeSignedTransaction(Uint8Array.fromBase64(x[1])).txn
   );
   const indexesToSign = json.some((x) => x[0] == "s")
     ? json.flatMap((x, idx) => (x[0] === "u" ? idx : []))

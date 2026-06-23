@@ -96,7 +96,7 @@ export default class LuteData {
 
       switch (this.metadata.encoding) {
         case "base64":
-          this.jsonString = Buffer.from(this.data, "base64").toString();
+          this.jsonString = Uint8Array.fromBase64(this.data).toString();
           break;
         default:
           throw ERROR_FAILED_DECODING;
@@ -116,16 +116,16 @@ export default class LuteData {
           if (!canonifiedJson || canonifiedJson !== this.jsonString) {
             throw ERROR_BAD_JSON;
           }
-
+          const enc = new TextEncoder();
           const rp_id_hash = await crypto.subtle.digest(
             "SHA-256",
-            Buffer.from(this.siwa.domain)
+            enc.encode(this.siwa.domain)
           );
           // check that the first 32 bytes of authenticatorData are the same as the sha256 of domain
           if (
             Buffer.compare(
               this.authenticatorData.slice(0, 32),
-              Buffer.from(rp_id_hash)
+              new Uint8Array(rp_id_hash)
             ) !== 0
           ) {
             throw ERROR_FAILED_DOMAIN_AUTH;
@@ -227,11 +227,9 @@ export default class LuteData {
       };
       const signerResponse64 = {
         ...signerResponse,
-        signature: Buffer.from(signerResponse.signature).toString("base64"),
-        signer: Buffer.from(signerResponse.signer).toString("base64"),
-        authenticatorData: Buffer.from(
-          signerResponse.authenticatorData
-        ).toString("base64"),
+        signature: signerResponse.signature.toBase64(),
+        signer: signerResponse.signer.toBase64(),
+        authenticatorData: signerResponse.authenticatorData.toBase64(),
       };
       const message = {
         action: "signed",

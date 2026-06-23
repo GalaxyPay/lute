@@ -46,7 +46,7 @@ function optionsRefreshListener() {
       await store.getCache();
       store.info = message.info.map((i: MsgpackHD) => {
         const ai: AccountHD = decodeMsgpack(
-          Buffer.from(i.ai, "base64"),
+          Uint8Array.fromBase64(i.ai),
           modelsv2.Account
         );
         ai.addrIdx = i.hd.addrIdx;

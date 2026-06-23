@@ -58,7 +58,7 @@ const Seed = {
     if (credentialId)
       allowCredentials.push({
         type: "public-key",
-        id: Buffer.from(credentialId, "base64"),
+        id: Uint8Array.fromBase64(credentialId),
       });
     const credential = await navigator.credentials.get({
       publicKey: {

@@ -65,9 +65,9 @@ onMounted(async () => {
     }
     if (!store.isWeb) browser.runtime.connect({ name: "luteSidepanel" });
     loading.value = true;
-    stxn1 = Buffer.from(tx1, "base64");
+    stxn1 = Uint8Array.fromBase64(tx1);
     const txn1 = algosdk.decodeSignedTransaction(stxn1).txn;
-    const txn2 = algosdk.decodeUnsignedTransaction(Buffer.from(tx2, "base64"));
+    const txn2 = algosdk.decodeUnsignedTransaction(Uint8Array.fromBase64(tx2));
     // check group
     if (
       !txn1.group ||
@@ -88,8 +88,8 @@ onMounted(async () => {
     // check network and switch
     if (!txn1.genesisHash || !txn2.genesisHash)
       throw Error("Missing Genesis Hash");
-    const genHash1 = Buffer.from(txn1.genesisHash).toString("base64");
-    const genHash2 = Buffer.from(txn2.genesisHash).toString("base64");
+    const genHash1 = txn1.genesisHash.toBase64();
+    const genHash2 = txn2.genesisHash.toBase64();
     if (genHash1 !== genHash2) throw Error("Network Mismatch");
     const network = store.allNetworks.find(
       (n) =>

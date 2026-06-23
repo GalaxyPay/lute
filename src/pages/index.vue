@@ -179,15 +179,22 @@
                       v-if="item.seedId && getCredential(item.seedId)"
                       title="Backup HD Seed"
                       :prepend-icon="mdiFormatListNumbered"
-                      @click="getMnemonic(item.seedId!)"
-                    />
-                    <v-list-item
-                      title="Remove Account"
-                      :prepend-icon="mdiDelete"
-                      base-color="error"
-                      @click="removeAccount(item.addr)"
+                      @click="getMnemonic(item.seedId)"
                     />
                   </template>
+                  <v-list-item
+                    v-if="false /*item.seedId*/"
+                    title="Export Key"
+                    :prepend-icon="mdiKey"
+                    @click="exportChildKey(item)"
+                  />
+                  <v-list-item
+                    v-if="!item.subType"
+                    title="Remove Account"
+                    :prepend-icon="mdiDelete"
+                    base-color="error"
+                    @click="removeAccount(item.addr)"
+                  />
                 </v-list>
               </v-menu>
             </v-btn>
@@ -224,14 +231,16 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+  <password-confirm :visible="showPass" @close="handlePass" />
 </template>
 
 <script lang="ts" setup>
 import { networks } from "@/data";
 import { del, set } from "@/dbLute";
 import router from "@/router";
+import HdWallet from "@/services/HdWallet";
 import Seed from "@/services/Seed";
-import type { LuteAccount } from "@/types";
+import type { AccountInfo, LuteAccount, SeedData } from "@/types";
 import {
   bigintToString,
   copyToClipboard,
@@ -251,6 +260,7 @@ import {
   mdiFormatVerticalAlignBottom,
   mdiFormatVerticalAlignTop,
   mdiInformationOutline,
+  mdiKey,
   mdiMenuDown,
   mdiPencil,
   mdiRefresh,
@@ -262,6 +272,7 @@ const { smAndUp, width } = useDisplay();
 const xxs = computed(() => width.value < 450);
 const store = useAppStore();
 const showAdd = ref(false);
+const showPass = ref(false);
 const rename = ref<any>({});
 const headers = computed(() => {
   const val: any[] = [{ key: "addr" }];
@@ -423,6 +434,25 @@ async function getMnemonic(seedId: number) {
   mnemonicArray.value = mn.split(" ");
   showMnemonic.value = true;
   store.snackbar.display = false;
+}
+
+let acctInfo: AccountInfo;
+let seedData: SeedData | undefined;
+async function exportChildKey(ai: AccountInfo) {
+  acctInfo = ai;
+  seedData = store.seeds.find((s) => s.id === acctInfo.seedId);
+  if (!seedData) throw Error("Invalid Seed");
+  if (seedData.data) showPass.value = true;
+}
+
+async function handlePass(success: boolean, pass: string) {
+  showPass.value = false;
+  if (!success) {
+    store.setSnackbar("Incorrect Password", "error");
+  } else {
+    const backupKey = await HdWallet.deriveChildKey(pass, acctInfo, seedData);
+    console.log(backupKey);
+  }
 }
 
 function closeMnemonic() {
