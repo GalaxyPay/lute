@@ -334,7 +334,10 @@ export default class LuteTxns {
           const signedTxns64 = signedTxns.map((txn) => txn.toBase64());
           const message = {
             action: "signed",
-            txns: this.store.isWeb ? signedTxns : signedTxns64,
+            txns:
+              this.store.isWeb || this.store.luteTxns
+                ? signedTxns
+                : signedTxns64,
             debug: this.store.debug,
           };
           this.sendAndClose(message);
@@ -407,7 +410,8 @@ export default class LuteTxns {
         );
         const message = {
           action: "signed",
-          txns: this.store.isWeb ? signedTxns : signedTxns64,
+          txns:
+            this.store.isWeb || this.store.luteTxns ? signedTxns : signedTxns64,
           debug: this.store.debug,
         };
         this.sendAndClose(message);

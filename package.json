@@ -1,7 +1,7 @@
 {
   "name": "lute",
   "displayName": "Lute",
-  "version": "1.23.6",
+  "version": "1.23.7",
   "type": "module",
   "description": "An Algorand Wallet",
   "license": "AGPL-3.0-only",

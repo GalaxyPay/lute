@@ -194,11 +194,7 @@ export async function luteSignerWT(walletTxns: WalletTransaction[]) {
       switch (message.detail.action) {
         case "signed": {
           window.removeEventListener("modal-signer", listener);
-          resolve(
-            message.detail.txns.map((txn: string) =>
-              txn ? Uint8Array.fromBase64(txn) : null
-            )
-          );
+          resolve(message.detail.txns);
           break;
         }
         case "error": {
