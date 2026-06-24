@@ -19,7 +19,7 @@ const Msig = {
         addrs: [],
         groups: [],
       };
-      const gs = appInfo.params.globalState;
+      const gs = appInfo.params?.globalState;
       const addrs: string[] = [];
       gs?.forEach((s) => {
         const k = s.key;

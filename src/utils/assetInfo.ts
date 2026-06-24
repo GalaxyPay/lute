@@ -19,7 +19,7 @@ export async function getAssetInfo(id: bigint, noImage: boolean = false) {
     }
     if (
       !assetInfo ||
-      (assetInfo.params.url?.startsWith("template-ipfs") && !noImage)
+      (assetInfo.params?.url?.startsWith("template-ipfs") && !noImage)
     ) {
       assetInfo = await Algo.algod.getAssetByID(numId).do();
       if (!["LocalNet", "FNet"].includes(appStore.networkName))
@@ -30,7 +30,7 @@ export async function getAssetInfo(id: bigint, noImage: boolean = false) {
     }
     if (appStore.networkName === "MainNet") {
       const tinyPng = appStore.tinyman?.[numId]?.logo.png;
-      if (tinyPng) assetInfo.params.url = tinyPng;
+      if (tinyPng) assetInfo.params!.url = tinyPng;
     }
     return assetInfo;
   } catch (err: any) {

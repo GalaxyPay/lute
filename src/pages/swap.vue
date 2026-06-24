@@ -65,9 +65,11 @@ onMounted(async () => {
     }
     if (!store.isWeb) browser.runtime.connect({ name: "luteSidepanel" });
     loading.value = true;
-    stxn1 = Uint8Array.fromBase64(tx1);
+    stxn1 = Uint8Array.fromBase64(tx1, { alphabet: "base64url" });
     const txn1 = algosdk.decodeSignedTransaction(stxn1).txn;
-    const txn2 = algosdk.decodeUnsignedTransaction(Uint8Array.fromBase64(tx2));
+    const txn2 = algosdk.decodeUnsignedTransaction(
+      Uint8Array.fromBase64(tx2, { alphabet: "base64url" })
+    );
     // check group
     if (
       !txn1.group ||
@@ -157,7 +159,7 @@ function formatAsset(txn: algosdk.Transaction) {
       const txnAsset = assets.find(
         (a) => a.index === txn.assetTransfer?.assetIndex
       );
-      if (!txnAsset) throw Error("Asset Not Found");
+      if (!txnAsset?.params) throw Error("Asset Not Found");
       return `${bigintToString(
         txn.assetTransfer.amount,
         txnAsset.params.decimals

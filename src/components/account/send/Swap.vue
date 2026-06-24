@@ -166,7 +166,7 @@ function receiverProps(item: any) {
 }
 function assetProps(item: modelsv2.Asset) {
   return {
-    title: item.params.name,
+    title: item.params?.name,
     subtitle: item.index ? Number(item.index) : "",
   };
 }
@@ -185,10 +185,12 @@ async function propose() {
   const { valid } = await form.value.validate();
   if (!valid) return;
   try {
+    if (!senderAsset.value?.params || !receiverAsset.value?.params)
+      throw Error("Invalid Assets");
     const suggestedParams = await Algo.algod.getTransactionParams().do();
 
     let txn1: algosdk.Transaction;
-    if (!senderAsset.value?.index) {
+    if (!senderAsset.value.index) {
       txn1 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: props.sender.addr,
         receiver: receiver.value!,
@@ -208,7 +210,7 @@ async function propose() {
       });
     }
     let txn2: algosdk.Transaction;
-    if (!receiverAsset.value?.index) {
+    if (!receiverAsset.value.index) {
       txn2 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: receiver.value!,
         receiver: props.sender.addr,

@@ -29,7 +29,7 @@
             </v-row>
             <v-row class="text-caption">
               {{ formatAmount() }}
-              {{ assetInfo?.params.unitName }}
+              {{ assetInfo?.params?.unitName }}
             </v-row>
           </v-container>
         </v-col>
@@ -62,7 +62,7 @@ const image = ref();
 
 onMounted(async () => {
   assetInfo.value = await getAssetInfo(props.asset.assetId, true);
-  if (assetInfo.value?.params.url) {
+  if (assetInfo.value?.params?.url) {
     image.value = await resolveProtocol(
       assetInfo.value.params.url,
       assetInfo.value.params.reserve || ""
@@ -76,7 +76,7 @@ function exploreAsset() {
 }
 
 function formatAmount() {
-  return assetInfo.value
+  return assetInfo.value?.params
     ? bigintToString(props.asset.amount, assetInfo.value.params.decimals)
     : "-";
 }

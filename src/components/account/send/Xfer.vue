@@ -178,7 +178,7 @@ const asset = ref<modelsv2.Asset>(store.nativeAsset);
 const showInboxWarning = ref(false);
 
 const amountLabel = computed(() => {
-  return `Amount (${asset.value.params.unitName || asset.value.params.name})`;
+  return `Amount (${asset.value.params?.unitName || asset.value.params?.name})`;
 });
 const closeRemainderToTip = computed(() =>
   asset.value.index === 0n
@@ -205,7 +205,7 @@ function toProps(item: any) {
 
 function assetProps(item: modelsv2.Asset) {
   return {
-    title: item.params.name,
+    title: item.params?.name,
     subtitle: item.index ? Number(item.index) : undefined,
   };
 }
@@ -217,7 +217,7 @@ const itemBalance = computed(() => {
     val += bigintToString(amt, 6, false);
   } else {
     val += `${assetBalance()}
-  ${asset.value.params.unitName}`;
+  ${asset.value.params?.unitName}`;
   }
   return val;
 });
@@ -226,7 +226,7 @@ function assetBalance(plain = false) {
   const num = props.acct.info?.assets?.find(
     (a) => a.assetId === asset.value?.index
   )?.amount;
-  const decimals = asset.value?.params.decimals;
+  const decimals = asset.value?.params?.decimals;
   return num != null && decimals != null
     ? bigintToString(num, decimals, plain)
     : "-";
@@ -269,7 +269,7 @@ async function submit() {
         sender: props.acct.addr,
         note: note64,
         suggestedParams,
-        amount: stringToBigint(amount.value, asset.value.params.decimals),
+        amount: stringToBigint(amount.value, asset.value.params!.decimals),
         closeRemainderTo: closeRemainderTo.value,
         assetSender: assetSender.value,
       });
@@ -314,7 +314,7 @@ async function submit() {
 async function arc59SendAsset() {
   try {
     showInboxWarning.value = false;
-    if (!asset.value) throw Error("Invalid Asset");
+    if (!asset.value.params) throw Error("Invalid Asset");
     if (!store.network.inboxRouter) throw Error("Invalid Router");
     const suggestedParams = await Algo.algod.getTransactionParams().do();
     const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
