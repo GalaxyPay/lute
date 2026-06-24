@@ -24,7 +24,7 @@
                 </v-row>
                 <v-row class="text-caption">
                   {{ formatAmount() }}
-                  {{ assetInfo?.params.unitName }}
+                  {{ assetInfo?.params?.unitName }}
                 </v-row>
               </v-col>
             </v-row>
@@ -105,12 +105,12 @@ const creator = ref(false);
 
 watch(
   creator,
-  (val) => (receiver.value = val ? assetInfo.value?.params.creator : undefined)
+  (val) => (receiver.value = val ? assetInfo.value?.params?.creator : undefined)
 );
 
 onMounted(async () => {
   assetInfo.value = await getAssetInfo(props.asset.assetId);
-  if (assetInfo.value?.params.url) {
+  if (assetInfo.value?.params?.url) {
     image.value = await resolveProtocol(
       assetInfo.value.params.url,
       assetInfo.value.params.reserve || ""
@@ -119,7 +119,7 @@ onMounted(async () => {
 });
 
 function formatAmount() {
-  return assetInfo.value
+  return assetInfo.value?.params
     ? bigintToString(props.asset.amount, assetInfo.value.params.decimals)
     : "-";
 }

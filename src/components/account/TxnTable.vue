@@ -139,9 +139,9 @@ function formatAmount(txn: indexerModels.Transaction) {
   } else if (txn.assetTransferTransaction) {
     const axfer = txn.assetTransferTransaction;
     const asset = assets.value.find((a) => a.index === axfer.assetId);
-    if (!asset) throw Error("Invalid Asset");
+    if (!asset?.params) throw Error("Invalid Asset");
     return `${bigintToString(axfer.amount, asset.params.decimals)} ${
-      asset?.params.unitName
+      asset.params.unitName
     }`;
   }
 }

@@ -99,12 +99,12 @@ const ftxn = computed(() => ({
       props.txn.assetTransfer?.receiver.toString()
   ),
   appId: props.txn.applicationCall?.appIndex,
-  asset: txnAsset.value?.params.unitName,
+  asset: txnAsset.value?.params?.unitName,
   amount:
     props.txn.payment || props.txn.assetTransfer
       ? bigintToString(
           props.txn.payment?.amount || props.txn.assetTransfer?.amount || 0n,
-          txnAsset.value?.params.decimals ?? 6
+          txnAsset.value?.params?.decimals ?? 6
         )
       : undefined,
   fee: Number(props.txn.fee || 0) / 10 ** 6 + (store.isVoi ? " Voi" : " Algo"),

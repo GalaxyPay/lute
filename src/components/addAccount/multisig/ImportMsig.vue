@@ -33,7 +33,7 @@ let app: Arc55App;
 const required = (v: string) => !!v || "Required";
 const validApp = () => !!app?.info || "Invalid AppID";
 const isArc55 = () =>
-  app?.info.params.globalState?.some(
+  app?.info.params?.globalState?.some(
     (gs) => new TextDecoder().decode(gs.key) === "arc55_admin"
   ) || "Not ARC-55";
 const isMember = () =>
