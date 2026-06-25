@@ -96,7 +96,8 @@ export default class LuteData {
 
       switch (this.metadata.encoding) {
         case "base64":
-          this.jsonString = Uint8Array.fromBase64(this.data).toString();
+          const dec = new TextDecoder();
+          this.jsonString = dec.decode(Uint8Array.fromBase64(this.data));
           break;
         default:
           throw ERROR_FAILED_DECODING;
