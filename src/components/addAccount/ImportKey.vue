@@ -53,11 +53,7 @@
 </template>
 
 <script lang="ts" setup>
-import { set } from "@/dbLute";
-import type { LuteAccount } from "@/types";
-import { deepClone, storeKey } from "@/utils";
 import { mdiEye, mdiEyeOff } from "@mdi/js";
-import algosdk from "algosdk";
 
 const props = defineProps({
   numberOfWords: { type: Number, required: true },
@@ -72,7 +68,7 @@ const form = ref();
 const mnemonicArray = ref<string[]>([]);
 const visible = ref<number[]>([]);
 const mnemonic = computed(() => mnemonicArray.value.join(" "));
-const emit = defineEmits(["close", "convert"]);
+const emit = defineEmits(["close", "mn"]);
 const required = (v: string) => !!v || "Required";
 
 function handlePaste(e: any) {
@@ -129,23 +125,7 @@ async function importKey() {
   try {
     const { valid } = await form.value.validate();
     if (!valid) return;
-    if (props.numberOfWords === 25) {
-      const acct = algosdk.mnemonicToSecretKey(mnemonic.value);
-      await storeKey(acct);
-      const accts: LuteAccount[] = deepClone(store.accounts);
-      if (accts.some((a) => a.addr === acct.addr.toString())) {
-        emit("close");
-        throw Error("Account Already Exists In Wallet");
-      }
-      accts.push({ addr: acct.addr.toString() });
-      await set("app", "accounts", accts);
-      await store.getCache();
-      store.refresh++;
-      store.setSnackbar("Account Imported", "success");
-      emit("close");
-    } else {
-      emit("convert", mnemonic.value);
-    }
+    emit("mn", mnemonic.value);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
