@@ -14,17 +14,14 @@ const Falcon25 = {
       )
     );
   },
-  getAddress(falcon1024PublicKey: Uint8Array) {
+  getAddress(mn: string) {
+    const seed = this.mnemonicToSeed(mn);
+    const { publicKey } = generateKey(seed);
     const { address } = Address.canonicalPQAddress(
       FALCON_1024_SCHEME,
-      falcon1024PublicKey
+      publicKey
     );
     return address;
-  },
-  keyPairWithAddress(seed: Uint8Array) {
-    const keyPair = generateKey(seed);
-    const address = this.getAddress(keyPair.publicKey);
-    return { ...keyPair, address };
   },
 };
 

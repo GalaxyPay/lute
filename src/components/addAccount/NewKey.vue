@@ -119,10 +119,8 @@ const acct = props.convertion
 const mn = isBip39.value
   ? bip39.generateMnemonic(wordlist, 256)
   : algosdk.secretKeyToMnemonic(acct.sk);
-const falconAccount = props.isFalcon
-  ? Falcon25.keyPairWithAddress(Falcon25.mnemonicToSeed(mn))
-  : undefined;
-const addr = falconAccount?.address || acct.addr;
+const falconAddr = props.isFalcon ? Falcon25.getAddress(mn) : undefined;
+const addr = falconAddr || acct.addr;
 const mnemonicArray = mn.split(" ");
 const page = ref(0);
 const challenge = Math.floor(Math.random() * props.numberOfWords) + 1;
