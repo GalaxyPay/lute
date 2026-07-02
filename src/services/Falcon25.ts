@@ -1,14 +1,9 @@
 import { sha512_256 } from "@noble/hashes/sha2.js";
-import {
-  addressWithSignersFromRawFalcon1024Signer,
-  FALCON_1024_SCHEME,
-  seedFromMnemonic,
-  type Falcon1024SigningKey,
-} from "algosdk";
-import { generateKey, signCompressed } from "falcon-1024";
+import { Address, FALCON_1024_SCHEME, seedFromMnemonic } from "algosdk";
+import { generateKey } from "falcon-1024";
 
 const Falcon25 = {
-  pq25WordMnemonicToSeed(mn: string): Uint8Array {
+  mnemonicToSeed(mn: string): Uint8Array {
     return new Uint8Array(
       sha512_256(
         new Uint8Array([
@@ -19,32 +14,16 @@ const Falcon25 = {
       )
     );
   },
-  keyPair(mn: string) {
-    return generateKey(this.pq25WordMnemonicToSeed(mn));
+  getAddress(falcon1024PublicKey: Uint8Array) {
+    const { address } = Address.canonicalPQAddress(
+      FALCON_1024_SCHEME,
+      falcon1024PublicKey
+    );
+    return address;
   },
-  signingKey(keyPair: {
-    publicKey: Uint8Array<ArrayBufferLike>;
-    privateKey: Uint8Array;
-  }) {
-    const falconSigningKey: Falcon1024SigningKey = {
-      falcon1024PublicKey: keyPair.publicKey,
-      falcon1024Signer: async (bytesToSign: Uint8Array) =>
-        signCompressed(keyPair.privateKey, bytesToSign),
-    };
-    return falconSigningKey;
-  },
-  keyPairWithAddress(mn: string) {
-    const keyPair = this.keyPair(mn);
-    const falconSigningKey = this.signingKey(keyPair);
-    const { address } =
-      addressWithSignersFromRawFalcon1024Signer(falconSigningKey);
-    return { ...keyPair, address };
-  },
-  keyPairWithAddressFromSeed(seed: Uint8Array) {
+  keyPairWithAddress(seed: Uint8Array) {
     const keyPair = generateKey(seed);
-    const falconSigningKey = this.signingKey(keyPair);
-    const { address } =
-      addressWithSignersFromRawFalcon1024Signer(falconSigningKey);
+    const address = this.getAddress(keyPair.publicKey);
     return { ...keyPair, address };
   },
 };

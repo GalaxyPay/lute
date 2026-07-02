@@ -1,7 +1,7 @@
 // Utilities
 import type LuteTxns from "@/classes/LuteTxns";
 import { networks } from "@/data";
-import { get, getAll, keys, set } from "@/dbLute";
+import { get, getAll, getAllEntries, keys, set } from "@/dbLute";
 import type {
   AccountHD,
   AccountInfo,
@@ -35,7 +35,10 @@ export const useAppStore = defineStore("app", {
     hotWallet: true,
     keys: [] as string[],
     seeds: [] as SeedData[],
-    falcon25Seeds: [] as string[],
+    falcon25Seeds: [] as {
+      key: string | number;
+      value: any;
+    }[],
     drawer: false,
     debug: false,
     snoop: false,
@@ -67,9 +70,10 @@ export const useAppStore = defineStore("app", {
         .forEach((a) => {
           function getCanSign(acct: LuteAccount) {
             const isHot = state.keys.includes(acct.addr);
-            const isFalcon25 = state.falcon25Seeds.includes(acct.addr);
-            const canSign =
-              isHot || isFalcon25 || acct.slot != null || !!acct.falcon;
+            const isFalcon25 = state.falcon25Seeds
+              .map((kv) => kv.key)
+              .includes(acct.addr);
+            const canSign = isHot || isFalcon25 || acct.slot != null;
             return { info, isHot, isFalcon25, canSign };
           }
           const info = this.info.find((i) => i.address === a.addr);
@@ -204,7 +208,7 @@ export const useAppStore = defineStore("app", {
         (await get("app", "experimental")) ?? this.experimental;
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
-      this.falcon25Seeds = (await keys("falcon25-seeds")) as string[];
+      this.falcon25Seeds = await getAllEntries("falcon25-seeds");
     },
     async setSnackbar(text: string, color = "info", timeout = 4000) {
       if (color === "error") timeout = 15000;

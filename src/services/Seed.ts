@@ -35,10 +35,10 @@ const Seed = {
   },
 
   async storeFalconSeed(mn: string, pass: string) {
-    const seed = Buffer.from(Falcon25.pq25WordMnemonicToSeed(mn));
-    const { address } = Falcon25.keyPairWithAddressFromSeed(seed);
+    const seed = Buffer.from(Falcon25.mnemonicToSeed(mn));
+    const { address } = Falcon25.keyPairWithAddress(seed);
     const seedData = await this.encryptSeed(seed, pass);
-    const id = await set("falcon25-seeds", address.toString(), seedData);
+    await set("falcon25-seeds", address.toString(), seedData);
     return address;
   },
 

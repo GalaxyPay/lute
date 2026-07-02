@@ -94,4 +94,16 @@ export async function keys(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAllKeys(storeName);
 }
 
+export async function getAllEntries(storeName: StoreNames<LuteDB>) {
+  const tx = (await dbLute).transaction(storeName, "readonly");
+  const store = tx.objectStore(storeName);
+
+  const results = [];
+  for await (const cursor of store) {
+    results.push({ key: cursor.key, value: cursor.value });
+  }
+
+  return results;
+}
+
 export default dbLute;

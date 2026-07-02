@@ -84,7 +84,7 @@ import NameService from "@/services/NameService";
 import type { AccountInfo, NsLookup } from "@/types";
 import { b64url, getAssetInfo, stringToBigint } from "@/utils";
 import { luteSigner } from "@/utils/signers";
-import algosdk, { modelsv2 } from "algosdk";
+import algosdk, { modelsv2, Transaction } from "algosdk";
 import { useTheme } from "vuetify";
 
 const props = defineProps<{ sender: AccountInfo }>();
@@ -171,7 +171,7 @@ function assetProps(item: modelsv2.Asset) {
   };
 }
 
-const reviewTxns = ref<algosdk.Transaction[]>();
+const reviewTxns = ref<Transaction[]>();
 
 let nsTimeout: number;
 async function lookupNs(q: string | undefined) {
@@ -189,7 +189,7 @@ async function propose() {
       throw Error("Invalid Assets");
     const suggestedParams = await Algo.algod.getTransactionParams().do();
 
-    let txn1: algosdk.Transaction;
+    let txn1: Transaction;
     if (!senderAsset.value.index) {
       txn1 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: props.sender.addr,
@@ -209,7 +209,7 @@ async function propose() {
         ),
       });
     }
-    let txn2: algosdk.Transaction;
+    let txn2: Transaction;
     if (!receiverAsset.value.index) {
       txn2 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: receiver.value!,

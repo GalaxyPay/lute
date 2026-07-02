@@ -197,7 +197,7 @@ import Msig from "@/services/Msig";
 import type { Arc55App, MsigGroup, WalletTransaction } from "@/types";
 import { luteSignerWT } from "@/utils/signers";
 import { mdiCheck, mdiClose, mdiDelete, mdiInformationOutline } from "@mdi/js";
-import algosdk from "algosdk";
+import algosdk, { Transaction } from "algosdk";
 
 const props = defineProps<{ appId: bigint }>();
 const app = ref<Arc55App>();
@@ -289,7 +289,7 @@ async function checkSubmitted() {
     )
     .forEach(async (grp: MsigGroup) => {
       try {
-        const txn: algosdk.Transaction = grp.txns[0]!;
+        const txn: Transaction = grp.txns[0]!;
         if (txn.lastValid < currentRound.value) {
           if (!Algo.indexer) throw Error("Indexer not configured");
           await Algo.indexer.lookupTransactionByID(txn.txID()).do();

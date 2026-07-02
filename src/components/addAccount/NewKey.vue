@@ -120,7 +120,7 @@ const mn = isBip39.value
   ? bip39.generateMnemonic(wordlist, 256)
   : algosdk.secretKeyToMnemonic(acct.sk);
 const falconAccount = props.isFalcon
-  ? Falcon25.keyPairWithAddress(mn)
+  ? Falcon25.keyPairWithAddress(Falcon25.mnemonicToSeed(mn))
   : undefined;
 const addr = falconAccount?.address || acct.addr;
 const mnemonicArray = mn.split(" ");

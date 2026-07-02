@@ -301,6 +301,9 @@ async function submit() {
         });
       }
     }
+    if (props.acct.isFalcon25) {
+      txn.fee = suggestedParams.minFee * 3n;
+    }
     if (!txn) throw Error("Invalid Transaction");
     const stxn = await luteSigner([txn]);
     await send(stxn);

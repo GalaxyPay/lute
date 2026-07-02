@@ -232,10 +232,6 @@ export interface LuteAccount {
   seedId?: number;
   xpub?: string;
   idxs?: number[];
-  falcon?: {
-    counter: number;
-    publicKey: string;
-  };
 }
 
 export interface AccountInfo extends LuteAccount {
