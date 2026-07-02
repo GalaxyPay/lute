@@ -95,10 +95,14 @@
 
 <script lang="ts" setup>
 import { set } from "@/dbLute";
-import Falcon25 from "@/services/Falcon25";
 import Seed from "@/services/Seed";
 import type { LuteAccount } from "@/types";
-import { copyToClipboard, deepClone, storeKey } from "@/utils";
+import {
+  copyToClipboard,
+  deepClone,
+  getFalconAddress,
+  storeKey,
+} from "@/utils";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import algosdk from "algosdk";
@@ -119,7 +123,7 @@ const acct = props.convertion
 const mn = isBip39.value
   ? bip39.generateMnemonic(wordlist, 256)
   : algosdk.secretKeyToMnemonic(acct.sk);
-const falconAddr = props.isFalcon ? Falcon25.getAddress(mn) : undefined;
+const falconAddr = props.isFalcon ? getFalconAddress(mn) : undefined;
 const addr = falconAddr || acct.addr;
 const mnemonicArray = mn.split(" ");
 const page = ref(0);

@@ -1,8 +1,9 @@
 import { set } from "@/dbLute";
 import type { SeedData } from "@/types";
+import { getFalconAddress } from "@/utils";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import Falcon25 from "./Falcon25";
+import algosdk, { FALCON_1024_SCHEME } from "algosdk";
 
 const Seed = {
   async deriveKeyFromPassSalt(pass: string, salt: Uint8Array) {
@@ -35,8 +36,10 @@ const Seed = {
   },
 
   async storeFalconSeed(mn: string, pass: string) {
-    const seed = Buffer.from(Falcon25.mnemonicToSeed(mn));
-    const address = Falcon25.getAddress(mn);
+    const seed = Buffer.from(
+      algosdk.pq25WordMnemonicToSeed(mn, FALCON_1024_SCHEME)
+    );
+    const address = getFalconAddress(mn);
     const seedData = await this.encryptSeed(seed, pass);
     await set("falcon25-seeds", address.toString(), seedData);
     return address;

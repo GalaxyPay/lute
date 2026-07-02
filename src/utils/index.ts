@@ -1,5 +1,6 @@
 import { set } from "@/dbLute";
-import { type Account } from "algosdk";
+import algosdk, { type Account } from "algosdk";
+import { generateKey } from "falcon-1024";
 
 export { getAssetInfo } from "./assetInfo";
 export { refresh } from "./refresh";
@@ -179,4 +180,14 @@ export function copyToClipboard(val: string) {
   const store = useAppStore();
   navigator.clipboard.writeText(val);
   store.setSnackbar("Copied", "info", 1000);
+}
+
+export function getFalconAddress(mn: string) {
+  const seed = algosdk.pq25WordMnemonicToSeed(mn, algosdk.FALCON_1024_SCHEME);
+  const { publicKey } = generateKey(seed);
+  const { address } = algosdk.Address.canonicalPQAddress(
+    algosdk.FALCON_1024_SCHEME,
+    publicKey
+  );
+  return address;
 }
