@@ -2,6 +2,7 @@ import { set } from "@/dbLute";
 import type { SeedData } from "@/types";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
+import Falcon25 from "./Falcon25";
 
 const Seed = {
   async deriveKeyFromPassSalt(pass: string, salt: Uint8Array) {
@@ -28,6 +29,20 @@ const Seed = {
 
   async storeBip39Seed(mn: string, pass: string) {
     const seed = Buffer.from(bip39.mnemonicToSeedSync(mn));
+    const seedData = await this.encryptSeed(seed, pass);
+    const id = await set("seeds", undefined, seedData);
+    return { id, seed };
+  },
+
+  async storeFalconSeed(mn: string, pass: string) {
+    const seed = Buffer.from(Falcon25.pq25WordMnemonicToSeed(mn));
+    const { address } = Falcon25.keyPairWithAddressFromSeed(seed);
+    const seedData = await this.encryptSeed(seed, pass);
+    const id = await set("falcon25-seeds", address.toString(), seedData);
+    return address;
+  },
+
+  async encryptSeed(seed: Buffer<ArrayBuffer>, pass: string) {
     const salt = window.crypto.getRandomValues(new Uint8Array(12));
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const key = await this.deriveKeyFromPassSalt(pass, salt);
@@ -36,8 +51,7 @@ const Seed = {
       key,
       seed
     );
-    const id = await set("seeds", undefined, { data, salt, iv });
-    return { id, seed };
+    return { data, salt, iv };
   },
 
   async decryptSeed(pass: string, sd: SeedData) {

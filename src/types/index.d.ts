@@ -241,6 +241,7 @@ export interface LuteAccount {
 export interface AccountInfo extends LuteAccount {
   title: string;
   isHot: boolean;
+  isFalcon25: boolean;
   canSign: boolean;
   subType?: "rekey" | "hd";
   info?: AccountHD;

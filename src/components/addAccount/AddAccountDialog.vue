@@ -176,7 +176,7 @@ const HD = "HD Wallet";
 const MSIG = "Multi-Sig Account";
 const HOT = "Algo25 Account";
 const MN12 = "12-Word Account";
-const FALCON = "Falcon Account";
+const FALCON = "Falcon25 Account";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },

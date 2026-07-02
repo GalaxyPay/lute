@@ -2,7 +2,7 @@ import Algo from "@/services/Algo";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha512 } from "@noble/hashes/sha2.js";
-import algosdk from "algosdk";
+import algosdk, { type LogicSigAccount, type SuggestedParams } from "algosdk";
 import { generateKey } from "falcon-1024";
 
 const lsigTealTMPL = `#pragma version 12
@@ -41,7 +41,7 @@ const Falcon = {
     const falconPair = this.keyPair(seed);
     const publicKey = falconPair.publicKey.toBase64();
     let counter: number;
-    let logicSig: algosdk.LogicSigAccount | undefined = undefined;
+    let logicSig: LogicSigAccount | undefined = undefined;
     for (counter = 0; counter < 256; counter++) {
       const lsigTeal = this.getLsigTeal(counter, falconPair.publicKey);
       const compiledSig = await Algo.algod.compile(lsigTeal).do();
@@ -61,7 +61,7 @@ const Falcon = {
       addr: logicSig.address().toString(),
     };
   },
-  async getDummy(suggestedParams: algosdk.SuggestedParams, count: number) {
+  async getDummy(suggestedParams: SuggestedParams, count: number) {
     const enc = new TextEncoder();
     const dummyCompiled = await Algo.algod.compile(dummyTeal).do();
     const dummyBytes = Uint8Array.fromBase64(dummyCompiled.result);

@@ -35,9 +35,13 @@ interface LuteDB extends DBSchema {
     key: number;
     value: SeedData;
   };
+  "falcon25-seeds": {
+    key: string;
+    value: SeedData;
+  };
 }
 
-const dbLute = openDB<LuteDB>("lute", 2, {
+const dbLute = openDB<LuteDB>("lute", 3, {
   async upgrade(db, oldVersion) {
     if (oldVersion < 1) {
       db.createObjectStore("app");
@@ -53,6 +57,9 @@ const dbLute = openDB<LuteDB>("lute", 2, {
     }
     if (oldVersion < 2) {
       db.createObjectStore("assets-voi mainnet", { keyPath: "index" });
+    }
+    if (oldVersion < 3) {
+      db.createObjectStore("falcon25-seeds");
     }
   },
 });

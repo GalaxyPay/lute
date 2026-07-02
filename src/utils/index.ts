@@ -1,5 +1,5 @@
 import { set } from "@/dbLute";
-import algosdk from "algosdk";
+import { type Account } from "algosdk";
 
 export { getAssetInfo } from "./assetInfo";
 export { refresh } from "./refresh";
@@ -21,7 +21,7 @@ export async function fetchAsync(url: string) {
   }
 }
 
-export async function storeKey(acct: algosdk.Account) {
+export async function storeKey(acct: Account) {
   const b64prefix = "MC4CAQAwBQYDK2VwBCIEIA==";
   const pkcs8Prefix = Uint8Array.fromBase64(b64prefix);
   const pkcs8 = new Uint8Array([...pkcs8Prefix, ...acct.sk.slice(0, 32)]);
