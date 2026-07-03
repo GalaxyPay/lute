@@ -185,7 +185,7 @@ export function copyToClipboard(val: string) {
 export function getFalconAddress(mn: string) {
   const seed = algosdk.pq25WordMnemonicToSeed(mn, algosdk.FALCON_1024_SCHEME);
   const { publicKey } = generateKey(seed);
-  const { address } = algosdk.Address.canonicalPQAddress(
+  const { address } = algosdk.addressFromPQKey(
     algosdk.FALCON_1024_SCHEME,
     publicKey
   );
