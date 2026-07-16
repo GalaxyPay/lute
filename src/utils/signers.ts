@@ -77,30 +77,29 @@ export async function signer(
             acct.info?.addrIdx
           );
         } else if (acct.isFalcon25) {
-          if (
-            !falcon25Signers.find((s) => s.address.toString() === acct.addr)
-          ) {
-            const kv = store.falcon25Seeds.find((kv) => kv.key === acct.addr);
-            const seedData = kv?.value;
+          let f25 = falcon25Signers.find(
+            (s) => s.address.toString() === acct.addr
+          );
+          if (!f25) {
+            const seedData = store.falcon25Seeds.find(
+              (kv) => kv.key === acct.addr
+            );
             if (!seedData) throw Error("Invalid Seed");
             if (!password) throw Error("Password Required");
-            const seed = await Seed.decryptSeed(password, seedData);
+            const seed = await Seed.decryptSeed(password, seedData.value);
             const { publicKey, privateKey } = generateKey(seed);
             const falconSigningKey: Falcon1024SigningKey = {
               falcon1024PublicKey: publicKey,
               falcon1024Signer: async (bytesToSign: Uint8Array) =>
                 signCompressed(privateKey, bytesToSign),
             };
-            const { address, txnSigner } =
+            f25 =
               algosdk.addressWithSignersFromRawFalcon1024Signer(
                 falconSigningKey
               );
-            falcon25Signers.push({ address, txnSigner });
+            falcon25Signers.push(f25);
           }
-          const { txnSigner } = falcon25Signers.find(
-            (s) => s.address.toString() === acct.addr
-          )!;
-          const stxn = await signTransactionWithSigner(txn, txnSigner);
+          const stxn = await signTransactionWithSigner(txn, f25.txnSigner);
           signedTxns.push(stxn.blob);
           continue;
         } else if (acct.slot != null) {
