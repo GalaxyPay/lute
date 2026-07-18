@@ -1,9 +1,5 @@
 <template>
-  <input-mnemonic
-    :number-of-words="24"
-    button-text="Import"
-    @convert="handleMnemonic"
-  />
+  <import-key :number-of-words="24" button-text="Import" @mn="handleMnemonic" />
   <password-confirm :visible="show" @close="handlePass" />
 </template>
 
