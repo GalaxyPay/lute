@@ -1,4 +1,5 @@
-import { Transaction, modelsv2 } from "algosdk";
+import type { Transaction, modelsv2 } from "algosdk";
+import type { StdSignData, StdSignDataResponse } from "ledger-algorand-js";
 
 export interface SnackBar {
   text: string;
@@ -359,7 +360,18 @@ export interface Siwa {
   "expiration-time"?: string;
   "not-before"?: string;
   "request-id"?: string;
-  chain_id: "283";
+  chain_id: string;
   resources?: string[];
   type: "ed25519";
+}
+
+export interface SignDataSafe extends StdSignData {
+  signer: string;
+  authenticatorData: string;
+}
+
+export interface SignDataResponseSafe extends StdSignDataResponse {
+  signer: string;
+  authenticatorData: string;
+  signature: string;
 }

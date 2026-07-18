@@ -1,17 +1,17 @@
 import HdWallet from "@/services/HdWallet";
 import Seed from "@/services/Seed";
 import type { Siwa } from "@/types";
-import { selectDevice, sendOrPostMessage } from "@/utils";
+import { signDataResponseSafe, selectDevice, sendOrPostMessage } from "@/utils";
 import { hotSign } from "@/utils/signers";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import { Address } from "algosdk";
+import { encodeAddress } from "algosdk";
 import { canonify } from "canonify";
 import {
   AlgorandApp,
-  type SignData,
-  type SignDataResponse,
-  type SignMetadata,
+  type StdSignData,
+  type StdSignDataResponse,
+  type StdSignMetadata,
 } from "ledger-algorand-js";
 import { z } from "zod";
 
@@ -44,24 +44,24 @@ export const ERROR_FAILED_DOMAIN_AUTH = new SignDataError(
 );
 
 export default class LuteData {
-  data: string;
-  metadata: SignMetadata;
-  authenticatorData: Uint8Array;
+  stdSignData: StdSignData;
+  metadata: StdSignMetadata;
+  referrer: string;
   tabId?: number;
   store = useAppStore();
   jsonString?: string;
   siwa?: Siwa;
 
   constructor(
-    data: string,
-    metadata: SignMetadata,
-    authenticatorData: Uint8Array,
+    stdSignData: StdSignData,
+    metadata: StdSignMetadata,
+    referrer: string,
     tabId?: number
   ) {
-    if (!data || !metadata || !authenticatorData) throw ERROR_INVALID;
-    this.data = data;
+    if (!stdSignData || !metadata || !referrer) throw ERROR_INVALID;
+    this.stdSignData = stdSignData;
     this.metadata = metadata;
-    this.authenticatorData = authenticatorData;
+    this.referrer = referrer;
     this.tabId = tabId;
   }
 
@@ -78,7 +78,7 @@ export default class LuteData {
 
   async validate() {
     try {
-      const siwaSchema: z.ZodType<Siwa> = z.object({
+      const siwaSchema = z.object({
         domain: z.string(),
         account_address: z.string(),
         uri: z.string(),
@@ -89,18 +89,33 @@ export default class LuteData {
         "expiration-time": z.string().optional(),
         "not-before": z.string().optional(),
         "request-id": z.string().optional(),
-        chain_id: z.literal("283"),
+        chain_id: z.string(),
         resources: z.string().array().optional(),
         type: z.literal("ed25519"),
-      });
+      }) as z.ZodType<Siwa>;
 
       switch (this.metadata.encoding) {
         case "base64":
-          const dec = new TextDecoder();
-          this.jsonString = dec.decode(Uint8Array.fromBase64(this.data));
+          this.jsonString = new TextDecoder().decode(
+            Uint8Array.fromBase64(this.stdSignData.data)
+          );
           break;
         default:
           throw ERROR_FAILED_DECODING;
+      }
+
+      const domainHash = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(this.stdSignData.domain)
+      );
+      // check that the first 32 bytes of authenticatorData are the same as the sha256 of domain
+      if (
+        Buffer.compare(
+          this.stdSignData.authenticatorData.slice(0, 32),
+          new Uint8Array(domainHash)
+        ) !== 0
+      ) {
+        throw ERROR_FAILED_DOMAIN_AUTH;
       }
 
       // validate against schema
@@ -117,20 +132,12 @@ export default class LuteData {
           if (!canonifiedJson || canonifiedJson !== this.jsonString) {
             throw ERROR_BAD_JSON;
           }
-          const enc = new TextEncoder();
-          const rp_id_hash = await crypto.subtle.digest(
-            "SHA-256",
-            enc.encode(this.siwa.domain)
-          );
-          // check that the first 32 bytes of authenticatorData are the same as the sha256 of domain
+          // check that siwa.domain, signData.domain, and referrer all match
           if (
-            Buffer.compare(
-              this.authenticatorData.slice(0, 32),
-              new Uint8Array(rp_id_hash)
-            ) !== 0
-          ) {
+            this.siwa.domain !== this.stdSignData.domain ||
+            this.stdSignData.domain !== this.referrer
+          )
             throw ERROR_FAILED_DOMAIN_AUTH;
-          }
           break;
         default:
           throw ERROR_INVALID_SCOPE;
@@ -157,9 +164,10 @@ export default class LuteData {
   async sign(password?: string) {
     try {
       if (!this.jsonString || !this.siwa) throw ERROR_INVALID;
+      const signerAddr = encodeAddress(this.stdSignData.signer);
       const acct = this.store.acctInfo
         .filter((a) => a.canSign && a.subType !== "rekey")
-        .find((a) => a.addr === this.siwa!.account_address);
+        .find((a) => a.addr === signerAddr);
       if (!acct) throw ERROR_INVALID_SIGNER;
 
       const dataHash = await crypto.subtle.digest(
@@ -168,7 +176,7 @@ export default class LuteData {
       );
       const authHash = await crypto.subtle.digest(
         "SHA-256",
-        Buffer.from(this.authenticatorData)
+        Buffer.from(this.stdSignData.authenticatorData)
       );
       const toSign = Buffer.concat([
         Buffer.from(dataHash),
@@ -176,12 +184,6 @@ export default class LuteData {
       ]);
 
       let signature: Uint8Array;
-      const signData: SignData = {
-        data: this.data,
-        signer: Address.fromString(this.siwa.account_address).publicKey,
-        domain: this.siwa.domain,
-        authenticatorData: this.authenticatorData,
-      };
       if (acct?.seedId && acct.slot != null) {
         let seed: Buffer;
         const seedData = this.store.seeds.find((s) => s.id === acct.seedId);
@@ -200,7 +202,7 @@ export default class LuteData {
         );
         seed.fill(0);
       } else if (acct?.slot != null) {
-        signData.hdPath = `m/44'/283'/${acct.slot}'/0/0`;
+        this.stdSignData.hdPath = `m/44'/283'/${acct.slot}'/0/0`;
         await this.store.getDevices();
         const t = this.store.device.transport;
         if (!t) throw Error("This browser does not support Ledger");
@@ -217,24 +219,20 @@ export default class LuteData {
         }
         const algoApp = new AlgorandApp(transport);
         this.store.setSnackbar("Review on Ledger...", "info", -1);
-        const resp = await algoApp.signData(signData, this.metadata);
+        const resp = await algoApp.signData(this.stdSignData, this.metadata);
         signature = resp.signature;
       } else {
-        signature = await hotSign(this.siwa.account_address, toSign);
+        signature = await hotSign(signerAddr, toSign);
       }
-      const signerResponse: SignDataResponse = {
-        ...signData,
+      const signerResponse: StdSignDataResponse = {
+        ...this.stdSignData,
         signature,
-      };
-      const signerResponse64 = {
-        ...signerResponse,
-        signature: signerResponse.signature.toBase64(),
-        signer: signerResponse.signer.toBase64(),
-        authenticatorData: signerResponse.authenticatorData.toBase64(),
       };
       const message = {
         action: "signed",
-        signerResponse: this.store.isWeb ? signerResponse : signerResponse64,
+        signerResponse: this.store.isWeb
+          ? signerResponse
+          : signDataResponseSafe(signerResponse),
         debug: this.store.debug,
       };
       this.store.snackbar.display = false;

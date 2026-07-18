@@ -44,7 +44,7 @@ export const useAppStore = defineStore("app", {
     sandboxRouter: undefined as number | undefined,
     isWeb: document.location.protocol.startsWith("http"),
     customNetworks: [] as Network[],
-    signData: false,
+    signingData: false,
     luteTxns: undefined as LuteTxns | undefined,
     fallback: false,
     device: {
@@ -61,7 +61,8 @@ export const useAppStore = defineStore("app", {
       const val: AccountInfo[] = [];
       this.accounts
         .filter(
-          (a) => this.signData || !a.network || a.network === this.networkName
+          (a) =>
+            this.signingData || !a.network || a.network === this.networkName
         )
         .forEach((a) => {
           function getCanSign(acct: LuteAccount) {
