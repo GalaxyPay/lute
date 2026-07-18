@@ -1,5 +1,6 @@
 import { sendMessage } from "webext-bridge/content-script";
 import getAppName from "@/utils/getAppName";
+import { signDataResponseUnsafe, signDataSafe } from "@/utils";
 
 (() => {
   // inject the script to access the full dom
@@ -29,13 +30,15 @@ import getAppName from "@/utils/getAppName";
             },
             "background"
           );
-          browser.runtime.onMessage.addListener((message: any) => {
+          const listener = (message: any) => {
+            browser.runtime.onMessage.removeListener(listener);
             window.dispatchEvent(
               new CustomEvent("connect-response", { detail: message })
             );
             resolve();
             return undefined;
-          });
+          };
+          browser.runtime.onMessage.addListener(listener);
           break;
         }
         case "sign": {
@@ -44,12 +47,13 @@ import getAppName from "@/utils/getAppName";
             { appName: getAppName() },
             "background"
           );
-          browser.runtime.onMessage.addListener((message: any) => {
+          const listener = (message: any) => {
             if (message.action === "ready") {
               browser.runtime.sendMessage({
                 data: { action: e.detail.action, txns: e.detail.txns },
               });
             } else {
+              browser.runtime.onMessage.removeListener(listener);
               window.dispatchEvent(
                 new CustomEvent("sign-txns-response", {
                   detail: {
@@ -60,10 +64,11 @@ import getAppName from "@/utils/getAppName";
                   },
                 })
               );
+              resolve();
             }
-            resolve();
             return undefined;
-          });
+          };
+          browser.runtime.onMessage.addListener(listener);
           break;
         }
         case "data": {
@@ -72,37 +77,35 @@ import getAppName from "@/utils/getAppName";
             { domain: location.host },
             "background"
           );
-          browser.runtime.onMessage.addListener((message: any) => {
+          const listener = (message: any) => {
             if (message.action === "ready") {
               browser.runtime.sendMessage({
                 data: {
                   action: e.detail.action,
                   data: e.detail.data,
+                  stdSignData: e.detail.stdSignData
+                    ? signDataSafe(e.detail.stdSignData)
+                    : undefined,
                   metadata: e.detail.metadata,
                 },
               });
             } else {
+              browser.runtime.onMessage.removeListener(listener);
               window.dispatchEvent(
                 new CustomEvent("sign-data-response", {
                   detail: {
                     ...message,
                     signerResponse: message.signerResponse
-                      ? {
-                          ...message.signerResponse,
-                          signature: b64ToArr(message.signerResponse.signature),
-                          signer: b64ToArr(message.signerResponse.signer),
-                          authenticatorData: b64ToArr(
-                            message.signerResponse.authenticatorData
-                          ),
-                        }
+                      ? signDataResponseUnsafe(message.signerResponse)
                       : undefined,
                   },
                 })
               );
+              resolve();
             }
-            resolve();
             return undefined;
-          });
+          };
+          browser.runtime.onMessage.addListener(listener);
           break;
         }
         case "swap": {
@@ -122,19 +125,21 @@ import getAppName from "@/utils/getAppName";
             { appName: getAppName() },
             "background"
           );
-          browser.runtime.onMessage.addListener((message: any) => {
+          const listener = (message: any) => {
             if (message.action === "ready") {
               browser.runtime.sendMessage({
                 data: { action: e.detail.action, network: e.detail.network },
               });
             } else {
+              browser.runtime.onMessage.removeListener(listener);
               window.dispatchEvent(
                 new CustomEvent("add-network-response", { detail: message })
               );
+              resolve();
             }
-            resolve();
             return undefined;
-          });
+          };
+          browser.runtime.onMessage.addListener(listener);
           break;
         }
       }

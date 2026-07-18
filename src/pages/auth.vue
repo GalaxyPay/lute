@@ -5,8 +5,8 @@
       <template v-if="!loading && luteData?.siwa">
         <v-container>
           <div class="text-h5">
-            {{ luteData.siwa.domain }} wants you to sign in with your Algorand
-            account:
+            {{ luteData.stdSignData.domain }} wants you to sign in with your
+            Algorand account:
           </div>
           <div style="font-size: 0.79em; font-family: monospace">
             {{ luteData.siwa.account_address }}
@@ -47,8 +47,13 @@
 
 <script lang="ts" setup>
 import LuteData from "@/classes/LuteData";
-import { resetSidePanel, sendOrPostMessage, whenLoaded } from "@/utils";
-import { createHash } from "crypto";
+import LuteDataOld from "@/classes/LuteData.old";
+import {
+  resetSidePanel,
+  sendOrPostMessage,
+  signDataUnsafe,
+  whenLoaded,
+} from "@/utils";
 
 const store = useAppStore();
 const loading = ref(true);
@@ -57,7 +62,7 @@ const showPass = ref(false);
 const viewRaw = ref(false);
 const luteData = ref<LuteData>();
 
-let authenticatorData: Uint8Array;
+let referrer: string;
 let tabId: number | undefined;
 let msg: string;
 
@@ -65,18 +70,18 @@ onMounted(() => whenLoaded(ready));
 
 async function ready() {
   store.networkName = "MainNet";
-  let domain: string | null;
   const message = { action: "ready", debug: store.debug };
   if (store.isWeb) {
-    domain = document.referrer.split("/")[2]!;
-    authenticatorData = hashDomain(domain);
+    referrer = document.referrer.split("/")[2];
+    if (!referrer) throw Error("Invalid Referrer");
     window.opener.postMessage(message, "*");
     window.addEventListener("message", messageHandler);
   } else {
     browser.runtime.connect({ name: "luteSidepanel" });
     const params = new URLSearchParams(document.location.search);
-    domain = params.get("name");
-    authenticatorData = hashDomain(domain);
+    const name = params.get("name");
+    if (!name) throw Error("Invalid Referrer");
+    else referrer = name;
     tabId = Number(params.get("tabId"));
     browser.runtime.onMessage.addListener(messageHandler);
     try {
@@ -87,26 +92,33 @@ async function ready() {
   }
 }
 
-function hashDomain(domain: string | null) {
-  if (!domain) throw Error("Invalid Domain");
-  return new Uint8Array(createHash("sha256").update(domain).digest());
-}
-
 async function messageHandler(event: any) {
   if (event.data.action === "data") {
-    store.signData = true;
-    luteData.value = new LuteData(
-      event.data.data,
-      event.data.metadata,
-      authenticatorData,
-      tabId
-    );
-    if (store.debug)
+    store.signingData = true;
+    if (event.data.data) {
+      luteData.value = new LuteDataOld(
+        event.data.data,
+        event.data.metadata,
+        referrer,
+        tabId
+      );
+    } else {
+      const stdSignData = !store.isWeb
+        ? signDataUnsafe(event.data.stdSignData)
+        : event.data.stdSignData;
+      luteData.value = new LuteData(
+        stdSignData,
+        event.data.metadata,
+        referrer,
+        tabId
+      );
+    }
+    if (store.debug) {
       console.log("[Lute Debug]", {
-        data: luteData.value.data,
+        signData: luteData.value.stdSignData,
         metadata: luteData.value.metadata,
-        authenticatorData: luteData.value.authenticatorData,
       });
+    }
     await luteData.value.validate();
     msg = luteData.value.getMessage();
     loading.value = false;

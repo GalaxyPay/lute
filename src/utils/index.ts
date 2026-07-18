@@ -1,5 +1,7 @@
 import { set } from "@/dbLute";
+import type { SignDataResponseSafe, SignDataSafe } from "@/types";
 import algosdk, { type Account } from "algosdk";
+import type { StdSignData, StdSignDataResponse } from "ledger-algorand-js";
 import { generateKey } from "falcon-1024";
 
 export { getAssetInfo } from "./assetInfo";
@@ -180,6 +182,44 @@ export function copyToClipboard(val: string) {
   const store = useAppStore();
   navigator.clipboard.writeText(val);
   store.setSnackbar("Copied", "info", 1000);
+}
+
+export function signDataSafe(obj: StdSignData): SignDataSafe {
+  return {
+    ...obj,
+    signer: obj.signer.toBase64(),
+    authenticatorData: obj.authenticatorData.toBase64(),
+  };
+}
+
+export function signDataUnsafe(obj: SignDataSafe): StdSignData {
+  return {
+    ...obj,
+    signer: Uint8Array.fromBase64(obj.signer),
+    authenticatorData: Uint8Array.fromBase64(obj.authenticatorData),
+  };
+}
+
+export function signDataResponseSafe(
+  obj: StdSignDataResponse
+): SignDataResponseSafe {
+  return {
+    ...obj,
+    signer: obj.signer.toBase64(),
+    authenticatorData: obj.authenticatorData.toBase64(),
+    signature: obj.signature.toBase64(),
+  };
+}
+
+export function signDataResponseUnsafe(
+  obj: SignDataResponseSafe
+): StdSignDataResponse {
+  return {
+    ...obj,
+    signer: Uint8Array.fromBase64(obj.signer),
+    authenticatorData: Uint8Array.fromBase64(obj.authenticatorData),
+    signature: Uint8Array.fromBase64(obj.signature),
+  };
 }
 
 export function getFalconAddress(mn: string) {
