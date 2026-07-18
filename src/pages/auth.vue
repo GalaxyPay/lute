@@ -73,14 +73,14 @@ async function ready() {
   const message = { action: "ready", debug: store.debug };
   if (store.isWeb) {
     referrer = document.referrer.split("/")[2];
-    if (!referrer) throw Error("Invalid Domain");
+    if (!referrer) throw Error("Invalid Referrer");
     window.opener.postMessage(message, "*");
     window.addEventListener("message", messageHandler);
   } else {
     browser.runtime.connect({ name: "luteSidepanel" });
     const params = new URLSearchParams(document.location.search);
     const name = params.get("name");
-    if (!name) throw Error("Invalid Domain");
+    if (!name) throw Error("Invalid Referrer");
     else referrer = name;
     tabId = Number(params.get("tabId"));
     browser.runtime.onMessage.addListener(messageHandler);

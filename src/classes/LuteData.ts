@@ -20,6 +20,11 @@ enum ScopeType {
   AUTH = 1,
 }
 
+async function sha256(data: BufferSource) {
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(buf);
+}
+
 class SignDataError extends Error {
   code: number;
   data?: any;
@@ -104,15 +109,13 @@ export default class LuteData {
           throw ERROR_FAILED_DECODING;
       }
 
-      const domainHash = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(this.stdSignData.domain)
-      );
+      const enc = new TextEncoder();
+      const domainHash = await sha256(enc.encode(this.stdSignData.domain));
       // check that the first 32 bytes of authenticatorData are the same as the sha256 of domain
       if (
         Buffer.compare(
           this.stdSignData.authenticatorData.slice(0, 32),
-          new Uint8Array(domainHash)
+          domainHash
         ) !== 0
       ) {
         throw ERROR_FAILED_DOMAIN_AUTH;
@@ -170,18 +173,12 @@ export default class LuteData {
         .find((a) => a.addr === signerAddr);
       if (!acct) throw ERROR_INVALID_SIGNER;
 
-      const dataHash = await crypto.subtle.digest(
-        "SHA-256",
-        Buffer.from(this.jsonString)
-      );
-      const authHash = await crypto.subtle.digest(
-        "SHA-256",
+      const enc = new TextEncoder();
+      const dataHash = await sha256(enc.encode(this.jsonString));
+      const authHash = await sha256(
         Buffer.from(this.stdSignData.authenticatorData)
       );
-      const toSign = Buffer.concat([
-        Buffer.from(dataHash),
-        Buffer.from(authHash),
-      ]);
+      const toSign = new Uint8Array([...dataHash, ...authHash]);
 
       let signature: Uint8Array;
       if (acct?.seedId && acct.slot != null) {
