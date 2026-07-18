@@ -13,13 +13,13 @@
         :value="item"
       />
     </v-radio-group>
-    <input-mnemonic
+    <import-key
       :number-of-words="12"
       button-text="Convert"
-      @convert="handleConvert"
+      @mn="handleMnemonic"
     />
   </v-container>
-  <new-mnemonic v-else :convert="mn25" />
+  <new-key v-else :number-of-words="25" :convertion="mn25" />
 </template>
 
 <script setup lang="ts">
@@ -32,7 +32,7 @@ const wallets = ["Exodus", "Trust", "Coinomi"];
 const wallet = ref("Exodus");
 const mn25 = ref();
 
-function handleConvert(mn12: string) {
+function handleMnemonic(mn12: string) {
   const seed = bip39.mnemonicToSeedSync(mn12);
   let hdKey: HDKey | slip10;
   if (wallet.value === "Exodus") {

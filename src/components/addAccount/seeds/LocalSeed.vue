@@ -11,7 +11,8 @@
     </v-tabs>
     <v-window v-model="tab">
       <v-window-item :value="0">
-        <new-bip39
+        <new-key
+          :number-of-words="24"
           @hide-tabs="hideTabs = true"
           @seed="(id, seed) => $emit('seed', id, seed)"
         />
