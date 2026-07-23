@@ -182,22 +182,25 @@ export default class LuteData {
 
       let signature: Uint8Array;
       if (acct?.seedId && acct.slot != null) {
-        let seed: Buffer;
-        const seedData = this.store.seeds.find((s) => s.id === acct.seedId);
-        if (!seedData) throw Error("Invalid Seed");
-        if (seedData.credentialId) {
-          seed = (await Seed.getPasskeySeed(seedData.credentialId)).seed;
-        } else {
-          if (!password) throw Error("Password Required");
-          seed = await Seed.decryptSeed(password, seedData);
+        let seed = Buffer.alloc(0);
+        try {
+          const seedData = this.store.seeds.find((s) => s.id === acct.seedId);
+          if (!seedData) throw Error("Invalid Seed");
+          if (seedData.credentialId) {
+            seed = (await Seed.getPasskeySeed(seedData.credentialId)).seed;
+          } else {
+            if (!password) throw Error("Password Required");
+            seed = await Seed.decryptSeed(password, seedData);
+          }
+          signature = await HdWallet.sign(
+            seed,
+            acct.slot,
+            toSign,
+            acct?.info?.addrIdx
+          );
+        } finally {
+          seed.fill(0);
         }
-        signature = await HdWallet.sign(
-          seed,
-          acct.slot,
-          toSign,
-          acct?.info?.addrIdx
-        );
-        seed.fill(0);
       } else if (acct?.slot != null) {
         this.stdSignData.hdPath = `m/44'/283'/${acct.slot}'/0/0`;
         await this.store.getDevices();

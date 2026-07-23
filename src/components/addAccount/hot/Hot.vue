@@ -41,12 +41,12 @@ const hideTabs = ref(false);
 async function handleMnemonic(mn: string) {
   try {
     const acct = algosdk.mnemonicToSecretKey(mn);
-    await storeKey(acct);
     const accts: LuteAccount[] = deepClone(store.accounts);
     if (accts.some((a) => a.addr === acct.addr.toString())) {
       emit("close");
       throw Error("Account Already Exists In Wallet");
     }
+    await storeKey(acct);
     accts.push({ addr: acct.addr.toString() });
     await set("app", "accounts", accts);
     await store.getCache();
