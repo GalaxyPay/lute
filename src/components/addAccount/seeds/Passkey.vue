@@ -1,14 +1,6 @@
 <template>
   <div class="pl-12">Passkey Seed</div>
-  <v-container class="pb-6">
-    <v-card-text class="pl-12 pt-0">
-      Supported Devices
-      <ul class="pl-8">
-        <li>Windows Hello</li>
-        <li>Android 14 (or greater)</li>
-        <li>YubiKey</li>
-      </ul>
-    </v-card-text>
+  <v-container class="pb-6 pt-0">
     <v-card-text class="pl-12">
       <div class="pb-3">
         You may need to connect to your device up to
