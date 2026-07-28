@@ -215,6 +215,9 @@ async function offline() {
       suggestedParams,
       nonParticipation: false,
     });
+    if (props.acct.isFalcon25) {
+      txn.fee = suggestedParams.minFee * 3n;
+    }
     const stxn = await luteSigner([txn]);
     await send(stxn);
   } catch (err: any) {
@@ -247,6 +250,9 @@ async function submit() {
     };
     const txn =
       algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject(obj);
+    if (props.acct.isFalcon25) {
+      txn.fee = suggestedParams.minFee * 3n;
+    }
     const stxn = await luteSigner([txn]);
     await send(stxn);
     form.value?.reset();

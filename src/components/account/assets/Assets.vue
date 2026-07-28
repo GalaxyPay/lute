@@ -119,6 +119,9 @@ async function optIn() {
       suggestedParams,
       amount: 0,
     });
+    if (props.acct.isFalcon25) {
+      txn.fee = suggestedParams.minFee * 3n;
+    }
     closeDialog();
     const stxn = await luteSigner([txn]);
     await send(stxn, "Opted-In to Asset");
