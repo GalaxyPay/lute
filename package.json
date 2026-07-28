@@ -1,7 +1,7 @@
 {
   "name": "lute",
   "displayName": "Lute",
-  "version": "1.24.1",
+  "version": "1.24.2",
   "type": "module",
   "description": "An Algorand Wallet",
   "license": "AGPL-3.0-only",
@@ -12,7 +12,7 @@
     "devx:background": "npm run buildx:background -- --mode development",
     "devx:web": "vite --config vite.config.ext.mts",
     "devx:js": "npm run buildx:js -- --mode development",
-    "build": "vite build",
+    "build": "vite build && node scripts/csp-hash.mjs",
     "buildx": "cross-env NODE_ENV=production run-s clear buildx:web buildx:prepare buildx:background buildx:js",
     "buildx:prepare": "esno scripts/prepare.ts",
     "buildx:background": "vite build --config vite.config.background.mts",
