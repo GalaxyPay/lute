@@ -120,6 +120,7 @@ async function messageHandler(event: any) {
       });
     }
     await luteData.value.validate();
+    luteData.value.setNetwork();
     msg = luteData.value.getMessage();
     loading.value = false;
   }

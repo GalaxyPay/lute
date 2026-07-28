@@ -150,6 +150,19 @@ export default class LuteData {
     }
   }
 
+  async setNetwork() {
+    // sets the network for display purposes only, does not lookup authAddr
+    if (!this.siwa) throw ERROR_BAD_JSON;
+    const [_prefix, id] = this.siwa.chain_id.split(":", 2);
+
+    const network =
+      id === "localnet"
+        ? "LocalNet"
+        : this.store.allNetworks.find((n) => n.genesisHash?.startsWith(id))
+            ?.name;
+    if (network) this.store.networkName = network;
+  }
+
   getMessage() {
     if (!this.siwa) throw ERROR_BAD_JSON;
     return (
