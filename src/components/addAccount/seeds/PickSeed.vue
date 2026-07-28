@@ -112,8 +112,13 @@ async function getSeed(_event: any, row: any) {
   seedData = row.item;
   seedId = seedData.id;
   if (seedData.credentialId) {
-    const { seed } = await Seed.getPasskeySeed(seedData.credentialId);
-    emit("seed", seedId, seed);
+    try {
+      const { seed } = await Seed.getPasskeySeed(seedData.credentialId);
+      emit("seed", seedId, seed);
+    } catch (err: any) {
+      console.error(err);
+      store.setSnackbar(err.message, "error");
+    }
   } else {
     showPass.value = true;
   }

@@ -121,11 +121,16 @@ export default defineConfig({
     headers: { "content-security-policy": csp },
   },
   build: {
-    chunkSizeWarningLimit: 2048,
+    chunkSizeWarningLimit: 1024,
     rollupOptions: {
       output: {
-        manualChunks: {
-          algosdk: ["algosdk"],
+        codeSplitting: {
+          groups: [
+            {
+              test: /node_modules\/algosdk/,
+              name: "algosdk",
+            },
+          ],
         },
       },
       external: ["workbox-window"],
@@ -135,15 +140,21 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       "@algorandfoundation/algokit-utils",
+      "@algorandfoundation/algokit-utils/types/algorand-client",
+      "@algorandfoundation/algokit-utils/types/app-arc56",
+      "@algorandfoundation/algokit-utils/types/app-client",
+      "@algorandfoundation/algokit-utils/types/app-factory",
+      "@algorandfoundation/algokit-utils/types/composer",
       "@ledgerhq/hw-transport-webhid",
       "@ledgerhq/hw-transport-webusb",
+      "@noble/curves/ed25519.js",
+      "@noble/hashes/hkdf.js",
+      "@noble/hashes/sha2.js",
       "@scure/bip32",
       "ledger-algorand-js",
       "micro-key-producer/slip10.js",
+      "vite-plugin-node-polyfills/shims/buffer",
     ],
     exclude: ["vuetify", "falcon-1024"],
-    esbuildOptions: {
-      target: "esnext",
-    },
   },
 });
