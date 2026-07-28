@@ -1,7 +1,43 @@
-import { set } from "@/dbLute";
+import { getAll, set } from "@/dbLute";
 import type { SeedData } from "@/types";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
+
+// Salt the passkey PRF is evaluated with. Every seed ever derived from a
+// passkey depends on this value, changing it invalidates all of them.
+const PRF_SALT = new TextEncoder().encode("Algorand");
+
+export type PasskeyErrorCode = "aborted" | "invalid" | "exists" | "prf";
+
+export class PasskeyError extends Error {
+  code: PasskeyErrorCode;
+  constructor(code: PasskeyErrorCode, message: string) {
+    super(message);
+    this.name = "PasskeyError";
+    this.code = code;
+  }
+}
+
+function decodeCredentialId(credentialId: string) {
+  return Uint8Array.fromBase64(credentialId, { alphabet: "base64url" });
+}
+
+function asPasskeyError(err: any) {
+  if (err instanceof PasskeyError) return err;
+  // Browsers also report "no matching credential" as NotAllowedError, so this
+  // covers both a cancelled prompt and nothing to select.
+  if (err?.name === "NotAllowedError" || err?.name === "AbortError")
+    return new PasskeyError(
+      "aborted",
+      "No passkey was used. The request was cancelled, timed out, or the device holds no passkey for Lute."
+    );
+  if (err?.name === "InvalidStateError")
+    return new PasskeyError(
+      "exists",
+      "This device already has a passkey registered for Lute. Use the existing seed instead."
+    );
+  return err;
+}
 
 const Seed = {
   async deriveKeyFromPassSalt(pass: string, salt: Uint8Array) {
@@ -54,28 +90,36 @@ const Seed = {
   async getPasskeyMnemonic(credentialId?: string) {
     const store = useAppStore();
     store.setSnackbar("Waiting on Authenticator...", "info", -1);
-    const allowCredentials: any[] = [];
+    const allowCredentials: PublicKeyCredentialDescriptor[] = [];
     if (credentialId)
       allowCredentials.push({
         type: "public-key",
-        id: Uint8Array.fromBase64(credentialId),
+        id: decodeCredentialId(credentialId),
       });
-    const credential = await navigator.credentials.get({
-      publicKey: {
-        allowCredentials,
-        challenge: new Uint8Array(32),
-        extensions: {
-          prf: { eval: { first: new TextEncoder().encode("Algorand") } },
+    let credential: Credential | null;
+    try {
+      credential = await navigator.credentials.get({
+        publicKey: {
+          allowCredentials,
+          challenge: new Uint8Array(32),
+          // The prf evaluation is only released after user verification.
+          userVerification: "required",
+          extensions: { prf: { eval: { first: PRF_SALT } } },
         },
-      },
-    });
-    if (!credential) throw Error("Invalid Credentials");
+      });
+    } catch (err: any) {
+      throw asPasskeyError(err);
+    } finally {
+      store.snackbar.display = false;
+    }
+    if (!credential) throw new PasskeyError("invalid", "Invalid Credentials");
     const results = (
       credential as PublicKeyCredential
     ).getClientExtensionResults();
     if (!results.prf?.results?.first)
-      throw Error(
-        "Authenticator device/platform does not support prf. Check compatibility matrix."
+      throw new PasskeyError(
+        "prf",
+        "This passkey cannot derive a seed because it was registered without prf support. Register a new passkey, or use one from a device that supports prf."
       );
     const mn = bip39.entropyToMnemonic(
       // @ts-expect-error
@@ -85,6 +129,46 @@ const Seed = {
     return { mn, credential };
   },
 
+  async registerPasskey() {
+    const store = useAppStore();
+    // A random user id per registration. Authenticators replace a discoverable
+    // credential when rp id and user id both match, so a fixed id makes every
+    // registration silently overwrite the previous passkey.
+    const userId = window.crypto.getRandomValues(new Uint8Array(32));
+    const name = `wallet+${userId.slice(0, 3).toHex()}@lute.app`;
+    store.setSnackbar("Waiting on Authenticator...", "info", -1);
+    let credential: Credential | null;
+    try {
+      credential = await navigator.credentials.create({
+        publicKey: {
+          authenticatorSelection: {
+            residentKey: "required",
+            userVerification: "required",
+          },
+          challenge: new Uint8Array(32),
+          extensions: { prf: {} },
+          pubKeyCredParams: [
+            { alg: -7, type: "public-key" },
+            { alg: -8, type: "public-key" },
+            { alg: -257, type: "public-key" },
+          ],
+          rp: { name: "Lute" },
+          user: {
+            id: userId,
+            name,
+            displayName: name,
+          },
+        },
+      });
+    } catch (err: any) {
+      throw asPasskeyError(err);
+    } finally {
+      store.snackbar.display = false;
+    }
+    if (!credential) throw new PasskeyError("invalid", "Invalid Credential");
+    return credential.id;
+  },
+
   async getPasskeySeed(credentialId?: string) {
     const { mn, credential } = await this.getPasskeyMnemonic(credentialId);
     const seed = Buffer.from(bip39.mnemonicToSeedSync(mn));
@@ -92,6 +176,9 @@ const Seed = {
   },
 
   async storePasskeyCred(credentialId: string) {
+    const seeds = await getAll("seeds");
+    const existing = seeds.find((s) => s.credentialId === credentialId);
+    if (existing) return existing.id;
     return await set("seeds", undefined, { credentialId });
   },
 };
