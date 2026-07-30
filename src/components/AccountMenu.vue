@@ -77,6 +77,7 @@
         @click="exportChildKey(item)"
       />
       <v-list-item
+        v-if="!store.isWeb"
         :title="(item.isX402 ? 'Unset' : 'Set') + ' as x402'"
         :prepend-icon="mdiCurrencyUsd"
         @click="toggleX402(item)"
