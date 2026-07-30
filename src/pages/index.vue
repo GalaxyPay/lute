@@ -107,96 +107,13 @@
             </v-btn>
             <v-btn size="small" icon variant="plain" color="currentColor">
               <v-icon :icon="mdiDotsHorizontal" size="x-large" />
-              <v-menu activator="parent" bottom>
-                <v-list density="compact">
-                  <v-list-item
-                    v-show="!smAndUp"
-                    title="Copy Address"
-                    :prepend-icon="mdiContentCopy"
-                    @click="copyToClipboard(item.addr)"
-                  />
-                  <v-list-item
-                    title="Details"
-                    :prepend-icon="mdiInformationOutline"
-                    :href="store.network.explorer + '/account/' + item.addr"
-                    target="_blank"
-                  />
-                  <template v-if="!item.subType">
-                    <v-list-item
-                      title="Nickname"
-                      :prepend-icon="mdiPencil"
-                      @click="
-                        rename = store.accounts.find(
-                          (a) => a.addr === item.addr
-                        )
-                      "
-                    />
-                    <v-list-item
-                      v-if="store.accounts.length > 1"
-                      title="Move"
-                      :append-icon="mdiMenuDown"
-                      :prepend-icon="mdiCursorMove"
-                      class="pointer"
-                    >
-                      <v-menu activator="parent" bottom scrim>
-                        <v-list density="compact">
-                          <v-list-item
-                            v-for="action in moveActions"
-                            :key="action.name"
-                            :title="action.name"
-                            :prepend-icon="action.icon"
-                            :disabled="action.disabled(item.addr)"
-                            @click="moveAcct(item.addr, action.name)"
-                          />
-                        </v-list>
-                      </v-menu>
-                    </v-list-item>
-                    <v-list-item
-                      v-if="!item.appId"
-                      title="Set Network"
-                      :prepend-icon="mdiSourceBranch"
-                      :append-icon="mdiMenuDown"
-                      class="pointer"
-                    >
-                      <v-menu activator="parent" bottom scrim>
-                        <v-list density="compact">
-                          <v-list-item
-                            v-for="network in networkNames"
-                            :key="network"
-                            :title="network"
-                            :append-icon="
-                              (!item.network && network === 'All') ||
-                              item.network === network
-                                ? mdiCheck
-                                : ''
-                            "
-                            @click="setAcctNetwork(item, network)"
-                          />
-                        </v-list>
-                      </v-menu>
-                    </v-list-item>
-                    <v-list-item
-                      v-if="item.seedId && getCredential(item.seedId)"
-                      title="Backup HD Seed"
-                      :prepend-icon="mdiFormatListNumbered"
-                      @click="getMnemonic(item.seedId)"
-                    />
-                  </template>
-                  <v-list-item
-                    v-if="false /*item.seedId*/"
-                    title="Export Key"
-                    :prepend-icon="mdiKey"
-                    @click="exportChildKey(item)"
-                  />
-                  <v-list-item
-                    v-if="!item.subType"
-                    title="Remove Account"
-                    :prepend-icon="mdiDelete"
-                    base-color="error"
-                    @click="removeAccount(item.addr)"
-                  />
-                </v-list>
-              </v-menu>
+              <account-menu
+                :item
+                @rename="
+                  (addr) =>
+                    (rename = store.accounts.find((a) => a.addr === addr))
+                "
+              />
             </v-btn>
           </template>
         </v-data-table>
@@ -231,16 +148,11 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
-  <password-confirm :visible="showPass" @close="handlePass" />
 </template>
 
 <script lang="ts" setup>
-import { networks } from "@/data";
-import { del, set } from "@/dbLute";
+import { set } from "@/dbLute";
 import router from "@/router";
-import HdWallet from "@/services/HdWallet";
-import Seed from "@/services/Seed";
-import type { AccountInfo, LuteAccount, SeedData } from "@/types";
 import {
   bigintToString,
   copyToClipboard,
@@ -248,23 +160,10 @@ import {
   expireDays,
 } from "@/utils";
 import {
-  mdiArrowDownThin,
-  mdiArrowUpThin,
-  mdiCheck,
   mdiContentCopy,
   mdiContentSave,
-  mdiCursorMove,
-  mdiDelete,
   mdiDotsHorizontal,
-  mdiFormatListNumbered,
-  mdiFormatVerticalAlignBottom,
-  mdiFormatVerticalAlignTop,
-  mdiInformationOutline,
-  mdiKey,
-  mdiMenuDown,
-  mdiPencil,
   mdiRefresh,
-  mdiSourceBranch,
 } from "@mdi/js";
 import { useDisplay } from "vuetify";
 
@@ -272,7 +171,6 @@ const { smAndUp, width } = useDisplay();
 const xxs = computed(() => width.value < 450);
 const store = useAppStore();
 const showAdd = ref(false);
-const showPass = ref(false);
 const rename = ref<any>({});
 const headers = computed(() => {
   const val: any[] = [{ key: "addr" }];
@@ -283,8 +181,6 @@ const headers = computed(() => {
   );
   return val;
 });
-
-const networkNames = ["All"].concat(networks.map((n) => n.name));
 
 function expireClass(timeExpires: string | undefined) {
   if (!xxs.value) return;
@@ -321,139 +217,12 @@ async function renameAccount() {
   rename.value = undefined;
 }
 
-async function removeAccount(addr: string) {
-  if (
-    !confirm(
-      `If you remove this account it will still exist on the blockchain but you will not be able to access it in Lute.
-
-Are you sure you want to continue?`
-    )
-  )
-    return;
-  await del("keys", addr);
-  const ix = store.accounts.findIndex((a) => a.addr === addr);
-  if (ix !== -1) {
-    const newVal = deepClone(store.accounts.toSpliced(ix, 1));
-    await set("app", "accounts", newVal);
-    await store.getCache();
-    store.refresh++;
-  }
-}
-
 function acctDetails(_event: any, row: any) {
   router.push(row.item.addr);
 }
 
-function disableUp(addr: string) {
-  return store.acctInfo.findIndex((a) => a.addr === addr) === 0;
-}
-
-function disableDown(addr: string) {
-  return (
-    store.accounts.findIndex((a) => a.addr === addr) ===
-      store.accounts.length - 1 ||
-    store.acctInfo.findIndex((a) => a.addr === addr) ===
-      store.acctInfo.length - 1
-  );
-}
-
-const moveActions = [
-  {
-    name: "Top",
-    icon: mdiFormatVerticalAlignTop,
-    disabled: (addr: string) => disableUp(addr),
-  },
-  {
-    name: "Up",
-    icon: mdiArrowUpThin,
-    disabled: (addr: string) => disableUp(addr),
-  },
-  {
-    name: "Down",
-    icon: mdiArrowDownThin,
-    disabled: (addr: string) => disableDown(addr),
-  },
-  {
-    name: "Bottom",
-    icon: mdiFormatVerticalAlignBottom,
-    disabled: (addr: string) => disableDown(addr),
-  },
-];
-
-async function moveAcct(addr: string, action: string) {
-  const idx = store.accounts.findIndex((a) => a.addr === addr);
-  if (idx === -1) throw Error("Invalid Account");
-  const newVal = deepClone(store.accounts);
-  const acct = newVal.splice(idx, 1)[0];
-  let localIdx: number;
-  let shift: number;
-  switch (action) {
-    case "Top":
-      newVal.unshift(acct);
-      break;
-    case "Up":
-      localIdx = store.acctInfo.findIndex((a) => a.addr === addr);
-      shift = idx - store.acctInfo[localIdx - 1]!.globalIdx;
-      newVal.splice(idx - shift, 0, acct);
-      break;
-    case "Down":
-      localIdx = store.acctInfo.findIndex((a) => a.addr === addr);
-      shift =
-        store.acctInfo.filter((a) => !a.info?.authAddr)[localIdx + 1]!
-          .globalIdx - idx;
-      newVal.splice(idx + shift, 0, acct);
-      break;
-    case "Bottom":
-      newVal.push(acct);
-      break;
-  }
-  await set("app", "accounts", newVal);
-  await store.getCache();
-}
-
-async function setAcctNetwork(acct: LuteAccount, network: string) {
-  const accts: LuteAccount[] = deepClone(store.accounts);
-  const idx = accts.findIndex((a) => a.addr === acct.addr);
-  if (idx === -1) throw Error("Account Not Found");
-  accts[idx]!.network = network === "All" ? undefined : network;
-  await set("app", "accounts", accts);
-  await store.getCache();
-  store.refresh++;
-  store.setSnackbar("Account Network Set", "success");
-}
-
-function getCredential(seedId: number) {
-  return store.seeds.find((s) => s.id === seedId)?.credentialId;
-}
-
 const showMnemonic = ref(false);
 const mnemonicArray = ref<string[]>([]);
-
-async function getMnemonic(seedId: number) {
-  const { mn } = await Seed.getPasskeyMnemonic(getCredential(seedId));
-  mnemonicArray.value = mn.split(" ");
-  showMnemonic.value = true;
-  store.snackbar.display = false;
-}
-
-let acctInfo: AccountInfo;
-let seedData: SeedData | undefined;
-async function exportChildKey(ai: AccountInfo) {
-  acctInfo = ai;
-  seedData = store.seeds.find((s) => s.id === acctInfo.seedId);
-  if (!seedData) throw Error("Invalid Seed");
-  if (seedData.data) showPass.value = true;
-}
-
-async function handlePass(success: boolean, pass: string) {
-  showPass.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-  } else {
-    const backupKey = await HdWallet.deriveChildKey(pass, acctInfo, seedData);
-    console.log(backupKey);
-  }
-}
 
 function closeMnemonic() {
   showMnemonic.value = false;

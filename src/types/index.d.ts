@@ -247,6 +247,7 @@ export interface AccountInfo extends LuteAccount {
   info?: AccountHD;
   globalIdx: number;
   ns?: NsRecord;
+  isX402: boolean;
 }
 
 export interface NsRecord {
@@ -374,4 +375,9 @@ export interface SignDataResponseSafe extends StdSignDataResponse {
   signer: string;
   authenticatorData: string;
   signature: string;
+}
+
+export interface x402Account {
+  network: string;
+  addr: string;
 }

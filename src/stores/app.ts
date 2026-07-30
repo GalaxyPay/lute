@@ -12,6 +12,7 @@ import type {
   SeedData,
   SnackBar,
   TinyAsset,
+  x402Account,
 } from "@/types";
 import { deepClone, formatAddr } from "@/utils";
 import type { modelsv2 } from "algosdk";
@@ -40,6 +41,7 @@ export const useAppStore = defineStore("app", {
     snoop: false,
     ledgerSelect: false,
     experimental: false,
+    x402Accounts: [] as x402Account[],
     tinyman: undefined as TinyAsset[] | undefined,
     sandboxRouter: undefined as number | undefined,
     isWeb: document.location.protocol.startsWith("http"),
@@ -59,6 +61,9 @@ export const useAppStore = defineStore("app", {
   getters: {
     acctInfo(state) {
       const val: AccountInfo[] = [];
+      const x402 = this.x402Accounts.find(
+        (a) => a.network === this.networkName
+      )?.addr;
       this.accounts
         .filter(
           (a) =>
@@ -87,6 +92,7 @@ export const useAppStore = defineStore("app", {
               info,
               globalIdx,
               ns: this.nsObj[a.addr],
+              isX402: a.addr === x402,
             });
           }
           if (canSign || a.appId) {
@@ -103,6 +109,7 @@ export const useAppStore = defineStore("app", {
                   info: i,
                   globalIdx,
                   ns: this.nsObj[i.address],
+                  isX402: i.address === x402,
                 });
               });
           }
@@ -122,6 +129,7 @@ export const useAppStore = defineStore("app", {
                   ns: this.nsObj[i.address],
                   slot: a.slot,
                   seedId: a.seedId,
+                  isX402: i.address === x402,
                 });
               });
           }
@@ -197,6 +205,8 @@ export const useAppStore = defineStore("app", {
         (await get("app", "ledgerSelect")) ?? this.ledgerSelect;
       this.experimental =
         (await get("app", "experimental")) ?? this.experimental;
+      this.x402Accounts =
+        (await get("app", "x402Accounts")) ?? this.x402Accounts;
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
     },
