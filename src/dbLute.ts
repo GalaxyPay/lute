@@ -1,4 +1,4 @@
-import type { SeedData } from "@/types";
+import type { PasswordVerifier, SeedData } from "@/types";
 import { modelsv2 } from "algosdk";
 import { type DBSchema, type StoreKey, type StoreNames, openDB } from "idb";
 
@@ -85,6 +85,38 @@ export async function del(
 
 export async function keys(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAllKeys(storeName);
+}
+
+/**
+ * Write every re-encrypted seed and the new password verifier in one
+ * transaction, for password rotation.
+ *
+ * Callers must finish all encryption BEFORE calling this. An IndexedDB
+ * transaction auto-commits as soon as the event loop yields with no pending
+ * request, so awaiting crypto.subtle between these puts would abort it.
+ */
+export async function rotateAtomic(
+  seeds: SeedData[],
+  verifier: PasswordVerifier,
+  expectedIds: number[]
+) {
+  const tx = (await dbLute).transaction(["seeds", "app"], "readwrite");
+  const store = tx.objectStore("seeds");
+  const current = (await store.getAll())
+    .filter((s) => s.data)
+    .map((s) => s.id)
+    .sort();
+  const expected = [...expectedIds].sort();
+  if (
+    current.length !== expected.length ||
+    current.some((id, ix) => id !== expected[ix])
+  ) {
+    tx.abort();
+    throw Error("Seeds changed during rotation. Try again.");
+  }
+  for (const sd of seeds) store.put(sd);
+  tx.objectStore("app").put(verifier, "password");
+  await tx.done;
 }
 
 export default dbLute;

@@ -33,6 +33,7 @@
 import { get, set } from "@/dbLute";
 import router from "@/router";
 import type { AccountHD, MsgpackHD } from "@/types";
+import Unlock from "@/services/Unlock";
 import { fetchAsync, refresh, setIcon } from "@/utils";
 import { decodeMsgpack, modelsv2 } from "algosdk";
 import { useTheme } from "vuetify";
@@ -67,10 +68,14 @@ function optionsRefreshListener() {
 
 onBeforeMount(async () => {
   store.loading++;
-  if (!store.isWeb) optionsRefreshListener();
+  if (!store.isWeb) {
+    optionsRefreshListener();
+    Unlock.watch();
+  }
   await getTheme();
   await setIcon(theme.name.value);
   await store.getCache();
+  await Unlock.isUnlocked();
   await router.isReady();
   if (!router.currentRoute.value.meta.modal) {
     store.refresh++;

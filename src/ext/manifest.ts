@@ -46,7 +46,12 @@ export async function getManifest() {
       48: "assets/icon-48.png",
       128: "assets/icon-128.png",
     },
-    permissions: ["declarativeNetRequestWithHostAccess", "sidePanel"],
+    permissions: [
+      "alarms",
+      "declarativeNetRequestWithHostAccess",
+      "sidePanel",
+      "storage",
+    ],
     content_scripts: [
       {
         matches: ["<all_urls>"],

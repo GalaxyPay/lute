@@ -107,6 +107,56 @@
             </v-radio-group>
           </v-col>
         </v-row>
+        <v-row v-if="!store.isWeb" align="center">
+          <v-col>
+            <v-icon :icon="mdiLockClock" class="mb-1 mr-2" /> Lock After
+            Inactivity
+            <div style="color: #9aa0a5; font-size: 0.7em">
+              Skip the password when signing, until the wallet has been idle
+              this long. Always locks after 8 hours.
+            </div>
+          </v-col>
+          <v-col>
+            <v-row align="center" justify="end" no-gutters>
+              <v-col cols="7" sm="5">
+                <v-select
+                  :model-value="store.autoLockMinutes"
+                  @update:model-value="setAutoLock"
+                  :items="autoLockOptions"
+                  item-title="title"
+                  item-value="value"
+                  density="compact"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="5" sm="4" class="text-right">
+                <v-btn
+                  text="Lock Now"
+                  size="small"
+                  variant="tonal"
+                  :disabled="!store.unlocked"
+                  @click="lockNow()"
+                />
+              </v-col>
+            </v-row>
+          </v-col>
+        </v-row>
+        <v-row v-if="hasPassword" align="center">
+          <v-col>
+            <v-icon :icon="mdiKeyChange" class="mb-1 mr-2" /> Wallet Password
+            <div style="color: #9aa0a5; font-size: 0.7em">
+              Re-encrypts every locally stored seed. Does not affect Algo25,
+              Ledger, or passkey accounts.
+            </div>
+          </v-col>
+          <v-col class="text-right">
+            <v-btn
+              text="Change Password"
+              :size="xs ? 'small' : 'default'"
+              @click="showRotate = true"
+            />
+          </v-col>
+        </v-row>
         <v-row align="center">
           <v-col>
             <v-icon :icon="mdiEye" class="mb-1 mr-2" /> Snoop Mode
@@ -187,13 +237,19 @@
     </v-card>
   </v-container>
   <CustomNetwork :visible="showCustom" @close="showCustom = false" />
+  <PasswordRotate
+    :visible="showRotate"
+    @close="showRotate = false"
+    @get-cache="emit('getCache')"
+  />
 </template>
 
 <script lang="ts" setup>
 import { Arc59Factory } from "@/clients/Arc59Client";
 import { networks } from "@/data";
-import { set } from "@/dbLute";
+import { get, set } from "@/dbLute";
 import Algo from "@/services/Algo";
+import Unlock from "@/services/Unlock";
 import { setIcon } from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
@@ -201,6 +257,8 @@ import {
   mdiBug,
   mdiContentSave,
   mdiEye,
+  mdiKeyChange,
+  mdiLockClock,
   mdiSourceBranch,
   mdiTestTube,
   mdiThemeLightDark,
@@ -216,6 +274,21 @@ const store = useAppStore();
 const theme = useTheme();
 
 const showCustom = ref(false);
+const showRotate = ref(false);
+const hasPassword = ref(false);
+
+onMounted(async () => {
+  hasPassword.value = !!(await get("app", "password"));
+  await Unlock.isUnlocked();
+});
+
+const autoLockOptions = [
+  { title: "Off", value: 0 },
+  { title: "5 minutes", value: 5 },
+  { title: "15 minutes", value: 15 },
+  { title: "30 minutes", value: 30 },
+  { title: "60 minutes", value: 60 },
+];
 
 const altNetworks = networks
   .filter((n) => n.name.startsWith("Voi"))
@@ -251,6 +324,19 @@ async function setLedgerSelect() {
   await set("app", "ledgerSelect", !store.ledgerSelect);
   emit("getCache");
   await store.getCache();
+}
+
+async function setAutoLock(minutes: number) {
+  await set("app", "autoLockMinutes", minutes);
+  // Shortening or disabling the window must not leave a longer one running.
+  await Unlock.clear();
+  emit("getCache");
+  await store.getCache();
+}
+
+async function lockNow() {
+  await Unlock.clear();
+  store.setSnackbar("Wallet Locked", "success", 2000);
 }
 
 async function setExperimental() {

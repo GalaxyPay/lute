@@ -333,11 +333,18 @@ export interface TinyAsset {
   deleted: boolean;
 }
 
+export interface PasswordVerifier {
+  salt: string;
+  hash: string;
+  iterations?: number;
+}
+
 export interface SeedData {
   id: number;
   data?: ArrayBuffer;
   iv?: Uint8Array;
   salt?: Uint8Array;
+  iterations?: number;
   credentialId?: string;
 }
 

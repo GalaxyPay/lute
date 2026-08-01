@@ -13,6 +13,7 @@
 
 <script lang="ts" setup>
 import { get } from "@/dbLute";
+import Unlock from "@/services/Unlock";
 import type { MsgpackHD } from "@/types";
 import { refresh, setIcon } from "@/utils";
 import { encodeMsgpack } from "algosdk";
@@ -29,6 +30,7 @@ onBeforeMount(async () => {
     }
   });
   browser.runtime.sendMessage("optionsReady");
+  Unlock.watch();
   store.loading++;
   theme.change((await get("app", "theme")) || "dark");
   await setIcon(theme.name.value);

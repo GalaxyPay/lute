@@ -42,12 +42,13 @@
       </template>
     </v-card>
   </v-container>
-  <password-confirm :visible="showPass" @close="handlePass" />
+  <password-confirm :visible="showPass" :verify="false" @close="handlePass" />
 </template>
 
 <script lang="ts" setup>
 import LuteData from "@/classes/LuteData";
 import LuteDataOld from "@/classes/LuteData.old";
+import Unlock from "@/services/Unlock";
 import {
   resetSidePanel,
   sendOrPostMessage,
@@ -135,7 +136,7 @@ async function passwordCheck() {
     if (acct?.seedId && acct.slot != null) {
       const seedData = store.seeds.find((s) => s.id === acct.seedId);
       if (!seedData) throw Error("Invalid Seed");
-      if (seedData.data) showPass.value = true;
+      if (seedData.data && !(await Unlock.isUnlocked())) showPass.value = true;
     }
     if (!showPass.value) {
       await luteData.value!.sign();
@@ -150,9 +151,11 @@ async function handlePass(success: boolean, pass: string) {
   showPass.value = false;
   if (!success) {
     store.setSnackbar("Incorrect Password", "error");
-  } else {
-    luteData.value!.sign(pass);
+    return;
   }
+  // sign() returns false when the password failed to decrypt, so re-prompt
+  // instead of failing the request.
+  if ((await luteData.value!.sign(pass)) === false) showPass.value = true;
 }
 
 window.onbeforeunload = () => {

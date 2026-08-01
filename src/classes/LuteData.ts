@@ -1,7 +1,12 @@
 import HdWallet from "@/services/HdWallet";
 import Seed from "@/services/Seed";
 import type { Siwa } from "@/types";
-import { signDataResponseSafe, selectDevice, sendOrPostMessage } from "@/utils";
+import {
+  isBadPassword,
+  signDataResponseSafe,
+  selectDevice,
+  sendOrPostMessage,
+} from "@/utils";
 import { hotSign } from "@/utils/signers";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
@@ -199,12 +204,7 @@ export default class LuteData {
         try {
           const seedData = this.store.seeds.find((s) => s.id === acct.seedId);
           if (!seedData) throw Error("Invalid Seed");
-          if (seedData.credentialId) {
-            seed = (await Seed.getPasskeySeed(seedData.credentialId)).seed;
-          } else {
-            if (!password) throw Error("Password Required");
-            seed = await Seed.decryptSeed(password, seedData);
-          }
+          seed = await Seed.unlockSeed(seedData, password);
           signature = await HdWallet.sign(
             seed,
             acct.slot,
@@ -251,6 +251,7 @@ export default class LuteData {
       this.store.snackbar.display = false;
       sendOrPostMessage(message, this.tabId);
       window.close();
+      return true;
     } catch (err: any) {
       const t = this.store.device.transport;
       if (t) {
@@ -258,11 +259,17 @@ export default class LuteData {
         const openDevices = devices.filter((d: any) => d.opened);
         if (openDevices.length) await openDevices[0]?.close();
       }
+      if (isBadPassword(err)) {
+        // Let the caller re-prompt rather than failing the whole request.
+        this.store.setSnackbar("Incorrect Password", "error");
+        return false;
+      }
       if (["Locked", "open"].some((x) => err.message.includes(x))) {
         this.store.setSnackbar(err.message, "error");
       } else {
         this.handleError(err);
       }
+      return true;
     }
   }
 }
