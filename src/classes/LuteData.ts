@@ -3,6 +3,7 @@ import Seed from "@/services/Seed";
 import type { Siwa } from "@/types";
 import {
   isBadPassword,
+  needsPassword,
   signDataResponseSafe,
   selectDevice,
   sendOrPostMessage,
@@ -264,6 +265,8 @@ export default class LuteData {
         this.store.setSnackbar("Incorrect Password", "error");
         return false;
       }
+      // Unlocked, but this seed missed the cache: prompt, nothing is wrong.
+      if (needsPassword(err)) return false;
       if (["Locked", "open"].some((x) => err.message.includes(x))) {
         this.store.setSnackbar(err.message, "error");
       } else {

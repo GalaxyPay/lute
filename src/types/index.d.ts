@@ -337,6 +337,7 @@ export interface PasswordVerifier {
   salt: string;
   hash: string;
   iterations?: number;
+  kdf?: string;
 }
 
 export interface SeedData {
@@ -345,6 +346,7 @@ export interface SeedData {
   iv?: Uint8Array;
   salt?: Uint8Array;
   iterations?: number;
+  kdf?: string;
   credentialId?: string;
 }
 

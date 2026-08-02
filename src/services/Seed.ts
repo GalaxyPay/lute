@@ -1,15 +1,19 @@
-import { get, getAll, rotateAtomic, set } from "@/dbLute";
+import { del, get, getAll, rotateAtomic, set } from "@/dbLute";
 import type { PasswordVerifier, SeedData } from "@/types";
 import Unlock from "@/services/Unlock";
 import {
   KDF,
   KDF_LEGACY_ITERATIONS,
+  atCurrentKdf,
   deriveKeyFromPassSalt,
   deriveVerifierHash,
   legacyVerifierHash,
   randomIv,
   randomSalt,
+  rawVerifierHash,
+  seedGcmParams,
 } from "@/services/kdf";
+import { isBadPassword } from "@/utils";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 
@@ -50,26 +54,44 @@ function asPasskeyError(err: any) {
 }
 
 const Seed = {
-  /** Encrypt a seed under `pass` with fresh salt+iv at the current parameters. */
-  async encryptSeed(seed: Uint8Array, pass: string) {
-    const salt = randomSalt();
-    const iv = randomIv();
-    const key = await deriveKeyFromPassSalt(pass, salt, KDF.iterations);
+  /**
+   * Encrypt a seed under `pass` with fresh salt+iv at the current parameters.
+   * The record id is bound as GCM additional data, which is why callers must
+   * know it before encrypting.
+   */
+  async encryptSeed(seed: Uint8Array, pass: string, id: number) {
+    const rec = {
+      id,
+      salt: randomSalt(),
+      iv: randomIv(),
+      iterations: KDF.iterations,
+      kdf: KDF.alg,
+    };
+    const key = await deriveKeyFromPassSalt(pass, rec.salt, KDF.iterations);
     const data = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv },
+      seedGcmParams(rec),
       key,
       Buffer.from(seed)
     );
-    return { data, salt, iv, iterations: KDF.iterations };
+    return { ...rec, data };
   },
 
   async storeBip39Seed(mn: string, pass: string) {
     const seed = Buffer.from(bip39.mnemonicToSeedSync(mn));
-    const rec = await this.encryptSeed(seed, pass);
-    const id = (await set("seeds", undefined, rec)) as number;
+    // The ciphertext is bound to its record id, so the id has to exist before
+    // encryption: reserve it with a stub, then fill the record in.
+    const id = (await set("seeds", undefined, {})) as number;
+    let rec: SeedData;
+    try {
+      rec = await this.encryptSeed(seed, pass, id);
+      await set("seeds", undefined, rec);
+    } catch (err) {
+      await del("seeds", id);
+      throw err;
+    }
     // The wallet may already be unlocked; cache this seed under the existing
     // window so the next signature does not re-prompt.
-    await Unlock.add({ id, ...rec }, pass);
+    await Unlock.add(rec, pass);
     return { id, seed };
   },
 
@@ -83,15 +105,29 @@ const Seed = {
     if (!sd.salt || !sd.iv || !sd.data) throw Error("Bad Seed Data");
     const iterations = sd.iterations ?? KDF_LEGACY_ITERATIONS;
     const key = await deriveKeyFromPassSalt(pass, sd.salt, iterations);
-    const ent = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: Buffer.from(sd.iv) },
-      key,
-      sd.data
-    );
+    const ent = await crypto.subtle.decrypt(seedGcmParams(sd), key, sd.data);
     const seed = Buffer.from(ent);
-    if (upgrade && iterations < KDF.iterations)
-      await this.reencryptSeed(sd, seed, pass);
+    if (upgrade && !atCurrentKdf(sd)) await this.reencryptSeed(sd, seed, pass);
     return seed;
+  },
+
+  /**
+   * Re-encrypt every outdated seed that `pass` decrypts. decryptSeed upgrades
+   * the one seed it touches; unlockSeed runs this sweep for the rest before
+   * caching keys, because the cached-key path never sees the password again —
+   * without it an unlocked wallet keeps serving weak ciphertext indefinitely.
+   */
+  async upgradeLegacySeeds(pass: string) {
+    const store = useAppStore();
+    const stale = store.seeds.filter((s) => s.data && !atCurrentKdf(s));
+    for (const sd of stale) {
+      try {
+        (await this.decryptSeed(pass, sd)).fill(0);
+      } catch (err) {
+        // A seed under a different password cannot be upgraded with this one.
+        if (!isBadPassword(err)) throw err;
+      }
+    }
   },
 
   /**
@@ -99,7 +135,7 @@ const Seed = {
    * successful decrypt, the only moment the password is available.
    */
   async reencryptSeed(sd: SeedData, seed: Uint8Array, pass: string) {
-    const rec = { id: sd.id, ...(await this.encryptSeed(seed, pass)) };
+    const rec = await this.encryptSeed(seed, pass, sd.id);
     await set("seeds", undefined, rec);
     // store.seeds is now stale; a second decrypt in this page would derive
     // against the old salt and fail.
@@ -115,6 +151,7 @@ const Seed = {
       salt: saltArr.toBase64(),
       hash: await deriveVerifierHash(pass, saltArr, KDF.iterations),
       iterations: KDF.iterations,
+      kdf: KDF.alg,
     };
   },
 
@@ -126,13 +163,17 @@ const Seed = {
     const rec: PasswordVerifier | undefined = await get("app", "password");
     if (!rec) throw Error("Password not found");
     const salt = Uint8Array.fromBase64(rec.salt);
-    if (!rec.iterations) {
-      // Pre-versioning verifier. Upgrade it once the password checks out.
-      if ((await legacyVerifierHash(pass, salt)) !== rec.hash) return false;
-      await this.setPassword(pass);
-      return true;
-    }
-    return (await deriveVerifierHash(pass, salt, rec.iterations)) === rec.hash;
+    let ok: boolean;
+    if (!rec.iterations)
+      // Pre-versioning: a single unsalted-iteration SHA-256.
+      ok = (await legacyVerifierHash(pass, salt)) === rec.hash;
+    else if (!rec.kdf)
+      // Transitional: raw PBKDF2 output, before the domain-separating hash.
+      ok = (await rawVerifierHash(pass, salt, rec.iterations)) === rec.hash;
+    else ok = (await deriveVerifierHash(pass, salt, rec.iterations)) === rec.hash;
+    // Rewrite an outdated format once the password checks out.
+    if (ok && !atCurrentKdf(rec)) await this.setPassword(pass);
+    return ok;
   },
 
   /**
@@ -161,10 +202,7 @@ const Seed = {
         })
       );
       const rewritten = await Promise.all(
-        seeds.map(async (seed, ix) => ({
-          id: locals[ix]!.id,
-          ...(await this.encryptSeed(seed, newPass)),
-        }))
+        seeds.map((seed, ix) => this.encryptSeed(seed, newPass, locals[ix]!.id))
       );
       await rotateAtomic(
         rewritten,
@@ -192,18 +230,30 @@ const Seed = {
     if (!sd.iv || !sd.data) throw Error("Bad Seed Data");
     const cached = await Unlock.get(sd.id);
     if (cached) {
-      const ent = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: Buffer.from(sd.iv) },
-        cached,
-        sd.data
-      );
-      await Unlock.touch();
-      return Buffer.from(ent);
+      try {
+        const ent = await crypto.subtle.decrypt(
+          seedGcmParams(sd),
+          cached,
+          sd.data
+        );
+        await Unlock.touch();
+        return Buffer.from(ent);
+      } catch (err) {
+        // A cached key that no longer decrypts (stale after a re-encryption in
+        // another context, or written by an older build) is a cache miss, not
+        // a failure: fall through to the password path.
+        if (!isBadPassword(err)) throw err;
+      }
     }
     if (!pass) throw Error("Password Required");
     // Decrypt this seed first so a wrong password fails before anything caches.
     const seed = await this.decryptSeed(pass, sd);
-    if (Unlock.enabled()) await Unlock.unlock(pass);
+    if (Unlock.enabled()) {
+      // Sweep other outdated seeds while the password is in hand, so the cache
+      // is built against their new records rather than the weak ciphertext.
+      await this.upgradeLegacySeeds(pass);
+      await Unlock.unlock(pass);
+    }
     return seed;
   },
 

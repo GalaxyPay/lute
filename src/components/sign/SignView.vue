@@ -221,6 +221,13 @@ async function finishHandler() {
   loading.value = false;
 }
 
+async function trySign(pass?: string) {
+  // sign() returns false when the password failed to decrypt or
+  // the unlock cache could not cover the seed;
+  // fall back to the password prompt instead of failing the request.
+  if ((await luteTxns.value.sign(pass)) === false) showPass.value = true;
+}
+
 async function passwordCheck() {
   try {
     signing.value = true;
@@ -243,7 +250,7 @@ async function passwordCheck() {
       }
     }
     if (!showPass.value) {
-      await luteTxns.value.sign();
+      await trySign();
     }
   } catch (err: any) {
     luteTxns.value.handleError(err);
@@ -257,7 +264,7 @@ async function handlePass(success: boolean, pass: string) {
     store.setSnackbar("Incorrect Password", "error");
     return;
   }
-  if ((await luteTxns.value.sign(pass)) === false) showPass.value = true;
+  await trySign(pass);
 }
 
 window.onbeforeunload = () => {

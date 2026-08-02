@@ -3,7 +3,7 @@ import Algo from "@/services/Algo";
 import Falcon from "@/services/Falcon";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
-import { isBadPassword, send, sendOrPostMessage } from "@/utils";
+import { isBadPassword, needsPassword, send, sendOrPostMessage } from "@/utils";
 import { signer } from "@/utils/signers";
 import algosdk from "algosdk";
 
@@ -429,6 +429,8 @@ export default class LuteTxns {
         this.store.setSnackbar("Incorrect Password", "error");
         return false;
       }
+      // Unlocked, but this seed missed the cache: prompt, nothing is wrong.
+      if (needsPassword(err)) return false;
       if (["Locked", "open"].some((x) => err.message.includes(x))) {
         this.store.setSnackbar(err.message, "error");
       } else {

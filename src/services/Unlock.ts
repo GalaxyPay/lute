@@ -1,4 +1,8 @@
-import { KDF_LEGACY_ITERATIONS, deriveKeyFromPassSalt } from "@/services/kdf";
+import {
+  KDF_LEGACY_ITERATIONS,
+  deriveKeyFromPassSalt,
+  seedGcmParams,
+} from "@/services/kdf";
 import type { SeedData } from "@/types";
 
 /**
@@ -114,7 +118,7 @@ const Unlock = {
   async unlock(pass: string) {
     const store = useAppStore();
     if (!this.enabled()) return;
-    const locals = store.seeds.filter((s) => s.data && s.salt);
+    const locals = store.seeds.filter((s) => s.data && s.salt && s.iv);
     const derived = await Promise.all(
       locals.map(async (sd) => {
         const key = await deriveKeyFromPassSalt(
@@ -123,13 +127,34 @@ const Unlock = {
           sd.iterations ?? KDF_LEGACY_ITERATIONS,
           true
         );
+        // Cache only keys proven against their ciphertext. Seeds are meant to
+        // share the wallet password, but one that does not must miss the cache
+        // and prompt — not read as unlocked with a key that cannot decrypt it.
+        try {
+          const ent = await crypto.subtle.decrypt(
+            seedGcmParams(sd),
+            key,
+            sd.data!
+          );
+          new Uint8Array(ent).fill(0);
+        } catch {
+          return undefined;
+        }
         const raw = await crypto.subtle.exportKey("raw", key);
         return [sd.id, new Uint8Array(raw).toBase64()] as const;
       })
     );
+    const proven = derived.filter((d) => !!d) as [number, string][];
     const now = Date.now();
+    const state = await read();
     await write({
-      keys: Object.fromEntries(derived),
+      // Merge over a live state rather than replacing it: entering the odd
+      // seed's own password must not evict the wallet-password keys, and vice
+      // versa. Each entry was just proven, so newer always wins.
+      keys: {
+        ...(live(state) ? state!.keys : {}),
+        ...Object.fromEntries(proven),
+      },
       expiresAt: now + store.autoLockMinutes * 60_000,
       hardExpiresAt: now + HARD_CAP_MS,
     });
