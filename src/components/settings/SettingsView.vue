@@ -113,7 +113,8 @@
             Inactivity
             <div style="color: #9aa0a5; font-size: 0.7em">
               Skip the password when signing, until the wallet has been idle
-              this long. Always locks after 8 hours.
+              this long. Always locks 8 hours after initial unlock, regardless
+              of activity.
             </div>
           </v-col>
           <v-col>
@@ -237,11 +238,7 @@
     </v-card>
   </v-container>
   <CustomNetwork :visible="showCustom" @close="showCustom = false" />
-  <PasswordRotate
-    :visible="showRotate"
-    @close="showRotate = false"
-    @get-cache="emit('getCache')"
-  />
+  <PasswordRotate :visible="showRotate" @close="showRotate = false" />
 </template>
 
 <script lang="ts" setup>
@@ -265,8 +262,6 @@ import {
   mdiTrayArrowDown,
 } from "@mdi/js";
 import { useDisplay, useTheme } from "vuetify";
-
-const emit = defineEmits(["getCache", "getTheme"]);
 
 const appVersion = __APP_VERSION__;
 const { xs } = useDisplay();
@@ -310,19 +305,16 @@ async function setNetwork(name: string) {
 
 async function setDebug() {
   await set("app", "debug", !store.debug);
-  emit("getCache");
   await store.getCache();
 }
 
 async function setSnoop() {
   await set("app", "snoop", !store.snoop);
-  emit("getCache");
   await store.getCache();
 }
 
 async function setLedgerSelect() {
   await set("app", "ledgerSelect", !store.ledgerSelect);
-  emit("getCache");
   await store.getCache();
 }
 
@@ -330,7 +322,6 @@ async function setAutoLock(minutes: number) {
   await set("app", "autoLockMinutes", minutes);
   // Shortening or disabling the window must not leave a longer one running.
   await Unlock.clear();
-  emit("getCache");
   await store.getCache();
 }
 
@@ -341,14 +332,12 @@ async function lockNow() {
 
 async function setExperimental() {
   await set("app", "experimental", !store.experimental);
-  emit("getCache");
   await store.getCache();
 }
 
 async function setTheme(name: any) {
   await setIcon(name);
   await set("app", "theme", name);
-  emit("getTheme");
   theme.change(name);
 }
 
@@ -375,7 +364,6 @@ async function createRouter() {
 async function setRouter() {
   store.loading++;
   await set("app", "sandboxRouter", store.network.inboxRouter);
-  emit("getCache");
   await store.getCache();
   store.setSnackbar("Router ID Set", "success", 2000);
   store.loading--;

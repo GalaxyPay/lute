@@ -2,7 +2,7 @@
   <v-app>
     <AppBar />
     <v-main>
-      <SettingsView @get-cache="getCache()" @get-theme="getTheme()" />
+      <SettingsView />
       <AddAccountDialog :visible="showAdd" @close="showAdd = false" />
       <SignDialog is-options />
     </v-main>
@@ -13,6 +13,7 @@
 
 <script lang="ts" setup>
 import { get } from "@/dbLute";
+import Sync from "@/services/Sync";
 import Unlock from "@/services/Unlock";
 import type { MsgpackHD } from "@/types";
 import { refresh, setIcon } from "@/utils";
@@ -30,21 +31,25 @@ onBeforeMount(async () => {
     }
   });
   browser.runtime.sendMessage("optionsReady");
+  Sync.watch(reload);
   Unlock.watch();
   store.loading++;
-  theme.change((await get("app", "theme")) || "dark");
+  await getTheme();
   await setIcon(theme.name.value);
   await store.getCache();
   await refresh();
   store.loading--;
 });
 
-function getCache() {
-  browser.runtime.sendMessage({ action: "getCache" });
+async function getTheme() {
+  theme.change((await get("app", "theme")) || "dark");
 }
 
-function getTheme() {
-  browser.runtime.sendMessage({ action: "getTheme" });
+// Theme is the one piece of cached state that does not live in the store: it
+// is read straight out of IDB into Vuetify, so the shell has to reload it.
+async function reload() {
+  await store.getCache();
+  await getTheme();
 }
 
 watch(

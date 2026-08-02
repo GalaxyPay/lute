@@ -77,7 +77,7 @@ const props = defineProps({
   visible: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "getCache"]);
+const emit = defineEmits(["close"]);
 
 const show = computed({
   get() {
@@ -106,7 +106,6 @@ async function rotate() {
       return;
     }
     store.setSnackbar("Password Changed", "success");
-    emit("getCache");
     emit("close");
   } catch (err: any) {
     console.error(err);

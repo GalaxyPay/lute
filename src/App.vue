@@ -33,6 +33,7 @@
 import { get, set } from "@/dbLute";
 import router from "@/router";
 import type { AccountHD, MsgpackHD } from "@/types";
+import Sync from "@/services/Sync";
 import Unlock from "@/services/Unlock";
 import { fetchAsync, refresh, setIcon } from "@/utils";
 import { decodeMsgpack, modelsv2 } from "algosdk";
@@ -57,12 +58,6 @@ function optionsRefreshListener() {
       store.nsObj = JSON.parse(message.nsObj);
       goldCheck();
     }
-    if (message?.action === "getCache") {
-      store.getCache();
-    }
-    if (message?.action === "getTheme") {
-      getTheme();
-    }
   });
 }
 
@@ -70,6 +65,7 @@ onBeforeMount(async () => {
   store.loading++;
   if (!store.isWeb) {
     optionsRefreshListener();
+    Sync.watch(reload);
     Unlock.watch();
   }
   await getTheme();
@@ -88,6 +84,13 @@ onBeforeMount(async () => {
 
 async function getTheme() {
   theme.change((await get("app", "theme")) || "dark");
+}
+
+// Theme is the one piece of cached state that does not live in the store: it
+// is read straight out of IDB into Vuetify, so the shell has to reload it.
+async function reload() {
+  await store.getCache();
+  await getTheme();
 }
 
 async function goldCheck() {

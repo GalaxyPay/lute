@@ -1,3 +1,4 @@
+import Sync from "@/services/Sync";
 import type { PasswordVerifier, SeedData } from "@/types";
 import { modelsv2 } from "algosdk";
 import { type DBSchema, type StoreKey, type StoreNames, openDB } from "idb";
@@ -68,19 +69,32 @@ export async function getAll(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAll(storeName);
 }
 
+/**
+ * Whether a write to this store invalidates what other contexts hold in their
+ * Pinia cache. The assets-* stores are deliberately excluded: assetInfo writes
+ * them continuously while a refresh runs, and nothing reads them through the
+ * cache, so bumping for those would be a getCache storm.
+ */
+function cached(storeName: StoreNames<LuteDB>) {
+  return storeName === "app" || storeName === "seeds" || storeName === "keys";
+}
+
 export async function set(
   storeName: StoreNames<LuteDB>,
   key: StoreKey<LuteDB, StoreNames<LuteDB>> | undefined,
   val: any
 ) {
-  return (await dbLute).put(storeName, val, key);
+  const res = await (await dbLute).put(storeName, val, key);
+  if (cached(storeName)) await Sync.bump();
+  return res;
 }
 
 export async function del(
   storeName: StoreNames<LuteDB>,
   key: StoreKey<LuteDB, StoreNames<LuteDB>>
 ) {
-  return (await dbLute).delete(storeName, key);
+  await (await dbLute).delete(storeName, key);
+  if (cached(storeName)) await Sync.bump();
 }
 
 export async function keys(storeName: StoreNames<LuteDB>) {
@@ -117,6 +131,7 @@ export async function rotateAtomic(
   for (const sd of seeds) store.put(sd);
   tx.objectStore("app").put(verifier, "password");
   await tx.done;
+  await Sync.bump();
 }
 
 export default dbLute;

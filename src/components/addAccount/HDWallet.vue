@@ -9,11 +9,10 @@
 </template>
 
 <script lang="ts" setup>
-import { getAll } from "@/dbLute";
+import { getAll, set } from "@/dbLute";
 import HdWallet from "@/services/HdWallet";
 import type { AccountSubs, SeedData } from "@/types";
 import { deepClone } from "@/utils";
-import { openDB } from "idb";
 
 const emit = defineEmits(["close"]);
 
@@ -44,8 +43,7 @@ async function addAccounts(selected: AccountSubs[]) {
       xpub: a.xpub,
     }));
   const newVal = deepClone(store.accounts.concat(add));
-  const dbLute = await openDB("lute");
-  await dbLute.put("app", newVal, "accounts");
+  await set("app", "accounts", newVal);
   await store.getCache();
   store.refresh++;
   emit("close");
