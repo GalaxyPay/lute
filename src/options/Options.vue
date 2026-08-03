@@ -12,16 +12,13 @@
 </template>
 
 <script lang="ts" setup>
-import { get } from "@/dbLute";
 import Sync from "@/services/Sync";
 import Unlock from "@/services/Unlock";
 import type { MsgpackHD } from "@/types";
-import { refresh, setIcon } from "@/utils";
+import { refresh } from "@/utils";
 import { encodeMsgpack } from "algosdk";
-import { useTheme } from "vuetify";
 
 const store = useAppStore();
-const theme = useTheme();
 const showAdd = ref(false);
 
 onBeforeMount(async () => {
@@ -31,26 +28,13 @@ onBeforeMount(async () => {
     }
   });
   browser.runtime.sendMessage("optionsReady");
-  Sync.watch(reload);
+  Sync.watch(store.getCache);
   Unlock.watch();
   store.loading++;
-  await getTheme();
-  await setIcon(theme.name.value);
   await store.getCache();
   await refresh();
   store.loading--;
 });
-
-async function getTheme() {
-  theme.change((await get("app", "theme")) || "dark");
-}
-
-// Theme is the one piece of cached state that does not live in the store: it
-// is read straight out of IDB into Vuetify, so the shell has to reload it.
-async function reload() {
-  await store.getCache();
-  await getTheme();
-}
 
 watch(
   () => store.refresh,

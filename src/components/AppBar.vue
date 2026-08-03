@@ -2,7 +2,7 @@
   <v-app-bar flat color="background">
     <v-app-bar-title @click="store.drawer = !store.drawer">
       <lute-logo
-        :color="theme.name.value === 'gold' ? 'url(#gradient)' : 'currentColor'"
+        :color="store.theme === 'gold' ? 'url(#gradient)' : 'currentColor'"
         :width="120"
         class="mb-n1 mr-2"
       />
@@ -21,9 +21,7 @@
 
 <script lang="ts" setup>
 import { mdiClose } from "@mdi/js";
-import { useTheme } from "vuetify";
 const store = useAppStore();
-const theme = useTheme();
 
 function close() {
   window.close();

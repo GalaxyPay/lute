@@ -30,17 +30,14 @@
 </template>
 
 <script lang="ts" setup>
-import { get, set } from "@/dbLute";
 import router from "@/router";
 import type { AccountHD, MsgpackHD } from "@/types";
 import Sync from "@/services/Sync";
 import Unlock from "@/services/Unlock";
-import { fetchAsync, refresh, setIcon } from "@/utils";
+import { fetchAsync, refresh } from "@/utils";
 import { decodeMsgpack, modelsv2 } from "algosdk";
-import { useTheme } from "vuetify";
 
 const store = useAppStore();
-const theme = useTheme();
 
 function optionsRefreshListener() {
   browser.runtime.onMessage.addListener(async (message: any) => {
@@ -65,11 +62,9 @@ onBeforeMount(async () => {
   store.loading++;
   if (!store.isWeb) {
     optionsRefreshListener();
-    Sync.watch(reload);
+    Sync.watch(store.getCache);
     Unlock.watch();
   }
-  await getTheme();
-  await setIcon(theme.name.value);
   await store.getCache();
   await Unlock.isUnlocked();
   await router.isReady();
@@ -82,23 +77,10 @@ onBeforeMount(async () => {
   store.loading--;
 });
 
-async function getTheme() {
-  theme.change((await get("app", "theme")) || "dark");
-}
-
-// Theme is the one piece of cached state that does not live in the store: it
-// is read straight out of IDB into Vuetify, so the shell has to reload it.
-async function reload() {
-  await store.getCache();
-  await getTheme();
-}
-
 async function goldCheck() {
-  if (theme.name.value === "gold") {
+  if (store.theme === "gold") {
     if (!store.isLutier && store.networkName.includes("MainNet")) {
-      await setIcon("default");
-      await set("app", "theme", "dark");
-      theme.change("dark");
+      await store.setTheme("dark");
     }
   }
 }

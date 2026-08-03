@@ -5,7 +5,7 @@
         <v-app-bar-title>
           <lute-logo
             :color="
-              theme.name.value === 'gold' ? 'url(#gradient)' : 'currentColor'
+              store.theme === 'gold' ? 'url(#gradient)' : 'currentColor'
             "
             :width="120"
             class="mb-n1 mr-2"
@@ -34,14 +34,12 @@
 
 <script setup lang="ts">
 import { mdiClose } from "@mdi/js";
-import { useTheme } from "vuetify";
 import { useDisplay } from "vuetify";
 
 defineProps({ isOptions: { type: Boolean, default: false } });
 
 const { mdAndUp } = useDisplay();
 const store = useAppStore();
-const theme = useTheme();
 
 const show = computed({
   get() {

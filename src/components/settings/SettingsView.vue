@@ -90,8 +90,8 @@
           </v-col>
           <v-col>
             <v-radio-group
-              :model-value="theme.name.value"
-              @update:model-value="setTheme"
+              :model-value="store.theme"
+              @update:model-value="store.setTheme"
               inline
               class="d-flex"
               style="justify-content: right"
@@ -247,7 +247,6 @@ import { networks } from "@/data";
 import { get, set } from "@/dbLute";
 import Algo from "@/services/Algo";
 import Unlock from "@/services/Unlock";
-import { setIcon } from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import {
@@ -333,12 +332,6 @@ async function lockNow() {
 async function setExperimental() {
   await set("app", "experimental", !store.experimental);
   await store.getCache();
-}
-
-async function setTheme(name: any) {
-  await setIcon(name);
-  await set("app", "theme", name);
-  theme.change(name);
 }
 
 async function createRouter() {
