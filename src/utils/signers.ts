@@ -33,10 +33,10 @@ export async function signer(
 ) {
   let transport;
   let algoApp;
+  const seeds: Uint8Array[] = [];
   try {
     const store = useAppStore();
     const signedTxns: Uint8Array[] = [];
-    const seeds: Uint8Array[] = [];
     for (const [idx, txn] of txnGroup.entries()) {
       if (!indexesToSign || indexesToSign.includes(idx)) {
         const sender = txn.sender.toString();
@@ -52,14 +52,7 @@ export async function signer(
           if (!seeds[acct.seedId]) {
             const seedData = store.seeds.find((s) => s.id === acct.seedId);
             if (!seedData) throw Error("Invalid Seed");
-            if (seedData.credentialId) {
-              seeds[acct.seedId] = (
-                await Seed.getPasskeySeed(seedData.credentialId)
-              ).seed;
-            } else {
-              if (!password) throw Error("Password Required");
-              seeds[acct.seedId] = await Seed.decryptSeed(password, seedData);
-            }
+            seeds[acct.seedId] = await Seed.unlockSeed(seedData, password);
           }
           sig = new Uint8Array();
           if (acct.slot != null) {
@@ -113,12 +106,13 @@ export async function signer(
         signedTxns.push(signedTxn);
       }
     }
-    seeds.forEach((s) => s.fill(0));
     await transport?.close();
     return signedTxns;
   } catch (err) {
     await transport?.close();
     throw err;
+  } finally {
+    seeds.forEach((s) => s.fill(0));
   }
 }
 

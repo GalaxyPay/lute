@@ -24,7 +24,7 @@
           />
           <v-card-actions>
             <v-spacer />
-            <v-btn text="Submit" type="submit" />
+            <v-btn text="Submit" type="submit" :loading="checking" />
           </v-card-actions>
         </v-form>
       </v-container>
@@ -33,16 +33,18 @@
 </template>
 
 <script lang="ts" setup>
-import { get } from "@/dbLute";
+import Seed from "@/services/Seed";
 import { mdiClose } from "@mdi/js";
 
 const store = useAppStore();
 const required = (v: string) => !!v || "Required";
 const form = ref();
 const password = ref();
+const checking = ref(false);
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  verify: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(["close"]);
@@ -70,22 +72,17 @@ async function confirmPassword() {
     const { valid } = await form.value.validate();
     if (!valid) return;
 
-    const pass = await get("app", "password");
-    if (!pass) throw Error("Password not found");
-    const saltArr = Uint8Array.fromBase64(pass.salt);
-    const passArr = new TextEncoder().encode(password.value);
-    const hash = Buffer.from(
-      await crypto.subtle.digest(
-        "SHA-256",
-        new Uint8Array([...passArr, ...saltArr])
-      )
-    ).toBase64();
+    if (!props.verify) return emit("close", true, password.value);
 
-    if (hash === pass.hash) emit("close", true, password.value);
+    checking.value = true;
+    if (await Seed.verifyPassword(password.value))
+      emit("close", true, password.value);
     else emit("close", false);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
+  } finally {
+    checking.value = false;
   }
 }
 </script>

@@ -17,6 +17,14 @@ sp.setPanelBehavior({ openPanelOnActionClick: true }).catch((error: unknown) =>
   console.error(error)
 );
 
+const UNLOCK_KEY = "unlock";
+const UNLOCK_ALARM = "lute-lock";
+
+browser.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== UNLOCK_ALARM) return;
+  await browser.storage.session.remove(UNLOCK_KEY);
+});
+
 browser.runtime.onConnect.addListener(function (port) {
   if (port.name === "luteSidepanel") {
     port.onDisconnect.addListener(async () => {

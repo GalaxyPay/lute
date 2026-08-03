@@ -41,7 +41,7 @@
 </template>
 
 <script lang="ts" setup>
-import { set } from "@/dbLute";
+import Seed from "@/services/Seed";
 import { mdiClose } from "@mdi/js";
 
 const store = useAppStore();
@@ -58,14 +58,7 @@ async function confirmPassword() {
     const { valid } = await form.value.validate();
     if (!valid) return;
 
-    const saltArray = crypto.getRandomValues(new Uint8Array(12));
-    const salt = saltArray.toBase64();
-    const passwordArray = new TextEncoder().encode(pass1.value);
-    const concatArray = new Uint8Array([...passwordArray, ...saltArray]);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", concatArray);
-    const hashArray = new Uint8Array(hashBuffer);
-    const hash = hashArray.toBase64();
-    await set("app", "password", { salt, hash });
+    await Seed.setPassword(pass1.value);
     emit("close");
   } catch (err: any) {
     console.error(err);

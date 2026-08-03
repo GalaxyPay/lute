@@ -10,7 +10,7 @@
         <v-container>
           <v-card variant="outlined" color="primary" class="pointer">
             <v-container
-              :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
               @click="type = LEDGER"
             >
               <v-row>
@@ -30,7 +30,7 @@
         <v-container>
           <v-card variant="outlined" color="primary" class="pointer">
             <v-container
-              :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
               @click="type = HD"
             >
               <v-row>
@@ -50,7 +50,7 @@
         <v-container>
           <v-card variant="outlined" color="primary" class="pointer">
             <v-container
-              :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
               @click="alertSelect(HOT)"
             >
               <v-row>
@@ -70,7 +70,7 @@
         <v-container>
           <v-card variant="outlined" color="primary" class="pointer">
             <v-container
-              :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
               @click="type = MSIG"
             >
               <v-row>
@@ -88,7 +88,7 @@
         <v-container>
           <v-card variant="outlined" color="primary" class="pointer">
             <v-container
-              :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
               @click="alertSelect(MN12)"
             >
               <v-row>
@@ -108,7 +108,7 @@
         <v-container v-if="store.experimental">
           <v-card variant="outlined" color="primary" class="pointer">
             <v-container
-              :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
               @click="type = FALCON"
             >
               <v-row>
@@ -127,7 +127,7 @@
         <v-container>
           <v-card variant="outlined" color="primary" class="pointer">
             <v-container
-              :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
               @click="type = WATCH"
             >
               <v-row>
@@ -164,10 +164,8 @@ import {
   mdiKeyChange,
   mdiWallet,
 } from "@mdi/js";
-import { useTheme } from "vuetify";
 
 const store = useAppStore();
-const theme = useTheme();
 const type = ref();
 
 const LEDGER = "Ledger Account";

@@ -13,7 +13,8 @@ import type {
   SnackBar,
   TinyAsset,
 } from "@/types";
-import { deepClone, formatAddr } from "@/utils";
+import vuetify from "@/plugins/vuetify";
+import { deepClone, formatAddr, setIcon } from "@/utils";
 import type { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
 
@@ -31,6 +32,7 @@ export const useAppStore = defineStore("app", {
       display: false,
     } as SnackBar,
     refresh: 0,
+    theme: "dark",
     networkName: networks[0]!.name,
     hotWallet: true,
     keys: [] as string[],
@@ -40,6 +42,8 @@ export const useAppStore = defineStore("app", {
     snoop: false,
     ledgerSelect: false,
     experimental: false,
+    autoLockMinutes: 0,
+    unlocked: false,
     tinyman: undefined as TinyAsset[] | undefined,
     sandboxRouter: undefined as number | undefined,
     isWeb: document.location.protocol.startsWith("http"),
@@ -180,6 +184,9 @@ export const useAppStore = defineStore("app", {
   },
   actions: {
     async getCache() {
+      this.theme = (await get("app", "theme")) || "dark";
+      vuetify.theme.change(this.theme);
+      await setIcon(this.theme);
       try {
         await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign"]);
       } catch {
@@ -197,8 +204,14 @@ export const useAppStore = defineStore("app", {
         (await get("app", "ledgerSelect")) ?? this.ledgerSelect;
       this.experimental =
         (await get("app", "experimental")) ?? this.experimental;
+      this.autoLockMinutes =
+        (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
+    },
+    async setTheme(name: string | null) {
+      await set("app", "theme", name || "dark");
+      await this.getCache();
     },
     async setSnackbar(text: string, color = "info", timeout = 4000) {
       if (color === "error") timeout = 15000;
