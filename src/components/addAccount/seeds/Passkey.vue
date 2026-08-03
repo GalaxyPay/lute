@@ -4,7 +4,7 @@
     <v-container>
       <v-card variant="outlined" color="primary" class="pointer">
         <v-container
-          :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+          :class="store.theme == 'light' ? 'text-black' : 'text-white'"
           @click="register()"
         >
           <v-row>
@@ -25,7 +25,7 @@
     <v-container>
       <v-card variant="outlined" color="primary" class="pointer">
         <v-container
-          :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+          :class="store.theme == 'light' ? 'text-black' : 'text-white'"
           @click="restore()"
         >
           <v-row>
@@ -49,12 +49,10 @@
 <script lang="ts" setup>
 import Seed from "@/services/Seed";
 import { mdiFingerprint, mdiKeyPlus } from "@mdi/js";
-import { useTheme } from "vuetify";
 
 const emit = defineEmits(["close", "seed"]);
 
 const store = useAppStore();
-const theme = useTheme();
 
 async function register() {
   try {
