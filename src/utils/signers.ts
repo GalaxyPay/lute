@@ -37,11 +37,12 @@ export async function signer(
 ) {
   let transport;
   let algoApp;
+  // Hoisted out of the try so the finally can zero them on any exit path.
+  const seeds: Uint8Array[] = [];
+  const falcon25Seeds: Uint8Array[] = [];
   try {
     const store = useAppStore();
     const signedTxns: Uint8Array[] = [];
-    const seeds: Uint8Array[] = [];
-    // const falcon25Seeds: { addr: string; seed: Uint8Array }[] = [];
     const falcon25Signers: {
       address: Address;
       txnSigner: TransactionSigner;
@@ -61,14 +62,7 @@ export async function signer(
           if (!seeds[acct.seedId]) {
             const seedData = store.seeds.find((s) => s.id === acct.seedId);
             if (!seedData) throw Error("Invalid Seed");
-            if (seedData.credentialId) {
-              seeds[acct.seedId] = (
-                await Seed.getPasskeySeed(seedData.credentialId)
-              ).seed;
-            } else {
-              if (!password) throw Error("Password Required");
-              seeds[acct.seedId] = await Seed.decryptSeed(password, seedData);
-            }
+            seeds[acct.seedId] = await Seed.unlockSeed(seedData, password);
           }
           sig = await HdWallet.sign(
             Buffer.from(seeds[acct.seedId]!),
@@ -82,11 +76,14 @@ export async function signer(
           );
           if (!f25) {
             const seedData = store.falcon25Seeds.find(
-              (kv) => kv.key === acct.addr
+              (s) => s.id === acct.addr
             );
             if (!seedData) throw Error("Invalid Seed");
             if (!password) throw Error("Password Required");
-            const seed = await Seed.decryptSeed(password, seedData.value);
+            // decryptSeed, not unlockSeed: the session cache is keyed by
+            // numeric seed id and holds no Falcon keys, so these always prompt.
+            const seed = await Seed.decryptSeed(password, seedData);
+            falcon25Seeds.push(seed);
             const { publicKey, privateKey } = generateKey(seed);
             const falconSigningKey: Falcon1024SigningKey = {
               falcon1024PublicKey: publicKey,
@@ -132,12 +129,14 @@ export async function signer(
         signedTxns.push(signedTxn);
       }
     }
-    seeds.forEach((s) => s.fill(0));
     await transport?.close();
     return signedTxns;
   } catch (err) {
     await transport?.close();
     throw err;
+  } finally {
+    seeds.forEach((s) => s.fill(0));
+    falcon25Seeds.forEach((s) => s.fill(0));
   }
 }
 

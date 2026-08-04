@@ -30,15 +30,14 @@
 </template>
 
 <script lang="ts" setup>
-import { get, set } from "@/dbLute";
 import router from "@/router";
 import type { AccountHD, MsgpackHD } from "@/types";
-import { fetchAsync, refresh, setIcon } from "@/utils";
+import Sync from "@/services/Sync";
+import Unlock from "@/services/Unlock";
+import { fetchAsync, refresh } from "@/utils";
 import { decodeMsgpack, modelsv2 } from "algosdk";
-import { useTheme } from "vuetify";
 
 const store = useAppStore();
-const theme = useTheme();
 
 function optionsRefreshListener() {
   browser.runtime.onMessage.addListener(async (message: any) => {
@@ -56,21 +55,18 @@ function optionsRefreshListener() {
       store.nsObj = JSON.parse(message.nsObj);
       goldCheck();
     }
-    if (message?.action === "getCache") {
-      store.getCache();
-    }
-    if (message?.action === "getTheme") {
-      getTheme();
-    }
   });
 }
 
 onBeforeMount(async () => {
   store.loading++;
-  if (!store.isWeb) optionsRefreshListener();
-  await getTheme();
-  await setIcon(theme.name.value);
+  if (!store.isWeb) {
+    optionsRefreshListener();
+    Sync.watch(store.getCache);
+    Unlock.watch();
+  }
   await store.getCache();
+  await Unlock.isUnlocked();
   await router.isReady();
   if (!router.currentRoute.value.meta.modal) {
     store.refresh++;
@@ -81,16 +77,10 @@ onBeforeMount(async () => {
   store.loading--;
 });
 
-async function getTheme() {
-  theme.change((await get("app", "theme")) || "dark");
-}
-
 async function goldCheck() {
-  if (theme.name.value === "gold") {
+  if (store.theme === "gold") {
     if (!store.isLutier && store.networkName.includes("MainNet")) {
-      await setIcon("default");
-      await set("app", "theme", "dark");
-      theme.change("dark");
+      await store.setTheme("dark");
     }
   }
 }

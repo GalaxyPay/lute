@@ -1,11 +1,12 @@
 // Utilities
 import type LuteTxns from "@/classes/LuteTxns";
 import { networks } from "@/data";
-import { get, getAll, getAllEntries, keys, set } from "@/dbLute";
+import { get, getAll, getFalconSeeds, keys, set } from "@/dbLute";
 import type {
   AccountHD,
   AccountInfo,
   Arc55App,
+  FalconSeedData,
   LuteAccount,
   Network,
   NsObject,
@@ -13,7 +14,8 @@ import type {
   SnackBar,
   TinyAsset,
 } from "@/types";
-import { deepClone, formatAddr } from "@/utils";
+import vuetify from "@/plugins/vuetify";
+import { deepClone, formatAddr, setIcon } from "@/utils";
 import type { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
 
@@ -31,19 +33,19 @@ export const useAppStore = defineStore("app", {
       display: false,
     } as SnackBar,
     refresh: 0,
+    theme: "dark",
     networkName: networks[0]!.name,
     hotWallet: true,
     keys: [] as string[],
     seeds: [] as SeedData[],
-    falcon25Seeds: [] as {
-      key: string | number;
-      value: any;
-    }[],
+    falcon25Seeds: [] as FalconSeedData[],
     drawer: false,
     debug: false,
     snoop: false,
     ledgerSelect: false,
     experimental: false,
+    autoLockMinutes: 0,
+    unlocked: false,
     tinyman: undefined as TinyAsset[] | undefined,
     sandboxRouter: undefined as number | undefined,
     isWeb: document.location.protocol.startsWith("http"),
@@ -71,9 +73,9 @@ export const useAppStore = defineStore("app", {
         .forEach((a) => {
           function getCanSign(acct: LuteAccount) {
             const isHot = state.keys.includes(acct.addr);
-            const isFalcon25 = state.falcon25Seeds
-              .map((kv) => kv.key)
-              .includes(acct.addr);
+            const isFalcon25 = state.falcon25Seeds.some(
+              (s) => s.id === acct.addr
+            );
             const canSign = isHot || isFalcon25 || acct.slot != null;
             return { info, isHot, isFalcon25, canSign };
           }
@@ -190,6 +192,9 @@ export const useAppStore = defineStore("app", {
   },
   actions: {
     async getCache() {
+      this.theme = (await get("app", "theme")) || "dark";
+      vuetify.theme.change(this.theme);
+      await setIcon(this.theme);
       try {
         await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign"]);
       } catch {
@@ -207,9 +212,15 @@ export const useAppStore = defineStore("app", {
         (await get("app", "ledgerSelect")) ?? this.ledgerSelect;
       this.experimental =
         (await get("app", "experimental")) ?? this.experimental;
+      this.autoLockMinutes =
+        (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
-      this.falcon25Seeds = await getAllEntries("falcon25-seeds");
+      this.falcon25Seeds = await getFalconSeeds();
+    },
+    async setTheme(name: string | null) {
+      await set("app", "theme", name || "dark");
+      await this.getCache();
     },
     async setSnackbar(text: string, color = "info", timeout = 4000) {
       if (color === "error") timeout = 15000;

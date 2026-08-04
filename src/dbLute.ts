@@ -1,4 +1,5 @@
-import type { SeedData } from "@/types";
+import Sync from "@/services/Sync";
+import type { FalconSeedData, PasswordVerifier, SeedData } from "@/types";
 import { modelsv2 } from "algosdk";
 import { type DBSchema, type StoreKey, type StoreNames, openDB } from "idb";
 
@@ -37,7 +38,7 @@ interface LuteDB extends DBSchema {
   };
   "falcon25-seeds": {
     key: string;
-    value: SeedData;
+    value: FalconSeedData;
   };
 }
 
@@ -75,35 +76,103 @@ export async function getAll(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAll(storeName);
 }
 
+/**
+ * Whether a write to this store invalidates what other contexts hold in their
+ * Pinia cache. The assets-* stores are deliberately excluded: assetInfo writes
+ * them continuously while a refresh runs, and nothing reads them through the
+ * cache, so bumping for those would be a getCache storm.
+ */
+function cached(storeName: StoreNames<LuteDB>) {
+  return (
+    storeName === "app" ||
+    storeName === "seeds" ||
+    storeName === "falcon25-seeds" ||
+    storeName === "keys"
+  );
+}
+
 export async function set(
   storeName: StoreNames<LuteDB>,
   key: StoreKey<LuteDB, StoreNames<LuteDB>> | undefined,
   val: any
 ) {
-  return (await dbLute).put(storeName, val, key);
+  const res = await (await dbLute).put(storeName, val, key);
+  if (cached(storeName)) await Sync.bump();
+  return res;
 }
 
 export async function del(
   storeName: StoreNames<LuteDB>,
   key: StoreKey<LuteDB, StoreNames<LuteDB>>
 ) {
-  return (await dbLute).delete(storeName, key);
+  await (await dbLute).delete(storeName, key);
+  if (cached(storeName)) await Sync.bump();
 }
 
 export async function keys(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAllKeys(storeName);
 }
 
-export async function getAllEntries(storeName: StoreNames<LuteDB>) {
-  const tx = (await dbLute).transaction(storeName, "readonly");
-  const store = tx.objectStore(storeName);
-
-  const results = [];
-  for await (const cursor of store) {
-    results.push({ key: cursor.key, value: cursor.value });
+/**
+ * Every Falcon-1024 seed, with the store key folded in as `id`. That store is
+ * keyed by address rather than by a keyPath, and records written before the id
+ * field exists carry the address only as their key — decryptSeed needs it back
+ * on the record to reproduce the GCM additional data.
+ */
+export async function getFalconSeeds() {
+  const tx = (await dbLute).transaction("falcon25-seeds", "readonly");
+  const seeds: FalconSeedData[] = [];
+  for await (const cursor of tx.store) {
+    seeds.push({ ...cursor.value, id: cursor.key });
   }
+  return seeds;
+}
 
-  return results;
+/** Whether two key sets match, order-independent. */
+function sameKeys<T>(current: T[], expected: T[]) {
+  const a = [...current].sort();
+  const b = [...expected].sort();
+  return a.length === b.length && a.every((k, ix) => k === b[ix]);
+}
+
+/**
+ * Write every re-encrypted seed and the new password verifier in one
+ * transaction, for password rotation. Both seed stores are included: a
+ * Falcon-1024 seed left behind would stay encrypted under the old password
+ * with no verifier left to prove it, which is unrecoverable.
+ *
+ * Callers must finish all encryption BEFORE calling this. An IndexedDB
+ * transaction auto-commits as soon as the event loop yields with no pending
+ * request, so awaiting crypto.subtle between these puts would abort it.
+ */
+export async function rotateAtomic(
+  rewritten: { seeds: SeedData[]; falcon25: FalconSeedData[] },
+  verifier: PasswordVerifier,
+  expected: { ids: number[]; addresses: string[] }
+) {
+  const tx = (await dbLute).transaction(
+    ["seeds", "falcon25-seeds", "app"],
+    "readwrite"
+  );
+  const seedStore = tx.objectStore("seeds");
+  const falconStore = tx.objectStore("falcon25-seeds");
+  const currentIds = (await seedStore.getAll())
+    .filter((s) => s.data)
+    .map((s) => s.id);
+  const currentAddrs = await falconStore.getAllKeys();
+  if (
+    !sameKeys(currentIds, expected.ids) ||
+    !sameKeys(currentAddrs, expected.addresses)
+  ) {
+    tx.abort();
+    throw Error("Seeds changed during rotation. Try again.");
+  }
+  for (const sd of rewritten.seeds) seedStore.put(sd);
+  // The falcon store has no keyPath, so the address goes in as an explicit key.
+  for (const sd of rewritten.falcon25) falconStore.put(sd, sd.id);
+  tx.objectStore("app").put(verifier, "password");
+  await tx.done;
+  await Sync.bump();
 }
 
 export default dbLute;

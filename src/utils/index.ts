@@ -127,6 +127,14 @@ export async function selectDevice() {
   });
 }
 
+export function isBadPassword(err: any) {
+  return err?.name === "OperationError";
+}
+
+export function needsPassword(err: any) {
+  return err?.message === "Password Required";
+}
+
 export function deepClone(value: any): any {
   if (!value || typeof value !== "object") {
     return value;

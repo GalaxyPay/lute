@@ -33,7 +33,7 @@
     <v-container>
       <v-card variant="outlined" color="primary" class="pointer">
         <v-container
-          :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+          :class="store.theme == 'light' ? 'text-black' : 'text-white'"
           @click="type = 'local'"
         >
           <v-row>
@@ -53,7 +53,7 @@
     <v-container>
       <v-card variant="outlined" color="primary" class="pointer">
         <v-container
-          :class="theme.name.value == 'light' ? 'text-black' : 'text-white'"
+          :class="store.theme == 'light' ? 'text-black' : 'text-white'"
           @click="type = 'passkey'"
         >
           <v-row>
@@ -87,12 +87,10 @@ import { getAll } from "@/dbLute";
 import Seed from "@/services/Seed";
 import type { SeedData } from "@/types";
 import { mdiDevices, mdiOpenInApp, mdiPlusCircle } from "@mdi/js";
-import { useTheme } from "vuetify";
 
 const emit = defineEmits(["close", "seed"]);
 
 const store = useAppStore();
-const theme = useTheme();
 const showPass = ref(false);
 let seedId: number;
 const newSeed = ref(false);

@@ -2,7 +2,7 @@ import { msigAbiContract } from "@/data";
 import Algo from "@/services/Algo";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
-import { sendOrPostMessage } from "@/utils";
+import { isBadPassword, needsPassword, send, sendOrPostMessage } from "@/utils";
 import { signer } from "@/utils/signers";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
 
@@ -349,6 +349,7 @@ export default class LuteTxns {
         };
         this.sendAndClose(message);
       }
+      return true;
     } catch (err: any) {
       const t = this.store.device.transport;
       if (t) {
@@ -356,11 +357,19 @@ export default class LuteTxns {
         const openDevices = devices.filter((d: any) => d.opened);
         if (openDevices.length) await openDevices[0]?.close();
       }
+      if (isBadPassword(err)) {
+        // Let the caller re-prompt rather than failing the whole request.
+        this.store.setSnackbar("Incorrect Password", "error");
+        return false;
+      }
+      // Unlocked, but this seed missed the cache: prompt, nothing is wrong.
+      if (needsPassword(err)) return false;
       if (["Locked", "open"].some((x) => err.message.includes(x))) {
         this.store.setSnackbar(err.message, "error");
       } else {
         this.handleError(err);
       }
+      return true;
     }
   }
 }

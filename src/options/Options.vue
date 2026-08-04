@@ -2,7 +2,7 @@
   <v-app>
     <AppBar />
     <v-main>
-      <SettingsView @get-cache="getCache()" @get-theme="getTheme()" />
+      <SettingsView />
       <AddAccountDialog :visible="showAdd" @close="showAdd = false" />
       <SignDialog is-options />
     </v-main>
@@ -12,14 +12,13 @@
 </template>
 
 <script lang="ts" setup>
-import { get } from "@/dbLute";
+import Sync from "@/services/Sync";
+import Unlock from "@/services/Unlock";
 import type { MsgpackHD } from "@/types";
-import { refresh, setIcon } from "@/utils";
+import { refresh } from "@/utils";
 import { encodeMsgpack } from "algosdk";
-import { useTheme } from "vuetify";
 
 const store = useAppStore();
-const theme = useTheme();
 const showAdd = ref(false);
 
 onBeforeMount(async () => {
@@ -29,21 +28,13 @@ onBeforeMount(async () => {
     }
   });
   browser.runtime.sendMessage("optionsReady");
+  Sync.watch(store.getCache);
+  Unlock.watch();
   store.loading++;
-  theme.change((await get("app", "theme")) || "dark");
-  await setIcon(theme.name.value);
   await store.getCache();
   await refresh();
   store.loading--;
 });
-
-function getCache() {
-  browser.runtime.sendMessage({ action: "getCache" });
-}
-
-function getTheme() {
-  browser.runtime.sendMessage({ action: "getTheme" });
-}
 
 watch(
   () => store.refresh,

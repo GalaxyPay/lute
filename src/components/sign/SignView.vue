@@ -67,12 +67,13 @@
       </template>
     </v-card>
   </v-container>
-  <password-confirm :visible="showPass" @close="handlePass" />
+  <password-confirm :visible="showPass" :verify="false" @close="handlePass" />
 </template>
 
 <script lang="ts" setup>
 import LuteTxns from "@/classes/LuteTxns";
 import Algo from "@/services/Algo";
+import Unlock from "@/services/Unlock";
 import { resetSidePanel, sendOrPostMessage, whenLoaded } from "@/utils";
 import { modelsv2, Transaction, type TransactionWithSigner } from "algosdk";
 
@@ -192,6 +193,13 @@ async function finishHandler() {
   loading.value = false;
 }
 
+async function trySign(pass?: string) {
+  // sign() returns false when the password failed to decrypt or
+  // the unlock cache could not cover the seed;
+  // fall back to the password prompt instead of failing the request.
+  if ((await luteTxns.value.sign(pass)) === false) showPass.value = true;
+}
+
 async function passwordCheck() {
   try {
     signing.value = true;
@@ -206,12 +214,15 @@ async function passwordCheck() {
         from;
       const acct = store.acctInfo.find((a) => a.addr === addr);
       if (acct?.seedId || acct?.isFalcon25) {
-        showPass.value = true;
+        const seedData = store.seeds.find((s) => s.id === acct.seedId);
+        if (!seedData) throw Error("Invalid Seed");
+        if (seedData.data && !(await Unlock.isUnlocked()))
+          showPass.value = true;
         break;
       }
     }
     if (!showPass.value) {
-      await luteTxns.value.sign();
+      await trySign();
     }
   } catch (err: any) {
     luteTxns.value.handleError(err);
@@ -219,13 +230,13 @@ async function passwordCheck() {
   signing.value = false;
 }
 
-function handlePass(success: boolean, pass: string) {
+async function handlePass(success: boolean, pass: string) {
   showPass.value = false;
   if (!success) {
     store.setSnackbar("Incorrect Password", "error");
-  } else {
-    luteTxns.value.sign(pass);
+    return;
   }
+  await trySign(pass);
 }
 
 window.onbeforeunload = () => {

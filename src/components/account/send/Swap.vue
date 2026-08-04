@@ -85,12 +85,10 @@ import type { AccountInfo, NsLookup } from "@/types";
 import { b64url, getAssetInfo, stringToBigint } from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import algosdk, { modelsv2, Transaction } from "algosdk";
-import { useTheme } from "vuetify";
 
 const props = defineProps<{ sender: AccountInfo }>();
 
 const store = useAppStore();
-const theme = useTheme();
 const ns = store.network.nfdUrl
   ? " or NFD"
   : store.network.envoiUrl
@@ -98,7 +96,7 @@ const ns = store.network.nfdUrl
     : "";
 
 const theirClass = computed(
-  () => `text-blue-${theme.name.value == "light" ? "darken-2" : "lighten-2"}`
+  () => `text-blue-${store.theme == "light" ? "darken-2" : "lighten-2"}`
 );
 
 const form = ref();
