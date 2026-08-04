@@ -79,10 +79,7 @@ export async function signer(
               (s) => s.id === acct.addr
             );
             if (!seedData) throw Error("Invalid Seed");
-            if (!password) throw Error("Password Required");
-            // decryptSeed, not unlockSeed: the session cache is keyed by
-            // numeric seed id and holds no Falcon keys, so these always prompt.
-            const seed = await Seed.decryptSeed(password, seedData);
+            const seed = await Seed.unlockSeed(seedData, password);
             falcon25Seeds.push(seed);
             const { publicKey, privateKey } = generateKey(seed);
             const falconSigningKey: Falcon1024SigningKey = {

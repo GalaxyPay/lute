@@ -3,7 +3,7 @@ import {
   deriveKeyFromPassSalt,
   seedGcmParams,
 } from "@/services/kdf";
-import type { SeedData } from "@/types";
+import type { AnySeedData } from "@/types";
 
 /**
  * Session unlock, extension only.
@@ -30,11 +30,15 @@ const ALARM = "lute-lock";
 const HARD_CAP_MS = 8 * 60 * 60 * 1000;
 
 interface UnlockState {
-  // seedId -> base64 raw AES-256 key. Raw bytes rather than a structured-cloned
+  // Seed id -> base64 raw AES-256 key. Raw bytes rather than a structured-cloned
   // CryptoKey because storage.session does not reliably round-trip CryptoKey,
   // and in a memory-only area readable solely by trusted extension contexts the
   // distinction buys nothing: either form decrypts the seed.
-  keys: Record<number, string>;
+  //
+  // The id is the autoincrement id for a bip39 seed and the address for a
+  // Falcon-1024 one. Object keys are strings either way, so state written by a
+  // build that only cached bip39 seeds still reads back unchanged.
+  keys: Record<string, string>;
   expiresAt: number;
   hardExpiresAt: number;
 }
@@ -95,10 +99,10 @@ const Unlock = {
     return true;
   },
 
-  async get(seedId: number) {
+  async get(seedId: number | string) {
     if (!(await this.isUnlocked())) return undefined;
     const state = await read();
-    const raw = state?.keys[seedId];
+    const raw = state?.keys[String(seedId)];
     if (!raw) return undefined;
     return await crypto.subtle.importKey(
       "raw",
@@ -112,13 +116,16 @@ const Unlock = {
   /**
    * Unlock the wallet. Derives a key for every local seed, not just the one
    * being signed with: a lazily filled map would leave a seed you have not
-   * signed with yet prompting while the wallet reads as unlocked. Passkey seeds
-   * have no password and are skipped.
+   * signed with yet prompting while the wallet reads as unlocked. Both seed
+   * flavors are covered — a Falcon account is no less unlocked than a bip39
+   * one. Passkey seeds have no password and are skipped.
    */
   async unlock(pass: string) {
     const store = useAppStore();
     if (!this.enabled()) return;
-    const locals = store.seeds.filter((s) => s.data && s.salt && s.iv);
+    const locals = [...store.seeds, ...store.falcon25Seeds].filter(
+      (s) => s.data && s.salt && s.iv
+    );
     const derived = await Promise.all(
       locals.map(async (sd) => {
         const key = await deriveKeyFromPassSalt(
@@ -144,7 +151,7 @@ const Unlock = {
         return [sd.id, new Uint8Array(raw).toBase64()] as const;
       })
     );
-    const proven = derived.filter((d) => !!d) as [number, string][];
+    const proven = derived.filter((d) => !!d) as [number | string, string][];
     const now = Date.now();
     const state = await read();
     await write({
@@ -184,10 +191,10 @@ const Unlock = {
    * Cache one seed's key under the existing window without extending it, for a
    * seed created while already unlocked.
    */
-  async add(sd: SeedData, pass: string) {
+  async add(sd: AnySeedData, pass: string) {
     const store = useAppStore();
-    // Takes the record directly: a seed written moments ago is not in
-    // store.seeds until the next getCache().
+    // Takes the record directly: a seed written moments ago is not in the
+    // store caches until the next getCache().
     if (store.isWeb || !sd.salt || !(await this.isUnlocked())) return;
     const state = await read();
     if (!state) return;
@@ -198,7 +205,7 @@ const Unlock = {
       true
     );
     const raw = await crypto.subtle.exportKey("raw", key);
-    state.keys[sd.id] = new Uint8Array(raw).toBase64();
+    state.keys[String(sd.id)] = new Uint8Array(raw).toBase64();
     await write(state);
   },
 

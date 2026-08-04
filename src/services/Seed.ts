@@ -118,7 +118,11 @@ const Seed = {
       algosdk.pq25WordMnemonicToSeed(mn, FALCON_1024_SCHEME)
     );
     try {
-      await set("falcon25-seeds", id, await this.encryptSeed(seed, pass, id));
+      const rec = await this.encryptSeed(seed, pass, id);
+      await set("falcon25-seeds", id, rec);
+      // The wallet may already be unlocked; cache this seed under the existing
+      // window so the next signature does not re-prompt.
+      await Unlock.add(rec, pass);
     } finally {
       seed.fill(0);
     }
@@ -283,8 +287,9 @@ const Seed = {
    * key export) must keep using decryptSeed so the cache cannot stand in for
    * the password on an export.
    */
-  async unlockSeed(sd: SeedData, pass?: string) {
-    if (sd.credentialId)
+  async unlockSeed(sd: AnySeedData, pass?: string) {
+    // Only bip39 records can be passkey-backed; Falcon ones have no such field.
+    if ("credentialId" in sd && sd.credentialId)
       return (await this.getPasskeySeed(sd.credentialId)).seed;
     if (!sd.iv || !sd.data) throw Error("Bad Seed Data");
     const cached = await Unlock.get(sd.id);
