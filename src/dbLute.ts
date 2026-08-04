@@ -118,6 +118,8 @@ export async function keys(storeName: StoreNames<LuteDB>) {
  * keyed by address rather than by a keyPath, and records written before the id
  * field exists carry the address only as their key — decryptSeed needs it back
  * on the record to reproduce the GCM additional data.
+ *
+ * TODO: simplify when going to production as there will be no "old" seeds
  */
 export async function getFalconSeeds() {
   const tx = (await dbLute).transaction("falcon25-seeds", "readonly");
@@ -137,9 +139,7 @@ function sameKeys<T>(current: T[], expected: T[]) {
 
 /**
  * Write every re-encrypted seed and the new password verifier in one
- * transaction, for password rotation. Both seed stores are included: a
- * Falcon-1024 seed left behind would stay encrypted under the old password
- * with no verifier left to prove it, which is unrecoverable.
+ * transaction, for password rotation.
  *
  * Callers must finish all encryption BEFORE calling this. An IndexedDB
  * transaction auto-commits as soon as the event loop yields with no pending
@@ -168,7 +168,6 @@ export async function rotateAtomic(
     throw Error("Seeds changed during rotation. Try again.");
   }
   for (const sd of rewritten.seeds) seedStore.put(sd);
-  // The falcon store has no keyPath, so the address goes in as an explicit key.
   for (const sd of rewritten.falcon25) falconStore.put(sd, sd.id);
   tx.objectStore("app").put(verifier, "password");
   await tx.done;

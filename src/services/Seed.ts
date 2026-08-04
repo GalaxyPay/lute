@@ -224,8 +224,6 @@ const Seed = {
 
   /**
    * Re-encrypt every local seed under a new password and replace the verifier.
-   * Falcon seeds are included: they are protected by the same password, and one
-   * left behind would outlive the verifier that proves its password.
    *
    * Partial application is unrecoverable, so this pre-flights every decrypt and
    * commits in a single IndexedDB transaction. All crypto happens before the
@@ -288,7 +286,6 @@ const Seed = {
    * the password on an export.
    */
   async unlockSeed(sd: AnySeedData, pass?: string) {
-    // Only bip39 records can be passkey-backed; Falcon ones have no such field.
     if ("credentialId" in sd && sd.credentialId)
       return (await this.getPasskeySeed(sd.credentialId)).seed;
     if (!sd.iv || !sd.data) throw Error("Bad Seed Data");

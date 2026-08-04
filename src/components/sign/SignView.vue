@@ -214,7 +214,6 @@ async function passwordCheck() {
         from;
       const acct = store.acctInfo.find((a) => a.addr === addr);
       if (acct?.seedId || acct?.isFalcon25) {
-        // Falcon seeds are keyed by address in their own store.
         const seedData = acct.isFalcon25
           ? store.falcon25Seeds.find((s) => s.id === acct.addr)
           : store.seeds.find((s) => s.id === acct.seedId);

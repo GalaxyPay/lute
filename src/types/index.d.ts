@@ -347,17 +347,10 @@ export interface SeedData {
   credentialId?: string;
 }
 
-/**
- * A Falcon-1024 seed. These live in their own store keyed by address rather
- * than by an autoincrement id, so `id` — the value GCM binds as additional
- * data — is that address. Everything else matches SeedData; there is no
- * passkey variant.
- */
 export interface FalconSeedData extends Omit<SeedData, "id" | "credentialId"> {
   id: string;
 }
 
-/** Either seed flavor, for the crypto helpers that handle both. */
 export type AnySeedData = SeedData | FalconSeedData;
 
 export interface MsgpackHD {
