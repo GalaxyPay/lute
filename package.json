@@ -33,7 +33,7 @@
     "@noble/hashes": "^2.2.0",
     "@scure/bip32": "^2.2.0",
     "@scure/bip39": "^2.2.0",
-    "algosdk": "github:algorand/js-algorand-sdk#feat/pq",
+    "algosdk": "3.7.0-beta.1",
     "canonify": "^2.1.1",
     "falcon-1024": "^0.2.0",
     "idb": "^8.0.3",

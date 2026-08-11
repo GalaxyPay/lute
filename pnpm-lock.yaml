@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@algorandfoundation/algokit-utils':
         specifier: ^9.2.0
-        version: 9.2.0(algosdk@https://codeload.github.com/algorand/js-algorand-sdk/tar.gz/b499e1e2c9b7b2fb0efae4e76c450d9aaf4da352)
+        version: 9.2.0(algosdk@3.7.0-beta.1)
       '@algorandfoundation/xhd-wallet-api':
         specifier: 2.0.0-canary.1
         version: 2.0.0-canary.1
@@ -36,8 +36,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0
       algosdk:
-        specifier: github:algorand/js-algorand-sdk#feat/pq
-        version: https://codeload.github.com/algorand/js-algorand-sdk/tar.gz/b499e1e2c9b7b2fb0efae4e76c450d9aaf4da352
+        specifier: 3.7.0-beta.1
+        version: 3.7.0-beta.1
       canonify:
         specifier: ^2.1.1
         version: 2.1.1
@@ -167,7 +167,6 @@ packages:
 
   '@algorandfoundation/algokit-utils@9.2.0':
     resolution: {integrity: sha512-jILpK3PlSJ55crS8+Dl7iIiADEj/VowokTGSVEEneDG41XM3jMmogGVpCNipBil/YAGC2eh2yc4l9iHnfQdT/g==}
-    version: 9.2.0
     engines: {node: '>=20.0'}
     peerDependencies:
       algosdk: ^3.5.2
@@ -1557,9 +1556,8 @@ packages:
     resolution: {integrity: sha512-08k7pBQnkaUB5p+jL7f1TRaUIlTSDE0cesFu1mD7llLao+1cAhtvvZmGE3OnisTd0xOn118QMw74SRqddqaYvw==}
     engines: {node: '>= 14'}
 
-  algosdk@https://codeload.github.com/algorand/js-algorand-sdk/tar.gz/b499e1e2c9b7b2fb0efae4e76c450d9aaf4da352:
-    resolution: {gitHosted: true, integrity: sha512-dKsBKEL/GCEIWIZJ595F+x9aXdphucbQm7IGiuBUJ0eBPPKEcqoK6ujFoFS7uLxJw22d2pPnO2rdlitKrhMrhA==, tarball: https://codeload.github.com/algorand/js-algorand-sdk/tar.gz/b499e1e2c9b7b2fb0efae4e76c450d9aaf4da352}
-    version: 3.6.0
+  algosdk@3.7.0-beta.1:
+    resolution: {integrity: sha512-WKkfdzZJGGyCa9dylyFDCLzxg2e1SdDYDmS/vjEaPvNd8k6fJDkhvmOYlPiEd6q8HYp4vceu5XZuEMIstCGHhA==}
     engines: {node: '>=18.0.0'}
 
   alien-signals@3.2.1:
@@ -3693,9 +3691,9 @@ packages:
 
 snapshots:
 
-  '@algorandfoundation/algokit-utils@9.2.0(algosdk@https://codeload.github.com/algorand/js-algorand-sdk/tar.gz/b499e1e2c9b7b2fb0efae4e76c450d9aaf4da352)':
+  '@algorandfoundation/algokit-utils@9.2.0(algosdk@3.7.0-beta.1)':
     dependencies:
-      algosdk: https://codeload.github.com/algorand/js-algorand-sdk/tar.gz/b499e1e2c9b7b2fb0efae4e76c450d9aaf4da352
+      algosdk: 3.7.0-beta.1
       buffer: 6.0.3
 
   '@algorandfoundation/xhd-wallet-api@2.0.0-canary.1':
@@ -5166,7 +5164,7 @@ snapshots:
 
   algorand-msgpack@1.1.0: {}
 
-  algosdk@https://codeload.github.com/algorand/js-algorand-sdk/tar.gz/b499e1e2c9b7b2fb0efae4e76c450d9aaf4da352:
+  algosdk@3.7.0-beta.1:
     dependencies:
       algorand-msgpack: 1.1.0
       hi-base32: 0.5.1

@@ -1,6 +1,6 @@
 allowBuilds:
   esbuild: true
-  algosdk@https://codeload.github.com/algorand/js-algorand-sdk/tar.gz/b499e1e2c9b7b2fb0efae4e76c450d9aaf4da352: true
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
+  - algosdk@3.7.0-beta.1
   - ledger-algorand-js

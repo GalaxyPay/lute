@@ -2,7 +2,7 @@ import { msigAbiContract } from "@/data";
 import Algo from "@/services/Algo";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
-import { isBadPassword, needsPassword, send, sendOrPostMessage } from "@/utils";
+import { isBadPassword, needsPassword, sendOrPostMessage } from "@/utils";
 import { signer } from "@/utils/signers";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
 
