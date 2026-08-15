@@ -8,8 +8,12 @@
     "not_found_handling": "single-page-application"
   },
   "env": {
-    "staging": {
-      "name": "lute-staging",
+    "prod": {
+      "routes": [
+        { "pattern": "prod.lute.app", "custom_domain": true }
+      ]
+    },
+    "test": {
       "routes": [
         { "pattern": "test.lute.app", "custom_domain": true }
       ]
