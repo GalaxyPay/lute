@@ -103,7 +103,10 @@ export default defineConfig({
         ],
       },
     }),
-    sri({ skipResources: ["https://www.googletagmanager.com/*"] }),
+    sri({
+      skipResources: ["https://www.googletagmanager.com/*"],
+      importMapIntegrity: false,
+    }),
   ],
   define: {
     "process.env": {},
