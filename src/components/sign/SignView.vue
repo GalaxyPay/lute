@@ -33,30 +33,6 @@
             <v-btn text="Proceed" @click="luteTxns.addToMsig()" />
           </v-container>
         </template>
-        <template v-else-if="showFalcon">
-          <div class="text-warning text-h5 pa-4">Warning</div>
-          <v-card-text>
-            Because you are connected to Lute with a
-            <span class="text-warning">Falcon account</span>, the requested
-            transactions will be altered! Fees will be increased, and dummy
-            transactions will be added.
-          </v-card-text>
-          <v-card-text>
-            Also, the transactions will be submitted to the chain by the wallet
-            and an error will be returned to the app.
-          </v-card-text>
-          <v-card-text v-if="falconRestrict" class="text-error">
-            ERROR: Falcon accounts do not curretly support signing groups larger
-            than 5 transactions.
-          </v-card-text>
-          <v-container class="text-center">
-            <v-btn
-              text="Proceed"
-              @click="luteTxns.addDummyTxns()"
-              :disabled="falconRestrict"
-            />
-          </v-container>
-        </template>
         <template v-else>
           <div class="text-h5 pa-4">
             {{
@@ -80,7 +56,7 @@
             <v-row class="text-center">
               <v-col>
                 <v-btn
-                  :text="luteTxns.falcon?.adjusted ? 'Sign and Send' : 'Sign'"
+                  text="Sign"
                   @click="passwordCheck()"
                   :disabled="signing"
                 />
@@ -99,7 +75,7 @@ import LuteTxns from "@/classes/LuteTxns";
 import Algo from "@/services/Algo";
 import Unlock from "@/services/Unlock";
 import { resetSidePanel, sendOrPostMessage, whenLoaded } from "@/utils";
-import algosdk, { modelsv2 } from "algosdk";
+import { modelsv2, Transaction, type TransactionWithSigner } from "algosdk";
 
 const store = useAppStore();
 const loading = ref(true);
@@ -110,10 +86,10 @@ const luteTxns = ref<LuteTxns>(new LuteTxns([]));
 let who: string | null;
 let tabId: number | undefined;
 
-const reviewTxns = computed<algosdk.Transaction[]>(() =>
+const reviewTxns = computed<Transaction[]>(() =>
   luteTxns.value.atc.getStatus() // @ts-ignore
     ? luteTxns.value.atc?.transactions.map(
-        (tws: algosdk.TransactionWithSigner) => tws.txn
+        (tws: TransactionWithSigner) => tws.txn
       )
     : luteTxns.value.dtxns
 );
@@ -132,10 +108,6 @@ const showMsig = computed(
     !luteTxns.value.msig.bypass &&
     !luteTxns.value.atc.getStatus()
 );
-const showFalcon = computed(
-  () => !!luteTxns.value.falcon && !luteTxns.value.falcon.adjusted
-);
-const falconRestrict = computed(() => (luteTxns.value.falcon?.count || 0) > 5);
 
 const signCount = computed(() =>
   luteTxns.value.atc.getStatus()
@@ -241,8 +213,10 @@ async function passwordCheck() {
         store.info.find((i) => i.address === from)?.authAddr ||
         from;
       const acct = store.acctInfo.find((a) => a.addr === addr);
-      if (acct?.seedId) {
-        const seedData = store.seeds.find((s) => s.id === acct.seedId);
+      if (acct?.seedId || acct?.isFalcon25) {
+        const seedData = acct.isFalcon25
+          ? store.falcon25Seeds.find((s) => s.id === acct.addr)
+          : store.seeds.find((s) => s.id === acct.seedId);
         if (!seedData) throw Error("Invalid Seed");
         if (seedData.data && !(await Unlock.isUnlocked()))
           showPass.value = true;

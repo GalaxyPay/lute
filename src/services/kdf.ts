@@ -23,9 +23,12 @@ export function atCurrentKdf(rec: { iterations?: number; kdf?: string }) {
  * bind the record id as additional data, so a ciphertext copied onto another
  * record fails its tag check instead of decrypting in the wrong slot. Records
  * written before the marker carry no additional data.
+ *
+ * The id is a number for bip39 seeds and the address for Falcon-1024 ones,
+ * which are keyed by address in their own store.
  */
 export function seedGcmParams(sd: {
-  id: number;
+  id: number | string;
   iv?: Uint8Array;
   kdf?: string;
 }): AesGcmParams {

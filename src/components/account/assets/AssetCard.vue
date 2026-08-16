@@ -149,6 +149,9 @@ async function closeOut() {
       assetIndex: props.asset.assetId,
       suggestedParams,
     });
+    if (props.acct.isFalcon25) {
+      txn.fee = suggestedParams.minFee * 3n;
+    }
     const stxn = await luteSigner([txn]);
     await send(stxn, "Closed Out of Asset");
   } catch (err: any) {

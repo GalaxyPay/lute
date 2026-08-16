@@ -1,6 +1,6 @@
 import { sendMessage } from "webext-bridge/content-script";
 import getAppName from "@/utils/getAppName";
-import { signDataResponseUnsafe, signDataSafe } from "@/utils";
+import { signDataResponseUnsafe, signDataSafe } from "@/utils/signData";
 
 (() => {
   // inject the script to access the full dom

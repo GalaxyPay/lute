@@ -36,9 +36,9 @@
     <v-card-text v-if="!isBip39">
       <div class="text-h6 pb-2 d-flex">
         Address: <v-spacer />
-        <v-btn text="Copy" @click="copyToClipboard(acct.addr.toString())" />
+        <v-btn text="Copy" @click="copyToClipboard(addr.toString())" />
       </div>
-      <div style="font-family: monospace">{{ acct.addr }}</div>
+      <div style="font-family: monospace">{{ addr }}</div>
     </v-card-text>
     <v-card-text>
       <div class="text-h6 pb-2 d-flex">
@@ -97,13 +97,19 @@
 import { set } from "@/dbLute";
 import Seed from "@/services/Seed";
 import type { LuteAccount } from "@/types";
-import { copyToClipboard, deepClone, storeKey } from "@/utils";
+import {
+  copyToClipboard,
+  deepClone,
+  getFalconAddress,
+  storeKey,
+} from "@/utils";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import algosdk from "algosdk";
 
 const props = defineProps({
   numberOfWords: { type: Number, required: true },
+  isFalcon: { type: Boolean, default: false },
   convertion: { type: String },
 });
 
@@ -117,6 +123,8 @@ const acct = props.convertion
 const mn = isBip39.value
   ? bip39.generateMnemonic(wordlist, 256)
   : algosdk.secretKeyToMnemonic(acct.sk);
+const falconAddr = props.isFalcon ? getFalconAddress(mn) : undefined;
+const addr = falconAddr || acct.addr;
 const mnemonicArray = mn.split(" ");
 const page = ref(0);
 const challenge = Math.floor(Math.random() * props.numberOfWords) + 1;
@@ -127,7 +135,7 @@ async function submit() {
   try {
     const { valid } = await form.value.validate();
     if (!valid) return;
-    if (isBip39.value) {
+    if (isBip39.value || props.isFalcon) {
       show.value = true;
     } else {
       await storeKey(acct);
@@ -153,6 +161,15 @@ async function handlePass(success: boolean, pass: string) {
     if (isBip39.value) {
       const { id, seed } = await Seed.storeBip39Seed(mn, pass);
       emit("seed", id, seed);
+    } else if (props.isFalcon) {
+      const address = await Seed.storeFalconSeed(mn, pass);
+      const accts: LuteAccount[] = deepClone(store.accounts);
+      accts.push({ addr: address.toString() });
+      await set("app", "accounts", accts);
+      await store.getCache();
+      store.refresh++;
+      store.setSnackbar("Account Created", "success");
+      emit("close");
     }
   }
 }

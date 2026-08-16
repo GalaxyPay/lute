@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@algorandfoundation/algokit-utils':
         specifier: ^9.2.0
-        version: 9.2.0(algosdk@3.6.0)
+        version: 9.2.0(algosdk@3.7.0-beta.1)
       '@algorandfoundation/xhd-wallet-api':
         specifier: 2.0.0-canary.1
         version: 2.0.0-canary.1
@@ -36,14 +36,14 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0
       algosdk:
-        specifier: ^3.6.0
-        version: 3.6.0
+        specifier: 3.7.0-beta.1
+        version: 3.7.0-beta.1
       canonify:
         specifier: ^2.1.1
         version: 2.1.1
       falcon-1024:
-        specifier: ^0.1.3
-        version: 0.1.3(typescript@6.0.3)
+        specifier: ^0.2.0
+        version: 0.2.0
       idb:
         specifier: ^8.0.3
         version: 8.0.3
@@ -1787,8 +1787,8 @@ packages:
     resolution: {integrity: sha512-08k7pBQnkaUB5p+jL7f1TRaUIlTSDE0cesFu1mD7llLao+1cAhtvvZmGE3OnisTd0xOn118QMw74SRqddqaYvw==}
     engines: {node: '>= 14'}
 
-  algosdk@3.6.0:
-    resolution: {integrity: sha512-pdM0neCgR3DasvpSPfgQKc5/hlhkSYmXjcUChePLGegA0kqA0AoLmcfMDyeREcsvHcu7rrv3Wa+RZnGa5kINwQ==}
+  algosdk@3.7.0-beta.1:
+    resolution: {integrity: sha512-WKkfdzZJGGyCa9dylyFDCLzxg2e1SdDYDmS/vjEaPvNd8k6fJDkhvmOYlPiEd6q8HYp4vceu5XZuEMIstCGHhA==}
     engines: {node: '>=18.0.0'}
 
   alien-signals@3.2.1:
@@ -2305,10 +2305,9 @@ packages:
   exsolve@1.1.0:
     resolution: {integrity: sha512-D+42+T12DdIlJM3uepa55qGiL3sYdLBOxIl2ifQCzCHz4c7eiolaHsi3BIqEr7JxBzxv2pYZQX9kw16ziMcEmw==}
 
-  falcon-1024@0.1.3:
-    resolution: {integrity: sha512-s6bKWiyH9eZoMCH66vo5o7z8CqKcwzFyERTgD2PbGY2HT7I2iZ7xWIWNBnYxb4eLHDdiCJal5T0ELXS4PHsa+w==}
-    peerDependencies:
-      typescript: ^5
+  falcon-1024@0.2.0:
+    resolution: {integrity: sha512-zKBiKGbAVmROFJNjy1iZ009V9wclL9lZkRAP7l7cfsHkZg14jyWgJk1XtAnmn2sxaKv2hsRTEVuTot/CSoQnSw==}
+    engines: {node: '>=18'}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -3992,9 +3991,9 @@ packages:
 
 snapshots:
 
-  '@algorandfoundation/algokit-utils@9.2.0(algosdk@3.6.0)':
+  '@algorandfoundation/algokit-utils@9.2.0(algosdk@3.7.0-beta.1)':
     dependencies:
-      algosdk: 3.6.0
+      algosdk: 3.7.0-beta.1
       buffer: 6.0.3
 
   '@algorandfoundation/xhd-wallet-api@2.0.0-canary.1':
@@ -5619,7 +5618,7 @@ snapshots:
 
   algorand-msgpack@1.1.0: {}
 
-  algosdk@3.6.0:
+  algosdk@3.7.0-beta.1:
     dependencies:
       algorand-msgpack: 1.1.0
       hi-base32: 0.5.1
@@ -6311,9 +6310,7 @@ snapshots:
 
   exsolve@1.1.0: {}
 
-  falcon-1024@0.1.3(typescript@6.0.3):
-    dependencies:
-      typescript: 6.0.3
+  falcon-1024@0.2.0: {}
 
   fast-deep-equal@3.1.3: {}
 

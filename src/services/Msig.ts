@@ -5,7 +5,7 @@ import type { Arc55App, MsigGroup } from "@/types";
 import { send } from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
-import algosdk from "algosdk";
+import algosdk, { Transaction } from "algosdk";
 
 const Msig = {
   async loadApp(appId: bigint, ignore404: boolean = false) {
@@ -57,7 +57,7 @@ const Msig = {
             const idx = Buffer.from(box.name).readUInt8(8);
 
             const test: any = algosdk.decodeObj(boxInfo.value);
-            let txn: algosdk.Transaction;
+            let txn: Transaction;
             let stxn: string | null;
             if (test.txn) {
               stxn = boxInfo.value.toBase64();
@@ -199,7 +199,7 @@ const Msig = {
           staticFee: fee,
         });
       });
-      grp.txns.forEach((_t: algosdk.Transaction, idx: number) => {
+      grp.txns.forEach((_t: Transaction, idx: number) => {
         composer.arc55RemoveTransaction({
           args: { transactionGroup: grp.nonce, index: idx },
           staticFee: fee,

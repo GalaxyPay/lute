@@ -1,20 +1,18 @@
 import { msigAbiContract } from "@/data";
 import Algo from "@/services/Algo";
-import Falcon from "@/services/Falcon";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
-import { isBadPassword, needsPassword, send, sendOrPostMessage } from "@/utils";
+import { isBadPassword, needsPassword, sendOrPostMessage } from "@/utils";
 import { signer } from "@/utils/signers";
-import algosdk from "algosdk";
+import algosdk, { Transaction, type BoxReference } from "algosdk";
 
 const INVALID = { cause: 4300 };
 
 export default class LuteTxns {
   txns: WalletTransaction[];
-  dtxns: algosdk.Transaction[];
+  dtxns: Transaction[];
   store = useAppStore();
   msig?: LuteMsig;
-  falcon?: { count: number; adjusted?: boolean };
   atc = new algosdk.AtomicTransactionComposer();
   nonce?: bigint;
   groupWarn: boolean = false;
@@ -38,33 +36,8 @@ export default class LuteTxns {
       );
       this.store.luteTxns = undefined;
     } else {
-      if (message.action === "signed" && this.falcon?.adjusted) {
-        this.handleFalcon(message);
-        return;
-      }
       sendOrPostMessage(message, this.tabId);
       window.close();
-    }
-  }
-
-  private async handleFalcon(message: any) {
-    try {
-      // submit to chain and return error to app
-      this.store.overlay = true;
-      this.store.setSnackbar("Processing...", "info", -1);
-      const txns = this.store.isWeb
-        ? message.txns
-        : message.txns.map((txn: string) => Uint8Array.fromBase64(txn));
-      await send(txns);
-      const errMessage = {
-        action: "error",
-        code: 4000,
-        message: "Transaction(s) sent by wallet",
-        debug: this.store.debug,
-      };
-      this.sendAndClose(errMessage);
-    } catch (err: any) {
-      this.handleError(err);
     }
   }
 
@@ -117,7 +90,7 @@ export default class LuteTxns {
         });
         // break txns into groups
         const groups: any[] = [];
-        let tempGroup: algosdk.Transaction[] = [];
+        let tempGroup: Transaction[] = [];
         gidMap.forEach((gid, idx) => {
           tempGroup.push(cleanTxns[idx]!);
           if (idx + 1 === gidMap.length || !gid || gid !== gidMap[idx + 1]) {
@@ -166,9 +139,7 @@ export default class LuteTxns {
             );
           }
         }
-        if (acct?.falcon) {
-          this.falcon = { count: sameSender };
-        } else if (acct?.appId) {
+        if (acct?.appId) {
           const app = await Msig.loadApp(acct.appId);
           if (!app) throw Error("Invalid Application");
           const signerAddr = this.store.msigSigner(app);
@@ -234,7 +205,7 @@ export default class LuteTxns {
         const boxName = Buffer.allocUnsafe(9);
         boxName.writeBigInt64BE(this.nonce);
         boxName.writeInt8(idx, 8);
-        const br: algosdk.BoxReference = {
+        const br: BoxReference = {
           appIndex: 0,
           name: new Uint8Array(boxName),
         };
@@ -256,44 +227,6 @@ export default class LuteTxns {
     } catch (err: any) {
       this.handleError(err);
     }
-  }
-
-  async addDummyTxns() {
-    if (!this.falcon) throw Error("Invalid Falcon Transaction");
-    const dummyCount = this.falcon.count * 2 + 1;
-    const sp = await Algo.algod.getTransactionParams().do();
-    let j = 0;
-    // remove groups and adjust fees
-    const newTxns = this.decode().map((t, i) => {
-      delete t.group;
-      if (this.toSign(i)) {
-        t.fee += sp.minFee * (j === 0 ? 3n : 2n);
-        j++;
-      }
-      return t;
-    });
-    // add dummy txns, calc group, add dummy lsigs
-    const { dummyLsig, dummyTxns } = await Falcon.getDummy(sp, dummyCount);
-    newTxns.push(...dummyTxns);
-    algosdk.assignGroupID(newTxns);
-
-    // alter txns and dtxns
-    newTxns.map((t, i) => {
-      if (i < this.txns.length) {
-        this.txns[i]!.txn = t.toByte().toBase64();
-      } else {
-        const wt: WalletTransaction = {
-          txn: t.toByte().toBase64(),
-          signers: [],
-          stxn: algosdk
-            .signLogicSigTransactionObject(t, dummyLsig)
-            .blob.toBase64(),
-        };
-        this.txns.push(wt);
-      }
-    });
-    this.dtxns = this.decode();
-    this.falcon.adjusted = true;
   }
 
   private async listenForSigs() {
