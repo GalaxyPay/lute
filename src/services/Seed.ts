@@ -1,4 +1,4 @@
-import { del, get, getAll, getFalconSeeds, rotateAtomic, set } from "@/dbLute";
+import { del, get, getAll, rotateAtomic, set } from "@/dbLute";
 import {
   KDF,
   KDF_LEGACY_ITERATIONS,
@@ -237,7 +237,8 @@ const Seed = {
     // silently skip a seed and strand it under the old password.
     const all: SeedData[] = await getAll("seeds");
     const locals = all.filter((s) => s.data);
-    const falcons = (await getFalconSeeds()).filter((s) => s.data);
+    const allFalcons: FalconSeedData[] = await getAll("falcon25-seeds");
+    const falcons = allFalcons.filter((s) => s.data);
     const seeds: Uint8Array[] = [];
     const falconSeeds: Uint8Array[] = [];
     try {

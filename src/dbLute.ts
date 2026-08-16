@@ -113,23 +113,6 @@ export async function keys(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAllKeys(storeName);
 }
 
-/**
- * Every Falcon-1024 seed, with the store key folded in as `id`. That store is
- * keyed by address rather than by a keyPath, and records written before the id
- * field exists carry the address only as their key — decryptSeed needs it back
- * on the record to reproduce the GCM additional data.
- *
- * TODO: simplify when going to production as there will be no "old" seeds
- */
-export async function getFalconSeeds() {
-  const tx = (await dbLute).transaction("falcon25-seeds", "readonly");
-  const seeds: FalconSeedData[] = [];
-  for await (const cursor of tx.store) {
-    seeds.push({ ...cursor.value, id: cursor.key });
-  }
-  return seeds;
-}
-
 /** Whether two key sets match, order-independent. */
 function sameKeys<T>(current: T[], expected: T[]) {
   const a = [...current].sort();

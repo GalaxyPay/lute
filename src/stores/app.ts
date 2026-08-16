@@ -1,7 +1,7 @@
 // Utilities
 import type LuteTxns from "@/classes/LuteTxns";
 import { networks } from "@/data";
-import { get, getAll, getFalconSeeds, keys, set } from "@/dbLute";
+import { get, getAll, keys, set } from "@/dbLute";
 import type {
   AccountHD,
   AccountInfo,
@@ -216,7 +216,7 @@ export const useAppStore = defineStore("app", {
         (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
-      this.falcon25Seeds = await getFalconSeeds();
+      this.falcon25Seeds = await getAll("falcon25-seeds");
     },
     async setTheme(name: string | null) {
       await set("app", "theme", name || "dark");
