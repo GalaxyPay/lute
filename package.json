@@ -1,7 +1,7 @@
 {
   "name": "lute",
   "displayName": "Lute",
-  "version": "1.26.0",
+  "version": "1.26.1",
   "type": "module",
   "description": "An Algorand Wallet",
   "license": "AGPL-3.0-only",
@@ -33,7 +33,7 @@
     "@noble/hashes": "^2.2.0",
     "@scure/bip32": "^2.2.0",
     "@scure/bip39": "^2.2.0",
-    "algosdk": "3.7.0-beta.1",
+    "algosdk": "3.7.0",
     "canonify": "^2.1.1",
     "falcon-1024": "^0.2.0",
     "idb": "^8.0.3",
@@ -76,8 +76,7 @@
     "vite-plugin-vuetify": "^2.1.3",
     "vue-tsc": "^3.3.5",
     "webext-bridge": "^6.0.1",
-    "webextension-polyfill": "^0.12.0",
-    "wrangler": "^4.123.0"
+    "webextension-polyfill": "^0.12.0"
   },
   "engines": {
     "node": ">=22.16.0"
