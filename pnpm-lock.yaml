@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@algorandfoundation/algokit-utils':
         specifier: ^9.2.0
-        version: 9.2.0(algosdk@3.7.0-beta.1)
+        version: 9.2.0(algosdk@3.7.0)
       '@algorandfoundation/xhd-wallet-api':
         specifier: 2.0.0-canary.1
         version: 2.0.0-canary.1
@@ -36,8 +36,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0
       algosdk:
-        specifier: 3.7.0-beta.1
-        version: 3.7.0-beta.1
+        specifier: 3.7.0
+        version: 3.7.0
       canonify:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1440,6 +1440,11 @@ packages:
 
   '@volar/typescript@2.4.28':
     resolution: {integrity: sha512-Ja6yvWrbis2QtN4ClAKreeUZPVYMARDYZl9LMEv1iQ1QdepB6wn0jTRxA9MftYmYa4DQ4k/DaSZpFPUfxl8giw==}
+    peerDependencies:
+      typescript: '*'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   '@vue-macros/common@3.1.2':
     resolution: {integrity: sha512-h9t4ArDdniO9ekYHAD95t9AZcAbb19lEGK+26iAjUODOIJKmObDNBSe4+6ELQAA3vtYiFPPBtHh7+cQCKi3Dng==}
@@ -1556,8 +1561,8 @@ packages:
     resolution: {integrity: sha512-08k7pBQnkaUB5p+jL7f1TRaUIlTSDE0cesFu1mD7llLao+1cAhtvvZmGE3OnisTd0xOn118QMw74SRqddqaYvw==}
     engines: {node: '>= 14'}
 
-  algosdk@3.7.0-beta.1:
-    resolution: {integrity: sha512-WKkfdzZJGGyCa9dylyFDCLzxg2e1SdDYDmS/vjEaPvNd8k6fJDkhvmOYlPiEd6q8HYp4vceu5XZuEMIstCGHhA==}
+  algosdk@3.7.0:
+    resolution: {integrity: sha512-6mr5w+A+A87/rAd4Y5hSmKSfvLkOKeik81w8Tte9ZxSqnwqUuWUioQsJail3ZyCbJtEctJXJTxe7Sx50/lQi3g==}
     engines: {node: '>=18.0.0'}
 
   alien-signals@3.2.1:
@@ -3695,9 +3700,9 @@ packages:
 
 snapshots:
 
-  '@algorandfoundation/algokit-utils@9.2.0(algosdk@3.7.0-beta.1)':
+  '@algorandfoundation/algokit-utils@9.2.0(algosdk@3.7.0)':
     dependencies:
-      algosdk: 3.7.0-beta.1
+      algosdk: 3.7.0
       buffer: 6.0.3
 
   '@algorandfoundation/xhd-wallet-api@2.0.0-canary.1':
@@ -5005,11 +5010,13 @@ snapshots:
 
   '@volar/source-map@2.4.28': {}
 
-  '@volar/typescript@2.4.28':
+  '@volar/typescript@2.4.28(typescript@6.0.3)':
     dependencies:
       '@volar/language-core': 2.4.28
       path-browserify: 1.0.1
       vscode-uri: 3.1.0
+    optionalDependencies:
+      typescript: 6.0.3
 
   '@vue-macros/common@3.1.2(vue@3.5.38(typescript@6.0.3))':
     dependencies:
@@ -5168,7 +5175,7 @@ snapshots:
 
   algorand-msgpack@1.1.0: {}
 
-  algosdk@3.7.0-beta.1:
+  algosdk@3.7.0:
     dependencies:
       algorand-msgpack: 1.1.0
       hi-base32: 0.5.1
@@ -7436,7 +7443,7 @@ snapshots:
 
   vue-tsc@3.3.5(typescript@6.0.3):
     dependencies:
-      '@volar/typescript': 2.4.28
+      '@volar/typescript': 2.4.28(typescript@6.0.3)
       '@vue/language-core': 3.3.5
       typescript: 6.0.3
 
