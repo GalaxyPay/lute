@@ -108,7 +108,7 @@ export const useAppStore = defineStore("app", {
                   addr: i.address,
                   title: formatAddr(i.address),
                   isHot: false,
-                  isFalcon25: false,
+                  isFalcon25,
                   canSign,
                   subType: "rekey",
                   info: i,
