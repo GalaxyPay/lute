@@ -27,7 +27,7 @@
         <v-col :cols v-if="ftxn.appId"> App ID: {{ ftxn.appId }} </v-col>
         <v-col :cols v-if="ftxn.asset"> Asset: {{ ftxn.asset }} </v-col>
         <v-col :cols v-if="ftxn.amount"> Amount: {{ ftxn.amount }} </v-col>
-        <v-col :cols :class="txn.fee > 1000 && toSign ? 'text-warning' : ''">
+        <v-col :cols :class="txn.fee > feeWarn && toSign ? 'text-warning' : ''">
           Fee: {{ ftxn.fee }}
         </v-col>
         <v-col :cols v-if="ftxn.voteFirst">
@@ -86,6 +86,11 @@ const txnTypes = [
   { title: "Application", type: "appl" },
   { title: "Asset Config", type: "acfg" },
 ];
+
+const isFalcon25 = store.acctInfo.find(
+  (ai) => ai.addr === props.txn.sender.toString()
+)?.isFalcon25;
+const feeWarn = isFalcon25 ? 3000 : 1000;
 
 const txnAsset = computed(() =>
   props.assets.find((a) => a.index === props.txn.assetTransfer?.assetIndex)
