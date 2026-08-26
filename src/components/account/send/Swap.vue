@@ -79,7 +79,7 @@
 
 <script lang="ts" setup>
 import router from "@/router";
-import Algo from "@/services/Algo";
+import Algo, { getSuggestedParams } from "@/services/Algo";
 import NameService from "@/services/NameService";
 import type { AccountInfo, NsLookup } from "@/types";
 import { b64url, getAssetInfo, stringToBigint } from "@/utils";
@@ -185,7 +185,7 @@ async function propose() {
   try {
     if (!senderAsset.value?.params || !receiverAsset.value?.params)
       throw Error("Invalid Assets");
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.sender.isFalcon25);
 
     let txn1: Transaction;
     if (!senderAsset.value.index) {

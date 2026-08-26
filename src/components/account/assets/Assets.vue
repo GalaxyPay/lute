@@ -65,7 +65,7 @@
   </v-dialog>
 </template>
 <script lang="ts" setup>
-import Algo from "@/services/Algo";
+import Algo, { getSuggestedParams } from "@/services/Algo";
 import type { AccountInfo } from "@/types";
 import { send } from "@/utils";
 import { luteSigner } from "@/utils/signers";
@@ -111,7 +111,7 @@ async function optIn() {
   try {
     const { valid } = await form.value.validate();
     if (!valid || !asset.value) return;
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
     const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       assetIndex: assetId.value,
       receiver: props.acct.addr,
@@ -119,9 +119,6 @@ async function optIn() {
       suggestedParams,
       amount: 0,
     });
-    if (props.acct.isFalcon25) {
-      txn.fee = suggestedParams.minFee * 3n;
-    }
     closeDialog();
     const stxn = await luteSigner([txn]);
     await send(stxn, "Opted-In to Asset");
