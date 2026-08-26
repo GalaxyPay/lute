@@ -233,15 +233,12 @@ export interface LuteAccount {
   seedId?: number;
   xpub?: string;
   idxs?: number[];
-  falcon?: {
-    counter: number;
-    publicKey: string;
-  };
 }
 
 export interface AccountInfo extends LuteAccount {
   title: string;
   isHot: boolean;
+  isFalcon25: boolean;
   canSign: boolean;
   subType?: "rekey" | "hd";
   info?: AccountHD;
@@ -350,6 +347,12 @@ export interface SeedData {
   kdf?: string;
   credentialId?: string;
 }
+
+export interface FalconSeedData extends Omit<SeedData, "id" | "credentialId"> {
+  id: string;
+}
+
+export type AnySeedData = SeedData | FalconSeedData;
 
 export interface MsgpackHD {
   hd: {

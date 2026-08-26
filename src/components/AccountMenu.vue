@@ -139,6 +139,7 @@ Are you sure you want to continue?`
   )
     return;
   await del("keys", addr);
+  await del("falcon25-seeds", addr);
   const ix = store.accounts.findIndex((a) => a.addr === addr);
   if (ix !== -1) {
     const newVal = deepClone(store.accounts.toSpliced(ix, 1));

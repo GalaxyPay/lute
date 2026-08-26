@@ -1,12 +1,17 @@
 import { set } from "@/dbLute";
-import type { SignDataResponseSafe, SignDataSafe } from "@/types";
-import algosdk from "algosdk";
-import type { StdSignData, StdSignDataResponse } from "ledger-algorand-js";
+import algosdk, { type Account } from "algosdk";
+import { generateKey } from "falcon-1024";
 
 export { getAssetInfo } from "./assetInfo";
 export { refresh } from "./refresh";
 export { resolveProtocol } from "./resolveProtocol";
 export { send } from "./send";
+export {
+  signDataSafe,
+  signDataUnsafe,
+  signDataResponseSafe,
+  signDataResponseUnsafe,
+} from "./signData";
 
 export function formatAddr(addr: string | undefined) {
   if (!addr) return "";
@@ -23,7 +28,7 @@ export async function fetchAsync(url: string) {
   }
 }
 
-export async function storeKey(acct: algosdk.Account) {
+export async function storeKey(acct: Account) {
   const b64prefix = "MC4CAQAwBQYDK2VwBCIEIA==";
   const pkcs8Prefix = Uint8Array.fromBase64(b64prefix);
   const pkcs8 = new Uint8Array([...pkcs8Prefix, ...acct.sk.slice(0, 32)]);
@@ -191,40 +196,12 @@ export function copyToClipboard(val: string) {
   store.setSnackbar("Copied", "info", 1000);
 }
 
-export function signDataSafe(obj: StdSignData): SignDataSafe {
-  return {
-    ...obj,
-    signer: obj.signer.toBase64(),
-    authenticatorData: obj.authenticatorData.toBase64(),
-  };
-}
-
-export function signDataUnsafe(obj: SignDataSafe): StdSignData {
-  return {
-    ...obj,
-    signer: Uint8Array.fromBase64(obj.signer),
-    authenticatorData: Uint8Array.fromBase64(obj.authenticatorData),
-  };
-}
-
-export function signDataResponseSafe(
-  obj: StdSignDataResponse
-): SignDataResponseSafe {
-  return {
-    ...obj,
-    signer: obj.signer.toBase64(),
-    authenticatorData: obj.authenticatorData.toBase64(),
-    signature: obj.signature.toBase64(),
-  };
-}
-
-export function signDataResponseUnsafe(
-  obj: SignDataResponseSafe
-): StdSignDataResponse {
-  return {
-    ...obj,
-    signer: Uint8Array.fromBase64(obj.signer),
-    authenticatorData: Uint8Array.fromBase64(obj.authenticatorData),
-    signature: Uint8Array.fromBase64(obj.signature),
-  };
+export function getFalconAddress(mn: string) {
+  const seed = algosdk.pq25WordMnemonicToSeed(mn, algosdk.FALCON_1024_SCHEME);
+  const { publicKey } = generateKey(seed);
+  const { address } = algosdk.addressFromPQKey(
+    algosdk.FALCON_1024_SCHEME,
+    publicKey
+  );
+  return address;
 }

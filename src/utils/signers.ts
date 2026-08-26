@@ -1,15 +1,19 @@
 import LuteTxns from "@/classes/LuteTxns";
 import { get } from "@/dbLute";
-import Algo from "@/services/Algo";
-import Falcon from "@/services/Falcon";
 import HdWallet from "@/services/HdWallet";
 import Seed from "@/services/Seed";
 import type { LuteMsig, WalletTransaction } from "@/types";
 import { selectDevice } from "@/utils";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import algosdk from "algosdk";
-import { signCompressed } from "falcon-1024";
+import algosdk, {
+  Address,
+  signTransactionWithSigner,
+  Transaction,
+  type Falcon1024SigningKey,
+  type TransactionSigner,
+} from "algosdk";
+import { generateKey, signCompressed } from "falcon-1024";
 import { AlgorandApp } from "ledger-algorand-js";
 
 class SignTxnsError extends Error {
@@ -25,7 +29,7 @@ class SignTxnsError extends Error {
 }
 
 export async function signer(
-  txnGroup: algosdk.Transaction[],
+  txnGroup: Transaction[],
   indexesToSign?: number[],
   authAddrs?: (string | undefined)[],
   password?: string,
@@ -33,10 +37,16 @@ export async function signer(
 ) {
   let transport;
   let algoApp;
+  // Hoisted out of the try so the finally can zero them on any exit path.
   const seeds: Uint8Array[] = [];
+  const falcon25Seeds: Uint8Array[] = [];
   try {
     const store = useAppStore();
     const signedTxns: Uint8Array[] = [];
+    const falcon25Signers: {
+      address: Address;
+      txnSigner: TransactionSigner;
+    }[] = [];
     for (const [idx, txn] of txnGroup.entries()) {
       if (!indexesToSign || indexesToSign.includes(idx)) {
         const sender = txn.sender.toString();
@@ -48,34 +58,44 @@ export async function signer(
         const acct = store.acctInfo.find((a) => a.addr === addr);
         if (!acct) throw Error("Account Not Found");
         let sig: Uint8Array;
-        if (acct.seedId) {
+        if (acct.seedId && acct.slot != null) {
           if (!seeds[acct.seedId]) {
             const seedData = store.seeds.find((s) => s.id === acct.seedId);
             if (!seedData) throw Error("Invalid Seed");
             seeds[acct.seedId] = await Seed.unlockSeed(seedData, password);
           }
-          sig = new Uint8Array();
-          if (acct.slot != null) {
-            sig = await HdWallet.sign(
-              Buffer.from(seeds[acct.seedId]!),
-              acct.slot,
-              txn.bytesToSign(),
-              acct.info?.addrIdx
+          sig = await HdWallet.sign(
+            Buffer.from(seeds[acct.seedId]!),
+            acct.slot,
+            txn.bytesToSign(),
+            acct.info?.addrIdx
+          );
+        } else if (acct.isFalcon25) {
+          let f25 = falcon25Signers.find(
+            (s) => s.address.toString() === acct.addr
+          );
+          if (!f25) {
+            const seedData = store.falcon25Seeds.find(
+              (s) => s.id === acct.addr
             );
-          } else if (acct.falcon) {
-            const lsigTeal = Falcon.getLsigTeal(
-              acct.falcon.counter,
-              Uint8Array.fromBase64(acct.falcon.publicKey)
-            );
-            const lsigCompiled = await Algo.algod.compile(lsigTeal).do();
-            const lsigBytes = Uint8Array.fromBase64(lsigCompiled.result);
-            const falconPair = Falcon.keyPair(seeds[acct.seedId]!);
-            const arg = signCompressed(falconPair.privateKey, txn.rawTxID());
-            const logicSig = new algosdk.LogicSigAccount(lsigBytes, [arg]);
-            const slstxn = algosdk.signLogicSigTransactionObject(txn, logicSig);
-            signedTxns.push(slstxn.blob);
-            continue;
+            if (!seedData) throw Error("Invalid Seed");
+            const seed = await Seed.unlockSeed(seedData, password);
+            falcon25Seeds.push(seed);
+            const { publicKey, privateKey } = generateKey(seed);
+            const falconSigningKey: Falcon1024SigningKey = {
+              falcon1024PublicKey: publicKey,
+              falcon1024Signer: async (bytesToSign: Uint8Array) =>
+                signCompressed(privateKey, bytesToSign),
+            };
+            f25 =
+              algosdk.addressWithSignersFromRawFalcon1024Signer(
+                falconSigningKey
+              );
+            falcon25Signers.push(f25);
           }
+          const stxn = await signTransactionWithSigner(txn, f25.txnSigner);
+          signedTxns.push(stxn.blob);
+          continue;
         } else if (acct.slot != null) {
           if (!transport) {
             await store.getDevices();
@@ -113,14 +133,11 @@ export async function signer(
     throw err;
   } finally {
     seeds.forEach((s) => s.fill(0));
+    falcon25Seeds.forEach((s) => s.fill(0));
   }
 }
 
-function attachMsigSig(
-  msig: LuteMsig,
-  txn: algosdk.Transaction,
-  sig: Uint8Array
-) {
+function attachMsigSig(msig: LuteMsig, txn: Transaction, sig: Uint8Array) {
   const mparams = {
     version: 1,
     threshold: Number(msig.app.arc55_threshold),
@@ -147,7 +164,7 @@ export async function hotSign(addr: string, bytes: Uint8Array) {
 }
 
 async function ledgerSign(
-  txn: algosdk.Transaction,
+  txn: Transaction,
   algoApp: AlgorandApp,
   slot: number
 ) {
@@ -166,7 +183,7 @@ async function ledgerSign(
 }
 
 export async function luteSigner(
-  txnGroup: algosdk.Transaction[],
+  txnGroup: Transaction[],
   indexesToSign?: number[]
 ) {
   const walletTxns: WalletTransaction[] = txnGroup.map((tx, idx) => {

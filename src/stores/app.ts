@@ -6,6 +6,7 @@ import type {
   AccountHD,
   AccountInfo,
   Arc55App,
+  FalconSeedData,
   LuteAccount,
   Network,
   NsObject,
@@ -38,6 +39,7 @@ export const useAppStore = defineStore("app", {
     hotWallet: true,
     keys: [] as string[],
     seeds: [] as SeedData[],
+    falcon25Seeds: [] as FalconSeedData[],
     drawer: false,
     debug: false,
     snoop: false,
@@ -76,11 +78,14 @@ export const useAppStore = defineStore("app", {
         .forEach((a) => {
           function getCanSign(acct: LuteAccount) {
             const isHot = state.keys.includes(acct.addr);
-            const canSign = isHot || acct.slot != null || !!acct.falcon;
-            return { info, isHot, canSign };
+            const isFalcon25 = state.falcon25Seeds.some(
+              (s) => s.id === acct.addr
+            );
+            const canSign = isHot || isFalcon25 || acct.slot != null;
+            return { info, isHot, isFalcon25, canSign };
           }
           const info = this.info.find((i) => i.address === a.addr);
-          const { isHot, canSign } = getCanSign(a);
+          const { isHot, isFalcon25, canSign } = getCanSign(a);
           if (isHot && !this.hotWallet) return;
           const authAcct = this.accounts.find(
             (a) => a.addr === info?.authAddr?.toString()
@@ -92,6 +97,7 @@ export const useAppStore = defineStore("app", {
               ...a,
               title: formatAddr(a.addr),
               isHot,
+              isFalcon25,
               canSign,
               info,
               globalIdx,
@@ -108,6 +114,7 @@ export const useAppStore = defineStore("app", {
                   addr: i.address,
                   title: formatAddr(i.address),
                   isHot: false,
+                  isFalcon25,
                   canSign,
                   subType: "rekey",
                   info: i,
@@ -126,6 +133,7 @@ export const useAppStore = defineStore("app", {
                   addr: i.address,
                   title: formatAddr(i.address),
                   isHot: false,
+                  isFalcon25: false,
                   canSign,
                   subType: "hd",
                   info: i,
@@ -218,6 +226,7 @@ export const useAppStore = defineStore("app", {
         (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
+      this.falcon25Seeds = await getAll("falcon25-seeds");
     },
     async setTheme(name: string | null) {
       await set("app", "theme", name || "dark");

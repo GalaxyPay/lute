@@ -38,11 +38,11 @@ import router from "@/router";
 import Algo from "@/services/Algo";
 import { bigintToString, copyToClipboard, send } from "@/utils";
 import { luteSigner } from "@/utils/signers";
-import algosdk, { modelsv2 } from "algosdk";
+import algosdk, { modelsv2, Transaction } from "algosdk";
 
 const store = useAppStore();
 
-const reviewTxns = ref<algosdk.Transaction[]>();
+const reviewTxns = ref<Transaction[]>();
 const assets = reactive<modelsv2.Asset[]>([]);
 let tx1: string | null;
 let tx2: string | null;
@@ -149,7 +149,7 @@ async function accept() {
   }
 }
 
-function formatAsset(txn: algosdk.Transaction) {
+function formatAsset(txn: Transaction) {
   try {
     if (txn.payment) {
       return (

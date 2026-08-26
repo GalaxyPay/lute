@@ -49,7 +49,7 @@
 
 <script lang="ts" setup>
 import { Arc59Factory } from "@/clients/Arc59Client";
-import Algo from "@/services/Algo";
+import Algo, { getSuggestedParams } from "@/services/Algo";
 import type { AccountInfo } from "@/types";
 import { bigintToString, getAssetInfo, resolveProtocol } from "@/utils";
 import { luteSigner } from "@/utils/signers";
@@ -114,13 +114,15 @@ async function claim() {
     const claimerOptedIn = props.acct.info?.assets?.some(
       (a) => a.assetId === props.asset.assetId
     );
-    let totalTxns = 3n;
+    let outerTxnCount = 1;
+    let innerTxnCount = 2;
     if (props.inboxInfo.minBalance < props.inboxInfo.amount) {
-      totalTxns += 2n;
+      outerTxnCount++;
+      innerTxnCount++;
       composer.arc59ClaimAlgo({ args: {}, staticFee: (0).algo() });
     }
     // If the claimer hasn't already opted in, add a transaction to do so
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
     if (!claimerOptedIn) {
       const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: props.acct.addr,
@@ -131,7 +133,10 @@ async function claim() {
       });
       composer.addTransaction(txn, luteSigner);
     }
-    const fee = Number(suggestedParams.minFee * totalTxns).microAlgos();
+    const fee = (
+      Number(suggestedParams.minFee) * outerTxnCount +
+      innerTxnCount * 1000
+    ).microAlgos();
     composer.arc59Claim({ args: { asa: props.asset.assetId }, staticFee: fee });
     await composer.send({ populateAppCallResources: true });
     store.refresh++;
@@ -147,8 +152,8 @@ async function claim() {
 async function reject() {
   try {
     const appClient = getAppClient();
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
-    const fee = Number(suggestedParams.minFee * 3n).microAlgos();
+    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const fee = (Number(suggestedParams.minFee) + 2000).microAlgos();
     await appClient
       .newGroup()
       .arc59Reject({ args: { asa: props.asset.assetId }, staticFee: fee })

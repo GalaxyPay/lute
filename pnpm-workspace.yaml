@@ -2,4 +2,4 @@ allowBuilds:
   esbuild: true
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - ledger-algorand-js
+  - algosdk@3.7.0

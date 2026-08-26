@@ -1,5 +1,5 @@
 import Sync from "@/services/Sync";
-import type { PasswordVerifier, SeedData } from "@/types";
+import type { FalconSeedData, PasswordVerifier, SeedData } from "@/types";
 import { modelsv2 } from "algosdk";
 import { type DBSchema, type StoreKey, type StoreNames, openDB } from "idb";
 
@@ -36,9 +36,13 @@ interface LuteDB extends DBSchema {
     key: number;
     value: SeedData;
   };
+  "falcon25-seeds": {
+    key: string;
+    value: FalconSeedData;
+  };
 }
 
-const dbLute = openDB<LuteDB>("lute", 2, {
+const dbLute = openDB<LuteDB>("lute", 3, {
   async upgrade(db, oldVersion) {
     if (oldVersion < 1) {
       db.createObjectStore("app");
@@ -54,6 +58,9 @@ const dbLute = openDB<LuteDB>("lute", 2, {
     }
     if (oldVersion < 2) {
       db.createObjectStore("assets-voi mainnet", { keyPath: "index" });
+    }
+    if (oldVersion < 3) {
+      db.createObjectStore("falcon25-seeds");
     }
   },
 });
@@ -76,7 +83,12 @@ export async function getAll(storeName: StoreNames<LuteDB>) {
  * cache, so bumping for those would be a getCache storm.
  */
 function cached(storeName: StoreNames<LuteDB>) {
-  return storeName === "app" || storeName === "seeds" || storeName === "keys";
+  return (
+    storeName === "app" ||
+    storeName === "seeds" ||
+    storeName === "falcon25-seeds" ||
+    storeName === "keys"
+  );
 }
 
 export async function set(
@@ -101,6 +113,13 @@ export async function keys(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAllKeys(storeName);
 }
 
+/** Whether two key sets match, order-independent. */
+function sameKeys<T>(current: T[], expected: T[]) {
+  const a = [...current].sort();
+  const b = [...expected].sort();
+  return a.length === b.length && a.every((k, ix) => k === b[ix]);
+}
+
 /**
  * Write every re-encrypted seed and the new password verifier in one
  * transaction, for password rotation.
@@ -110,25 +129,29 @@ export async function keys(storeName: StoreNames<LuteDB>) {
  * request, so awaiting crypto.subtle between these puts would abort it.
  */
 export async function rotateAtomic(
-  seeds: SeedData[],
+  rewritten: { seeds: SeedData[]; falcon25: FalconSeedData[] },
   verifier: PasswordVerifier,
-  expectedIds: number[]
+  expected: { ids: number[]; addresses: string[] }
 ) {
-  const tx = (await dbLute).transaction(["seeds", "app"], "readwrite");
-  const store = tx.objectStore("seeds");
-  const current = (await store.getAll())
+  const tx = (await dbLute).transaction(
+    ["seeds", "falcon25-seeds", "app"],
+    "readwrite"
+  );
+  const seedStore = tx.objectStore("seeds");
+  const falconStore = tx.objectStore("falcon25-seeds");
+  const currentIds = (await seedStore.getAll())
     .filter((s) => s.data)
-    .map((s) => s.id)
-    .sort();
-  const expected = [...expectedIds].sort();
+    .map((s) => s.id);
+  const currentAddrs = await falconStore.getAllKeys();
   if (
-    current.length !== expected.length ||
-    current.some((id, ix) => id !== expected[ix])
+    !sameKeys(currentIds, expected.ids) ||
+    !sameKeys(currentAddrs, expected.addresses)
   ) {
     tx.abort();
     throw Error("Seeds changed during rotation. Try again.");
   }
-  for (const sd of seeds) store.put(sd);
+  for (const sd of rewritten.seeds) seedStore.put(sd);
+  for (const sd of rewritten.falcon25) falconStore.put(sd, sd.id);
   tx.objectStore("app").put(verifier, "password");
   await tx.done;
   await Sync.bump();

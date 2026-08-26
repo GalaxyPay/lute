@@ -131,7 +131,7 @@
 
 <script lang="ts" setup>
 import { Arc59Factory } from "@/clients/Arc59Client";
-import Algo from "@/services/Algo";
+import Algo, { getSuggestedParams } from "@/services/Algo";
 import NameService from "@/services/NameService";
 import type { AccountInfo } from "@/types";
 import {
@@ -259,7 +259,7 @@ async function submit() {
     if (!valid) return;
 
     const enc = new TextEncoder();
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
     const note64 = note.value ? enc.encode(note.value) : undefined;
     let txn;
     if (asset.value.index) {
@@ -316,7 +316,7 @@ async function arc59SendAsset() {
     showInboxWarning.value = false;
     if (!asset.value.params) throw Error("Invalid Asset");
     if (!store.network.inboxRouter) throw Error("Invalid Router");
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
     const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
     algorand.setDefaultSigner(luteSigner);
     algorand.setDefaultValidityWindow(1000);
@@ -349,6 +349,9 @@ async function arc59SendAsset() {
       _receiverOptedIn,
       receiverAlgoNeededForClaim,
     ] = sendAssetInfo;
+    const receiverAlgoPQ = receiverAlgoNeededForClaim
+      ? receiverAlgoNeededForClaim + 2000n
+      : 0n;
     const composer = appClient.newGroup();
     const appAddr = appClient.appClient.appAddress;
     const enc = new TextEncoder();
@@ -364,12 +367,12 @@ async function arc59SendAsset() {
       assetSender: assetSender.value,
     });
     // If the MBR is non-zero, send the MBR to the router
-    if (mbr || receiverAlgoNeededForClaim) {
+    if (mbr || receiverAlgoPQ) {
       const mbrPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         receiver: appAddr,
         sender: props.acct.addr,
         suggestedParams,
-        amount: mbr + receiverAlgoNeededForClaim,
+        amount: mbr + receiverAlgoPQ,
       });
       composer.addTransaction(mbrPayment, luteSigner);
     }
@@ -377,8 +380,10 @@ async function arc59SendAsset() {
     if (!routerOptedIn)
       composer.arc59OptRouterIn({ args: { asa: asset.value.index } });
     // An extra itxn is if we are also sending ALGO for the receiver claim
-    const totalItxns = itxns + (receiverAlgoNeededForClaim === 0n ? 0n : 1n);
-    const fee = Number(suggestedParams.minFee * (totalItxns + 1n)).microAlgos();
+    const totalItxns = itxns + (receiverAlgoPQ === 0n ? 0n : 1n);
+    const fee = Number(
+      suggestedParams.minFee + totalItxns * 1000n
+    ).microAlgos();
     const boxReferences = [algosdk.Address.fromString(to.value).publicKey];
     const inboxAddress = (
       await appClient
@@ -395,7 +400,7 @@ async function arc59SendAsset() {
       args: {
         axfer,
         receiver: to.value,
-        additionalReceiverFunds: receiverAlgoNeededForClaim,
+        additionalReceiverFunds: receiverAlgoPQ,
       },
       staticFee: fee,
       boxReferences,

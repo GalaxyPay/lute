@@ -20,21 +20,19 @@ export async function refresh() {
     }
   const info: AccountHD[] = [];
   try {
-    const algodClient = Algo.algod;
-    const indexer = Algo.indexer;
     await Promise.all(
       store.accounts
         .filter((a) => !a.network || a.network === store.networkName)
         .map(async (a) => {
-          const ai = await algodClient.accountInformation(a.addr).do();
-          const aa = await getAuthAccts(a.addr, indexer);
+          const ai = await Algo.algod.accountInformation(a.addr).do();
+          const aa = await getAuthAccts(a.addr);
           info.push(ai);
           // rekeyed accounts (sub-accounts)
           await Promise.all(
             aa
               .filter((sa) => !store.accounts.some((i) => i.addr === sa))
               .map(async (sa) => {
-                const sai = await algodClient.accountInformation(sa).do();
+                const sai = await Algo.algod.accountInformation(sa).do();
                 info.push(sai);
               })
           );
@@ -51,7 +49,7 @@ export async function refresh() {
             );
             await Promise.all(
               hd.map(async (hda) => {
-                const hdai = (await algodClient
+                const hdai = (await Algo.algod
                   .accountInformation(hda.addr)
                   .do()) as AccountHD;
                 hdai.addrIdx = hda.addrIdx;
