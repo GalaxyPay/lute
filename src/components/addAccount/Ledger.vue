@@ -39,12 +39,11 @@ async function getLedgerAddresses(startIndex: number) {
       : await hidOrUsb.create();
     const algoApp = new AlgorandApp(transport);
     const accts: AccountSubs[] = [];
-    const indexer = Algo.indexer;
     for (let i = startIndex; i < 4 + startIndex; i++) {
       await algoApp.getAddressAndPubKey(i).then(async (resp) => {
         const addr = resp.address.toString();
         const ai: AccountSubs = await Algo.algod.accountInformation(addr).do();
-        const aa = await getAuthAccts(addr, indexer);
+        const aa = await getAuthAccts(addr);
         ai.subs = aa;
         accts.push(ai);
       });

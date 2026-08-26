@@ -99,7 +99,7 @@
 </template>
 
 <script lang="ts" setup>
-import Algo from "@/services/Algo";
+import Algo, { getSuggestedParams } from "@/services/Algo";
 import type { AccountInfo, KeyRegTxn } from "@/types";
 import { send } from "@/utils";
 import { luteSigner } from "@/utils/signers";
@@ -209,15 +209,12 @@ async function calcAvgBlockTime() {
 
 async function offline() {
   try {
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
     const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
       sender: props.acct.addr,
       suggestedParams,
       nonParticipation: false,
     });
-    if (props.acct.isFalcon25) {
-      txn.fee = suggestedParams.minFee * 3n;
-    }
     const stxn = await luteSigner([txn]);
     await send(stxn);
   } catch (err: any) {
@@ -235,7 +232,7 @@ async function submit() {
     const { valid } = await form.value.validate();
     if (!valid) return;
 
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
+    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
     keyreg.value.sender = props.acct.addr;
     if (incentiveEligible.value) {
       suggestedParams.flatFee = true;
@@ -250,9 +247,6 @@ async function submit() {
     };
     const txn =
       algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject(obj);
-    if (props.acct.isFalcon25) {
-      txn.fee = suggestedParams.minFee * 3n;
-    }
     const stxn = await luteSigner([txn]);
     await send(stxn);
     form.value?.reset();

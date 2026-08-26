@@ -16,12 +16,11 @@ const HdWallet = {
     const accts: AccountSubs[] = [];
     const cryptoService = new XHDWalletAPI();
     const rootKey = fromSeed(seed);
-    const indexer = Algo.indexer;
     for (let i = startIndex; i < 4 + startIndex; i++) {
       const key = await cryptoService.keyGen(rootKey, KeyContext.Address, i, 0);
       const addr = new algosdk.Address(key).toString();
       const ai: AccountSubs = await Algo.algod.accountInformation(addr).do();
-      const aa = await getAuthAccts(addr, indexer);
+      const aa = await getAuthAccts(addr);
       ai.subs = aa;
       const xpubArr = await cryptoService.deriveKey(
         rootKey,
