@@ -30,14 +30,15 @@
 </template>
 
 <script lang="ts" setup>
-import router from "@/router";
 import type { AccountHD, MsgpackHD } from "@/types";
 import Sync from "@/services/Sync";
 import Unlock from "@/services/Unlock";
 import { fetchAsync, refresh } from "@/utils";
 import { decodeMsgpack, modelsv2 } from "algosdk";
+import { useRoute } from "vue-router";
 
 const store = useAppStore();
+const route = useRoute();
 
 function optionsRefreshListener() {
   browser.runtime.onMessage.addListener(async (message: any) => {
@@ -67,8 +68,7 @@ onBeforeMount(async () => {
   }
   await store.getCache();
   await Unlock.isUnlocked();
-  await router.isReady();
-  if (!router.currentRoute.value.meta.modal) {
+  if (!route.meta.modal) {
     store.refresh++;
     store.tinyman = await fetchAsync(
       "https://asa-list.tinyman.org/assets.json"
