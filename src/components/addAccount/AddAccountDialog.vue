@@ -38,10 +38,28 @@
                   <v-icon :icon="mdiWallet" />
                 </v-col>
                 <v-col>
-                  {{ HD }} <v-chip text="New" size="small" class="ml-1" />
+                  {{ HD }}
                   <div class="text-grey">
                     24-word seed, derives multiple accounts
                   </div>
+                </v-col>
+              </v-row>
+            </v-container>
+          </v-card>
+        </v-container>
+        <v-container>
+          <v-card variant="outlined" color="primary" class="pointer">
+            <v-container
+              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
+              @click="type = FALCON"
+            >
+              <v-row>
+                <v-col align-self="center" cols="auto">
+                  <v-icon :icon="mdiAtom" />
+                </v-col>
+                <v-col>
+                  {{ FALCON }}
+                  <div class="text-grey">Post-Quantum Secure</div>
                 </v-col>
               </v-row>
             </v-container>
@@ -58,7 +76,8 @@
                   <v-icon :icon="mdiFire" />
                 </v-col>
                 <v-col>
-                  {{ HOT }} <v-chip text="Legacy" size="small" class="ml-1" />
+                  {{ HOT }}
+                  <v-chip text="Legacy" size="small" class="ml-1" />
                   <div class="text-grey">
                     25-word seed, single account, non-extractable
                   </div>
@@ -100,25 +119,6 @@
                   <div class="text-grey">
                     Convert your Exodus, Trust, or Coinomi to Algo25
                   </div>
-                </v-col>
-              </v-row>
-            </v-container>
-          </v-card>
-        </v-container>
-        <v-container v-if="store.experimental">
-          <v-card variant="outlined" color="primary" class="pointer">
-            <v-container
-              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
-              @click="type = FALCON"
-            >
-              <v-row>
-                <v-col align-self="center" cols="auto">
-                  <v-icon :icon="mdiAtom" />
-                </v-col>
-                <v-col>
-                  {{ FALCON }}
-                  <v-chip text="Experimental" size="small" class="ml-1" />
-                  <div class="text-grey">Post-Quantum Secure</div>
                 </v-col>
               </v-row>
             </v-container>

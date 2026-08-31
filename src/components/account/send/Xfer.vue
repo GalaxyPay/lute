@@ -189,14 +189,6 @@ const closeRemainderToTip = computed(() =>
       paid, to this address.`
 );
 
-watch(
-  () => props.rekey,
-  () => {
-    refresh();
-  },
-  { immediate: true }
-);
-
 function toProps(item: any) {
   return {
     subtitle: !algosdk.isValidAddress(item?.title) ? item?.value : undefined,
@@ -304,7 +296,6 @@ async function submit() {
     if (!txn) throw Error("Invalid Transaction");
     const stxn = await luteSigner([txn]);
     await send(stxn);
-    form.value?.reset();
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -410,7 +401,6 @@ async function arc59SendAsset() {
     await composer.send();
     store.refresh++;
     store.setSnackbar("Success", "success");
-    form.value.reset();
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -422,9 +412,12 @@ async function refresh() {
   showNote.value = false;
   showCloseRemainderTo.value = false;
   showRevocationTarget.value = false;
+  const prevAsset = asset.value;
+  const prevAssetValid = props.acct.info?.assets?.some(
+    (a) => a.assetId === prevAsset.index
+  );
   form.value?.reset();
   assets.value = [store.nativeAsset];
-  asset.value = store.nativeAsset;
   toAuto.value = addrs.value;
   rekeyToAuto.value = addrs.value;
   if (!props.acct.info?.assets) return;
@@ -436,10 +429,11 @@ async function refresh() {
       }
     })
   );
+  asset.value = prevAssetValid ? prevAsset : store.nativeAsset;
 }
 
 watch(
-  () => store.refresh,
+  () => [store.refresh, props.rekey],
   () => whenLoaded(refresh),
   { immediate: true }
 );
