@@ -169,6 +169,11 @@ async function beginHandler() {
       txns: luteTxns.value.txns,
       dtxns: luteTxns.value.dtxns,
     });
+  if (store.luteTxns) {
+    // internal modal signer: no refresh is triggered, proceed directly
+    if (await luteTxns.value.validateNetwork()) await finishHandler();
+    return;
+  }
   // wait for refresh to complete before proceeding
   watch(
     () => store.loading,

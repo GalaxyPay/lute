@@ -51,7 +51,7 @@ export default class LuteTxns {
     this.sendAndClose(message);
   }
 
-  async validateNetwork() {
+  async validateNetwork(): Promise<boolean> {
     try {
       const firstHash: Base64 = this.dtxns[0]!.genesisHash!.toBase64();
       const sameNetwork = this.dtxns.filter(
@@ -70,10 +70,18 @@ export default class LuteTxns {
           (n.genesisHash === firstHash || !n.genesisHash)
       )?.name;
       if (!network) throw Error("Unknown Network", INVALID);
-      this.store.networkName = network;
-      this.store.refresh++;
+      if (this.store.luteTxns) {
+        // internal signer: txns must be for the network the app is already on
+        if (network !== this.store.networkName)
+          throw Error("Network Mismatch", INVALID);
+      } else {
+        this.store.networkName = network;
+        this.store.refresh++;
+      }
+      return true;
     } catch (err: any) {
       this.handleError(err);
+      return false;
     }
   }
 
