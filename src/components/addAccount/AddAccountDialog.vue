@@ -65,82 +65,95 @@
             </v-container>
           </v-card>
         </v-container>
-        <v-container>
-          <v-card variant="outlined" color="primary" class="pointer">
-            <v-container
-              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
-              @click="alertSelect(HOT)"
-            >
-              <v-row>
-                <v-col align-self="center" cols="auto">
-                  <v-icon :icon="mdiFire" />
-                </v-col>
-                <v-col>
-                  {{ HOT }}
-                  <v-chip text="Legacy" size="small" class="ml-1" />
-                  <div class="text-grey">
-                    25-word seed, single account, non-extractable
-                  </div>
-                </v-col>
-              </v-row>
-            </v-container>
-          </v-card>
-        </v-container>
-        <v-container>
-          <v-card variant="outlined" color="primary" class="pointer">
-            <v-container
-              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
-              @click="type = MSIG"
-            >
-              <v-row>
-                <v-col align-self="center" cols="auto">
-                  <v-icon :icon="mdiKeyChange" />
-                </v-col>
-                <v-col>
-                  {{ MSIG }}
-                  <div class="text-grey">On-Chain (ARC-55)</div>
-                </v-col>
-              </v-row>
-            </v-container>
-          </v-card>
-        </v-container>
-        <v-container>
-          <v-card variant="outlined" color="primary" class="pointer">
-            <v-container
-              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
-              @click="alertSelect(MN12)"
-            >
-              <v-row>
-                <v-col align-self="center" cols="auto">
-                  <v-icon :icon="mdiImport" />
-                </v-col>
-                <v-col>
-                  {{ MN12 }}
-                  <div class="text-grey">
-                    Convert your Exodus, Trust, or Coinomi to Algo25
-                  </div>
-                </v-col>
-              </v-row>
-            </v-container>
-          </v-card>
-        </v-container>
-        <v-container>
-          <v-card variant="outlined" color="primary" class="pointer">
-            <v-container
-              :class="store.theme == 'light' ? 'text-black' : 'text-white'"
-              @click="type = WATCH"
-            >
-              <v-row>
-                <v-col align-self="center" cols="auto">
-                  <v-icon :icon="mdiEye" />
-                </v-col>
-                <v-col>
-                  {{ WATCH }}
-                  <div class="text-grey">Keep an eye on things</div>
-                </v-col>
-              </v-row>
-            </v-container>
-          </v-card>
+        <template v-if="showMore">
+          <v-container>
+            <v-card variant="outlined" color="primary" class="pointer">
+              <v-container
+                :class="store.theme == 'light' ? 'text-black' : 'text-white'"
+                @click="alertSelect(HOT)"
+              >
+                <v-row>
+                  <v-col align-self="center" cols="auto">
+                    <v-icon :icon="mdiFire" />
+                  </v-col>
+                  <v-col>
+                    {{ HOT }}
+                    <v-chip text="Legacy" size="small" class="ml-1" />
+                    <div class="text-grey">
+                      25-word seed, single account, non-extractable
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-card>
+          </v-container>
+          <v-container>
+            <v-card variant="outlined" color="primary" class="pointer">
+              <v-container
+                :class="store.theme == 'light' ? 'text-black' : 'text-white'"
+                @click="type = MSIG"
+              >
+                <v-row>
+                  <v-col align-self="center" cols="auto">
+                    <v-icon :icon="mdiKeyChange" />
+                  </v-col>
+                  <v-col>
+                    {{ MSIG }}
+                    <div class="text-grey">On-Chain (ARC-55)</div>
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-card>
+          </v-container>
+          <v-container>
+            <v-card variant="outlined" color="primary" class="pointer">
+              <v-container
+                :class="store.theme == 'light' ? 'text-black' : 'text-white'"
+                @click="alertSelect(MN12)"
+              >
+                <v-row>
+                  <v-col align-self="center" cols="auto">
+                    <v-icon :icon="mdiImport" />
+                  </v-col>
+                  <v-col>
+                    {{ MN12 }}
+                    <div class="text-grey">
+                      Convert your Exodus, Trust, or Coinomi to Algo25
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-card>
+          </v-container>
+          <v-container>
+            <v-card variant="outlined" color="primary" class="pointer">
+              <v-container
+                :class="store.theme == 'light' ? 'text-black' : 'text-white'"
+                @click="type = WATCH"
+              >
+                <v-row>
+                  <v-col align-self="center" cols="auto">
+                    <v-icon :icon="mdiEye" />
+                  </v-col>
+                  <v-col>
+                    {{ WATCH }}
+                    <div class="text-grey">Keep an eye on things</div>
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-card>
+          </v-container>
+        </template>
+        <v-container v-else class="text-center">
+          <v-row>
+            <v-col>
+              <v-btn
+                @click="showMore = true"
+                :append-icon="mdiChevronDown"
+                text="More"
+              />
+            </v-col>
+          </v-row>
         </v-container>
       </v-container>
       <h-d-wallet v-else-if="type === HD" @close="show = false" />
@@ -157,6 +170,7 @@
 <script lang="ts" setup>
 import {
   mdiAtom,
+  mdiChevronDown,
   mdiClose,
   mdiEye,
   mdiFire,
@@ -175,6 +189,8 @@ const MSIG = "Multi-Sig Account";
 const HOT = "Algo25 Account";
 const MN12 = "12-Word Account";
 const FALCON = "Falcon25 Account";
+
+const showMore = ref(false);
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -196,7 +212,10 @@ const show = computed({
 watch(
   () => props.visible,
   (val) => {
-    if (val) type.value = undefined;
+    if (val) {
+      type.value = undefined;
+      showMore.value = false;
+    }
   }
 );
 
