@@ -1,7 +1,7 @@
 {
   "name": "lute",
   "displayName": "Lute",
-  "version": "1.26.6",
+  "version": "1.26.7",
   "type": "module",
   "description": "An Algorand Wallet",
   "license": "AGPL-3.0-only",
@@ -29,10 +29,8 @@
     "@ledgerhq/hw-transport-webhid": "^6.36.0",
     "@ledgerhq/hw-transport-webusb": "^6.35.0",
     "@mdi/js": "^7.4.47",
-    "@noble/curves": "^2.3.0",
-    "@noble/hashes": "^2.3.0",
-    "@scure/bip32": "^2.3.0",
-    "@scure/bip39": "^2.3.0",
+    "@scure/bip32": "^2.4.0",
+    "@scure/bip39": "^2.4.0",
     "algosdk": "3.7.0",
     "canonify": "^2.1.1",
     "falcon-1024": "^0.2.0",
@@ -41,10 +39,10 @@
     "micro-key-producer": "^0.9.0",
     "multiformats": "^13.4.2",
     "pinia": "^3.0.4",
-    "vue": "^3.5.41",
-    "vue-router": "^5.2.0",
-    "vuetify": "^3.13.2",
-    "zod": "^4.4.3"
+    "vue": "^3.5.42",
+    "vue-router": "^5.3.0",
+    "vuetify": "^3.13.3",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.6",
@@ -53,7 +51,7 @@
     "@types/node": "^25.9.5",
     "@types/w3c-web-hid": "^1.0.7",
     "@types/w3c-web-usb": "^1.0.14",
-    "@types/webextension-polyfill": "^0.12.5",
+    "@types/webextension-polyfill": "^0.12.6",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/tsconfig": "^0.9.1",
@@ -81,5 +79,5 @@
   "engines": {
     "node": ">=22.16.0"
   },
-  "packageManager": "pnpm@11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621"
+  "packageManager": "pnpm@11.25.0+sha512.5cde925b4f075f725eb71fbae18a42ffe784524789f19b61c731cb8721ec28aaee160e01a8d5af4fedb2a42cdbf300efe23db356b0d4a17b4d63e11f8ab7c956"
 }

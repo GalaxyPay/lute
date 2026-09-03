@@ -13,7 +13,7 @@ export async function refresh() {
   store.loading++;
   if (!store.fallback && store.network.fallback)
     try {
-      await Algo.algod.status().do();
+      await Algo.algod.status().do({}, { signal: AbortSignal.timeout(1000) });
     } catch {
       console.log("Using fallback networks");
       store.fallback = true;
