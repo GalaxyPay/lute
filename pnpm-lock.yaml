@@ -23,12 +23,6 @@ importers:
       '@mdi/js':
         specifier: ^7.4.47
         version: 7.4.47
-      '@noble/curves':
-        specifier: ^2.3.0
-        version: 2.3.0
-      '@noble/hashes':
-        specifier: ^2.3.0
-        version: 2.3.0
       '@scure/bip32':
         specifier: ^2.3.0
         version: 2.3.0

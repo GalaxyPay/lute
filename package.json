@@ -1,7 +1,7 @@
 {
   "name": "lute",
   "displayName": "Lute",
-  "version": "1.26.6",
+  "version": "1.26.7",
   "type": "module",
   "description": "An Algorand Wallet",
   "license": "AGPL-3.0-only",
@@ -29,8 +29,6 @@
     "@ledgerhq/hw-transport-webhid": "^6.36.0",
     "@ledgerhq/hw-transport-webusb": "^6.35.0",
     "@mdi/js": "^7.4.47",
-    "@noble/curves": "^2.3.0",
-    "@noble/hashes": "^2.3.0",
     "@scure/bip32": "^2.3.0",
     "@scure/bip39": "^2.3.0",
     "algosdk": "3.7.0",
