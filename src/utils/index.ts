@@ -185,7 +185,7 @@ export function waitFor(milliseconds: number) {
 
 export function sendOrPostMessage(message: any, tabId?: number) {
   if (tabId) {
-    browser.tabs.sendMessage(tabId, message);
+    browser.tabs.sendMessage(tabId, message, { frameId: 0 });
     resetSidePanel();
   } else window.opener.postMessage(message, "*");
 }

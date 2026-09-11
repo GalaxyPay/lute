@@ -86,7 +86,7 @@ async function ready() {
     tabId = Number(params.get("tabId"));
     browser.runtime.onMessage.addListener(messageHandler);
     try {
-      await browser.tabs.sendMessage(tabId, message);
+      await browser.tabs.sendMessage(tabId, message, { frameId: 0 });
     } catch {
       await resetSidePanel();
     }
