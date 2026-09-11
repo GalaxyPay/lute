@@ -56,15 +56,19 @@ export async function getManifest() {
       {
         matches: ["<all_urls>"],
         js: ["dist/contentScripts/index.global.js"],
+        run_at: "document_start",
       },
+      {
+        matches: ["<all_urls>"],
+        js: ["dist/assets/client.js"],
+        run_at: "document_start",
+        world: "MAIN",
+      } as Manifest.ContentScript,
     ],
+    // Older lute-connect versions detect the extension by loading this icon
     web_accessible_resources: [
       {
         resources: ["/assets/icon-16.png"],
-        matches: ["<all_urls>"],
-      },
-      {
-        resources: ["dist/assets/client.js"],
         matches: ["<all_urls>"],
       },
     ],

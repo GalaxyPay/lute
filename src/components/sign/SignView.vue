@@ -74,7 +74,13 @@
 import LuteTxns from "@/classes/LuteTxns";
 import Algo from "@/services/Algo";
 import Unlock from "@/services/Unlock";
-import { resetSidePanel, sendOrPostMessage, whenLoaded } from "@/utils";
+import {
+  isFromOpener,
+  postReady,
+  resetSidePanel,
+  sendOrPostMessage,
+  whenLoaded,
+} from "@/utils";
 import { modelsv2, Transaction, type TransactionWithSigner } from "algosdk";
 
 const store = useAppStore();
@@ -140,8 +146,8 @@ async function ready() {
   }
   const message = { action: "ready", debug: store.debug };
   if (store.isWeb) {
-    window.opener.postMessage(message, "*");
     window.addEventListener("message", messageHandler);
+    postReady(message);
   } else {
     browser.runtime.connect({ name: "luteSidepanel" });
     const params = new URLSearchParams(document.location.search);
@@ -149,7 +155,7 @@ async function ready() {
     tabId = Number(params.get("tabId"));
     browser.runtime.onMessage.addListener(messageHandler);
     try {
-      await browser.tabs.sendMessage(tabId, message);
+      await browser.tabs.sendMessage(tabId, message, { frameId: 0 });
     } catch {
       await resetSidePanel();
     }
@@ -157,7 +163,8 @@ async function ready() {
 }
 
 function messageHandler(event: any) {
-  if (event.data.action === "sign") {
+  if (store.isWeb && !isFromOpener(event)) return;
+  if (event.data?.action === "sign") {
     luteTxns.value = new LuteTxns(event.data.txns, tabId);
     beginHandler();
   }

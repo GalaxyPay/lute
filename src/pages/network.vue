@@ -27,6 +27,8 @@ import { networks } from "@/data";
 import { set } from "@/dbLute";
 import {
   deepClone,
+  isFromOpener,
+  postReady,
   resetSidePanel,
   sendOrPostMessage,
   whenLoaded,
@@ -48,8 +50,8 @@ onMounted(() => whenLoaded(ready));
 async function ready() {
   const message = { action: "ready", debug: store.debug };
   if (store.isWeb) {
-    window.opener.postMessage(message, "*");
     window.addEventListener("message", messageHandler);
+    postReady(message);
   } else {
     browser.runtime.connect({ name: "luteSidepanel" });
     const params = new URLSearchParams(document.location.search);
@@ -57,7 +59,7 @@ async function ready() {
     tabId = Number(params.get("tabId"));
     browser.runtime.onMessage.addListener(messageHandler);
     try {
-      await browser.tabs.sendMessage(tabId, message);
+      await browser.tabs.sendMessage(tabId, message, { frameId: 0 });
     } catch {
       await resetSidePanel();
     }
@@ -65,7 +67,8 @@ async function ready() {
 }
 
 async function messageHandler(event: any) {
-  if (event.data.action === "network") {
+  if (store.isWeb && !isFromOpener(event)) return;
+  if (event.data?.action === "network") {
     network.value = event.data.network;
     if (store.debug)
       console.log("[Lute Debug]", {

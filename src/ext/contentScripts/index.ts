@@ -3,15 +3,6 @@ import getAppName from "@/utils/getAppName";
 import { signDataResponseUnsafe, signDataSafe } from "@/utils/signData";
 
 (() => {
-  // inject the script to access the full dom
-  const element: HTMLElement = document.createElement("script");
-
-  element.setAttribute("type", "text/javascript");
-  element.setAttribute("src", browser.runtime.getURL("dist/assets/client.js"));
-
-  // append the script to the end of the document head
-  document.head.appendChild(element);
-
   window.addEventListener("lute-connect", messageHandler);
 
   function b64ToArr(b64: string) {

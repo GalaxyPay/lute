@@ -93,7 +93,7 @@ export const sharedConfig: UserConfig = {
 };
 
 function entryFileNames(chunk: any) {
-  return chunk.name?.includes("client")
+  return chunk.name === "client"
     ? "assets/[name].js"
     : "assets/[name]-[hash].js";
 }
