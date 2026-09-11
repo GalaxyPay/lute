@@ -63,6 +63,8 @@
 import router from "@/router";
 import {
   bigintToString,
+  isFromOpener,
+  postReady,
   resetSidePanel,
   sendOrPostMessage,
   whenLoaded,
@@ -82,8 +84,8 @@ onMounted(() => whenLoaded(ready));
 
 async function ready() {
   if (store.isWeb) {
-    window.opener.postMessage({ action: "ready", debug: store.debug }, "*");
     window.addEventListener("message", messageHandler);
+    postReady({ action: "ready", debug: store.debug });
   } else {
     browser.runtime.connect({ name: "luteSidepanel" });
     const params = new URLSearchParams(document.location.search);
@@ -108,8 +110,8 @@ const siteName = computed(() => {
 
 async function messageHandler(event: any) {
   try {
-    if (store.isWeb && event.origin === location.origin) return;
-    if (event.data.action === "network") {
+    if (store.isWeb && !isFromOpener(event)) return;
+    if (event.data?.action === "network") {
       const network = store.allNetworks.find(
         (n) =>
           n.genesisID ===

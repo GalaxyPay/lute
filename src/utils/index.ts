@@ -3,6 +3,14 @@ import algosdk, { type Account } from "algosdk";
 import { generateKey } from "falcon-1024";
 
 export { getAssetInfo } from "./assetInfo";
+export {
+  BASE_PATH,
+  isFromOpener,
+  postReady,
+  referrerOrigin,
+  resetSidePanel,
+  sendOrPostMessage,
+} from "./messaging";
 export { refresh } from "./refresh";
 export { resolveProtocol } from "./resolveProtocol";
 export { send } from "./send";
@@ -152,12 +160,6 @@ export function b64url(b64: string) {
   return b64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-export const BASE_PATH = "dist/main/index.html";
-export async function resetSidePanel() {
-  // @ts-expect-error missing types
-  await browser.sidePanel.setOptions({ path: BASE_PATH });
-}
-
 export function expireDays(timeExpires: string | undefined) {
   if (!timeExpires) return undefined;
   const currTime = new Date().getTime();
@@ -181,13 +183,6 @@ export async function whenLoaded(promise: () => Promise<void>) {
 
 export function waitFor(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-export function sendOrPostMessage(message: any, tabId?: number) {
-  if (tabId) {
-    browser.tabs.sendMessage(tabId, message, { frameId: 0 });
-    resetSidePanel();
-  } else window.opener.postMessage(message, "*");
 }
 
 export function copyToClipboard(val: string) {

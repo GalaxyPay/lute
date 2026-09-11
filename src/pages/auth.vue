@@ -50,6 +50,8 @@ import LuteData from "@/classes/LuteData";
 import LuteDataOld from "@/classes/LuteData.old";
 import Unlock from "@/services/Unlock";
 import {
+  isFromOpener,
+  postReady,
   resetSidePanel,
   sendOrPostMessage,
   signDataUnsafe,
@@ -73,10 +75,9 @@ async function ready() {
   store.networkName = "MainNet";
   const message = { action: "ready", debug: store.debug };
   if (store.isWeb) {
-    referrer = document.referrer.split("/")[2];
-    if (!referrer) throw Error("Invalid Referrer");
-    window.opener.postMessage(message, "*");
+    if (!window.opener) throw Error("Invalid Referrer");
     window.addEventListener("message", messageHandler);
+    postReady(message);
   } else {
     browser.runtime.connect({ name: "luteSidepanel" });
     const params = new URLSearchParams(document.location.search);
@@ -94,7 +95,11 @@ async function ready() {
 }
 
 async function messageHandler(event: any) {
-  if (event.data.action === "data") {
+  if (store.isWeb) {
+    if (!isFromOpener(event)) return;
+    referrer = new URL(event.origin).host;
+  }
+  if (event.data?.action === "data") {
     store.signingData = true;
     if (event.data.data) {
       luteData.value = new LuteDataOld(
