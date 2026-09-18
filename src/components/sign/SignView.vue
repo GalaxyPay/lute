@@ -33,6 +33,30 @@
             <v-btn text="Proceed" @click="luteTxns.addToMsig()" />
           </v-container>
         </template>
+        <template v-else-if="showLsig">
+          <div class="text-warning text-h5 pa-4">Warning</div>
+          <v-card-text>
+            Because you are connected to Lute with a
+            <span class="text-warning">Hybrid LogicSig account</span>, the
+            requested transactions will be altered! Fees will be increased, and
+            dummy transactions will be added.
+          </v-card-text>
+          <v-card-text>
+            Also, the transactions will be submitted to the chain by the wallet
+            and an error will be returned to the app.
+          </v-card-text>
+          <v-card-text v-if="lsigRestrict" class="text-error">
+            ERROR: Hybrid LogicSig accounts do not currently support signing
+            groups larger than 8 transactions.
+          </v-card-text>
+          <v-container class="text-center">
+            <v-btn
+              text="Proceed"
+              @click="luteTxns.addDummyTxns()"
+              :disabled="lsigRestrict"
+            />
+          </v-container>
+        </template>
         <template v-else>
           <div class="text-h5 pa-4">
             {{
@@ -56,7 +80,7 @@
             <v-row class="text-center">
               <v-col>
                 <v-btn
-                  text="Sign"
+                  :text="luteTxns.lsig?.adjusted ? 'Sign and Send' : 'Sign'"
                   @click="passwordCheck()"
                   :disabled="signing"
                 />
@@ -115,6 +139,10 @@ const showMsig = computed(
     !luteTxns.value.atc.getStatus()
 );
 
+const showLsig = computed(
+  () => !!luteTxns.value.lsig && !luteTxns.value.lsig.adjusted
+);
+const lsigRestrict = computed(() => (luteTxns.value.lsig?.count || 0) > 8);
 const signCount = computed(() =>
   luteTxns.value.atc.getStatus()
     ? luteTxns.value.atc?.count()

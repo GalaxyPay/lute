@@ -12,27 +12,40 @@ import {
 import algosdk from "algosdk";
 
 const HdWallet = {
-  async deriveAccts(seed: Buffer, startIndex: number = 0) {
-    const accts: AccountSubs[] = [];
+  async deriveAddrs(seed: Buffer, startIndex: number = 0, extend = false) {
+    const addrs: { value: string; xpub?: string }[] = [];
     const cryptoService = new XHDWalletAPI();
     const rootKey = fromSeed(seed);
     for (let i = startIndex; i < 4 + startIndex; i++) {
-      const key = await cryptoService.keyGen(rootKey, KeyContext.Address, i, 0);
-      const addr = new algosdk.Address(key).toString();
-      const ai: AccountSubs = await Algo.algod.accountInformation(addr).do();
-      const aa = await getAuthAccts(addr);
-      ai.subs = aa;
-      const xpubArr = await cryptoService.deriveKey(
-        rootKey,
-        [harden(44), harden(283), harden(i), 0],
-        false,
-        BIP32DerivationType.Peikert
-      );
-      ai.xpub = xpubArr.toBase64();
-      accts.push(ai);
+      const pk = await cryptoService.keyGen(rootKey, KeyContext.Address, i, 0);
+      const addr = new algosdk.Address(pk).toString();
+      const xpub = extend
+        ? await cryptoService.deriveKey(
+            rootKey,
+            [harden(44), harden(283), harden(i), 0],
+            false,
+            BIP32DerivationType.Peikert
+          )
+        : undefined;
+      addrs.push({ value: addr, xpub: xpub?.toBase64() });
     }
     rootKey.fill(0);
-    return accts;
+    return addrs;
+  },
+
+  async deriveAccts(seed: Buffer, startIndex: number = 0) {
+    const addrs = await this.deriveAddrs(seed, startIndex, true);
+    return await Promise.all(
+      addrs.map(async (addr) => {
+        const ai: AccountSubs = await Algo.algod
+          .accountInformation(addr.value)
+          .do();
+        const aa = await getAuthAccts(addr.value);
+        ai.subs = aa;
+        ai.xpub = addr.xpub;
+        return ai;
+      })
+    );
   },
 
   async deriveAddr(xpub: string, index: number) {

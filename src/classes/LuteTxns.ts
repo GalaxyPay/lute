@@ -1,8 +1,9 @@
 import { msigAbiContract } from "@/data";
 import Algo from "@/services/Algo";
+import Hybrid from "@/services/Hybrid";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
-import { isBadPassword, needsPassword, sendOrPostMessage } from "@/utils";
+import { isBadPassword, needsPassword, send, sendOrPostMessage } from "@/utils";
 import { signer } from "@/utils/signers";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
 
@@ -13,6 +14,7 @@ export default class LuteTxns {
   dtxns: Transaction[];
   store = useAppStore();
   msig?: LuteMsig;
+  lsig?: { count: number; adjusted?: boolean };
   atc = new algosdk.AtomicTransactionComposer();
   nonce?: bigint;
   groupWarn: boolean = false;
@@ -36,8 +38,33 @@ export default class LuteTxns {
       );
       this.store.luteTxns = undefined;
     } else {
+      if (message.action === "signed" && this.lsig?.adjusted) {
+        this.handleLsig(message);
+        return;
+      }
       sendOrPostMessage(message, this.tabId);
       window.close();
+    }
+  }
+
+  private async handleLsig(message: any) {
+    try {
+      // submit to chain and return error to app
+      this.store.overlay = true;
+      this.store.setSnackbar("Processing...", "info", -1);
+      const txns = this.store.isWeb
+        ? message.txns
+        : message.txns.map((txn: string) => Uint8Array.fromBase64(txn));
+      await send(txns);
+      const errMessage = {
+        action: "error",
+        code: 4000,
+        message: "Transaction(s) sent by wallet",
+        debug: this.store.debug,
+      };
+      this.sendAndClose(errMessage);
+    } catch (err: any) {
+      this.handleError(err);
     }
   }
 
@@ -147,7 +174,9 @@ export default class LuteTxns {
             );
           }
         }
-        if (acct?.appId) {
+        if (acct?.hybrid) {
+          this.lsig = { count: sameSender };
+        } else if (acct?.appId) {
           const app = await Msig.loadApp(acct.appId);
           if (!app) throw Error("Invalid Application");
           const signerAddr = this.store.msigSigner(app);
@@ -235,6 +264,40 @@ export default class LuteTxns {
     } catch (err: any) {
       this.handleError(err);
     }
+  }
+
+  async addDummyTxns() {
+    if (!this.lsig) throw Error("Invalid Falcon Transaction");
+    const dummyCount = this.lsig.count;
+    const sp = await Algo.algod.getTransactionParams().do();
+    // remove groups and adjust fees
+    const newTxns = this.decode().map((t, i) => {
+      delete t.group;
+      if (this.toSign(i)) t.fee += sp.minFee;
+      return t;
+    });
+    // add dummy txns, calc group, add dummy lsigs
+    const { dummyLsig, dummyTxns } = await Hybrid.getDummy(sp, dummyCount);
+    newTxns.push(...dummyTxns);
+    algosdk.assignGroupID(newTxns);
+
+    // alter txns and dtxns
+    newTxns.map((t, i) => {
+      if (i < this.txns.length) {
+        this.txns[i]!.txn = t.toByte().toBase64();
+      } else {
+        const wt: WalletTransaction = {
+          txn: t.toByte().toBase64(),
+          signers: [],
+          stxn: algosdk
+            .signLogicSigTransactionObject(t, dummyLsig)
+            .blob.toBase64(),
+        };
+        this.txns.push(wt);
+      }
+    });
+    this.dtxns = this.decode();
+    this.lsig.adjusted = true;
   }
 
   private async listenForSigs() {

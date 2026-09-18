@@ -233,6 +233,10 @@ export interface LuteAccount {
   seedId?: number;
   xpub?: string;
   idxs?: number[];
+  hybrid?: {
+    edAddr: string;
+    lsig: string;
+  };
 }
 
 export interface AccountInfo extends LuteAccount {
@@ -264,6 +268,10 @@ export interface NsLookup {
 export interface AccountSubs extends modelsv2.Account {
   subs?: Address[];
   xpub?: string;
+  hybrid?: {
+    edAddr: string;
+    lsig: string;
+  };
 }
 
 export interface Arc55App {

@@ -215,6 +215,25 @@
             />
           </v-col>
         </v-row>
+        <v-row align="center">
+          <v-col>
+            <v-icon :icon="mdiTestTube" class="mb-1 mr-2" /> Experimental
+            Features
+            <div style="color: #9aa0a5; font-size: 0.7em">
+              Show features that may not be production-ready
+            </div>
+          </v-col>
+          <v-col>
+            <v-switch
+              :model-value="store.experimental"
+              class="d-flex"
+              style="justify-content: right"
+              :label="store.experimental ? 'Enabled' : 'Disabled'"
+              color="primary"
+              @click.prevent="setExperimental()"
+            />
+          </v-col>
+        </v-row>
       </v-container>
     </v-card>
   </v-container>
@@ -237,6 +256,7 @@ import {
   mdiKeyChange,
   mdiLockClock,
   mdiSourceBranch,
+  mdiTestTube,
   mdiThemeLightDark,
   mdiTrayArrowDown,
 } from "@mdi/js";
@@ -294,6 +314,11 @@ async function setSnoop() {
 
 async function setLedgerSelect() {
   await set("app", "ledgerSelect", !store.ledgerSelect);
+  await store.getCache();
+}
+
+async function setExperimental() {
+  await set("app", "experimental", !store.experimental);
   await store.getCache();
 }
 

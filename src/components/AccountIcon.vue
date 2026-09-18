@@ -8,6 +8,7 @@
     class="mr-1"
   />
   <v-icon v-else-if="item.isHot" :icon="mdiFire" />
+  <v-icon v-else-if="item.hybrid" :icon="mdiPlusBox" />
   <v-icon
     v-else-if="item.seedId && item.slot != null"
     :icon="mdiWallet"
@@ -29,6 +30,7 @@ import {
   mdiFire,
   mdiKey,
   mdiKeyChange,
+  mdiPlusBox,
   mdiSubdirectoryArrowRight,
   mdiWallet,
 } from "@mdi/js";

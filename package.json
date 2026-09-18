@@ -29,6 +29,7 @@
     "@ledgerhq/hw-transport-webhid": "^6.36.0",
     "@ledgerhq/hw-transport-webusb": "^6.35.0",
     "@mdi/js": "^7.4.47",
+    "@noble/hashes": "^2.4.0",
     "@scure/bip32": "^2.4.0",
     "@scure/bip39": "^2.4.0",
     "algosdk": "3.7.0",

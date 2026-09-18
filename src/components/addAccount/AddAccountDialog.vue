@@ -125,6 +125,27 @@
               </v-container>
             </v-card>
           </v-container>
+          <v-container v-if="store.experimental">
+            <v-card variant="outlined" color="primary" class="pointer">
+              <v-container
+                :class="store.theme == 'light' ? 'text-black' : 'text-white'"
+                @click="type = HYBRID"
+              >
+                <v-row>
+                  <v-col align-self="center" cols="auto">
+                    <v-icon :icon="mdiPlusBox" />
+                  </v-col>
+                  <v-col>
+                    {{ HYBRID }}
+                    <v-chip text="Experimental" size="small" class="ml-1" />
+                    <div class="text-grey">
+                      Classical + Post-Quantum Security
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-card>
+          </v-container>
           <v-container>
             <v-card variant="outlined" color="primary" class="pointer">
               <v-container
@@ -163,6 +184,7 @@
       <hot v-else-if="type === HOT" @close="show = false" />
       <mn12 v-else-if="type === MN12" @close="show = false" />
       <falcon v-else-if="type === FALCON" @close="show = false" />
+      <hybrid v-else-if="type === HYBRID" @close="show = false" />
     </v-card>
   </v-dialog>
 </template>
@@ -176,6 +198,7 @@ import {
   mdiFire,
   mdiImport,
   mdiKeyChange,
+  mdiPlusBox,
   mdiWallet,
 } from "@mdi/js";
 
@@ -189,6 +212,7 @@ const MSIG = "Multi-Sig Account";
 const HOT = "Algo25 Account";
 const MN12 = "12-Word Account";
 const FALCON = "Falcon25 Account";
+const HYBRID = "Hybrid Account";
 
 const showMore = ref(false);
 

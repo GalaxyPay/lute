@@ -1,5 +1,6 @@
 import LuteTxns from "@/classes/LuteTxns";
 import { get } from "@/dbLute";
+import Hybrid, { DOM_SEP } from "@/services/Hybrid";
 import HdWallet from "@/services/HdWallet";
 import Seed from "@/services/Seed";
 import type { LuteMsig, WalletTransaction } from "@/types";
@@ -64,12 +65,54 @@ export async function signer(
             if (!seedData) throw Error("Invalid Seed");
             seeds[acct.seedId] = await Seed.unlockSeed(seedData, password);
           }
-          sig = await HdWallet.sign(
-            Buffer.from(seeds[acct.seedId]!),
-            acct.slot,
-            txn.bytesToSign(),
-            acct.info?.addrIdx
-          );
+          if (acct.hybrid) {
+            const prev = txnGroup
+              .slice(0, idx)
+              .reverse()
+              .find((t) => t.sender.equals(txn.sender));
+            const needsSigs =
+              !prev || !!prev.rekeyTo || !!prev.payment?.closeRemainderTo;
+
+            let args: Uint8Array[] | undefined;
+            if (needsSigs) {
+              const falconPair = Hybrid.keyPair(
+                Buffer.from(seeds[acct.seedId]!),
+                Address.fromString(acct.hybrid.edAddr).publicKey
+              );
+              const domSep = new TextEncoder().encode(DOM_SEP);
+              const payload = Buffer.concat([
+                domSep,
+                txn.group || txn.rawTxID(),
+              ]);
+              const edSig = new Uint8Array(
+                await HdWallet.sign(
+                  Buffer.from(seeds[acct.seedId]!),
+                  acct.slot,
+                  payload,
+                  acct.info?.addrIdx
+                )
+              );
+              let falconSig;
+              try {
+                falconSig = signCompressed(falconPair.privateKey, payload);
+              } finally {
+                falconPair.privateKey.fill(0);
+              }
+              args = [edSig, falconSig];
+            }
+            const lsigBytes = Uint8Array.fromBase64(acct.hybrid.lsig);
+            const logicSig = new algosdk.LogicSigAccount(lsigBytes, args);
+            const slstxn = algosdk.signLogicSigTransactionObject(txn, logicSig);
+            signedTxns.push(slstxn.blob);
+            continue;
+          } else {
+            sig = await HdWallet.sign(
+              Buffer.from(seeds[acct.seedId]!),
+              acct.slot,
+              txn.bytesToSign(),
+              acct.info?.addrIdx
+            );
+          }
         } else if (acct.isFalcon25) {
           let f25 = falcon25Signers.find(
             (s) => s.address.toString() === acct.addr

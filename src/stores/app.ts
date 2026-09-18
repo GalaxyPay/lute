@@ -43,6 +43,7 @@ export const useAppStore = defineStore("app", {
     debug: false,
     snoop: false,
     ledgerSelect: false,
+    experimental: false,
     autoLockMinutes: 0,
     unlocked: false,
     tinyman: undefined as TinyAsset[] | undefined,
@@ -211,6 +212,8 @@ export const useAppStore = defineStore("app", {
         (await get("app", "ledgerSelect")) ?? this.ledgerSelect;
       this.autoLockMinutes =
         (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
+      this.experimental =
+        (await get("app", "experimental")) ?? this.experimental;
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
       this.falcon25Seeds = await getAll("falcon25-seeds");
