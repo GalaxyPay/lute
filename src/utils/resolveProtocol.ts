@@ -39,19 +39,25 @@ export async function resolveProtocol(url: string, reserveAddr: string) {
       console.log("unsupported asa field:", asaField);
       return url;
     }
-    let cidCodecCode;
-    if (cidCodec === "raw") {
-      cidCodecCode = 0x55;
-    } else if (cidCodec === "dag-pb") {
-      cidCodecCode = 0x70;
+    if (cidVersionInt !== 0 && cidVersionInt !== 1) {
+      console.log("unsupported cid version:", cidVersion);
+      return url;
     }
+    const cidCodecCode = cidCodec === "raw" ? 0x55 : 0x70;
 
-    // get 32 bytes Uint8Array reserve address - treating it as 32-byte sha2-256 hash
-    const addr = Address.fromString(reserveAddr);
-    const mhdigest = digest.create(sha256.code, addr.publicKey);
+    try {
+      // get 32 bytes Uint8Array reserve address - treating it as 32-byte sha2-256 hash
+      const addr = Address.fromString(reserveAddr);
+      const mhdigest = digest.create(sha256.code, addr.publicKey);
 
-    const cid = CID.create(cidVersionInt, cidCodecCode!, mhdigest);
-    chunks[1] = cid.toString() + "/" + chunks[1].split("/").slice(1).join("/");
+      const cid = CID.create(cidVersionInt, cidCodecCode, mhdigest);
+      chunks[1] =
+        cid.toString() + "/" + chunks[1].split("/").slice(1).join("/");
+    } catch (err) {
+      // invalid reserve address or CID; leave the template url unresolved
+      console.log("unable to resolve template-ipfs cid:", err);
+      return url;
+    }
   }
 
   // No protocol specified, give up
@@ -70,9 +76,16 @@ export async function resolveProtocol(url: string, reserveAddr: string) {
   }
 
   if (!isARC69) {
-    const response = await fetch(url);
-    const imgData = await response.json();
-    if (imgData.image) url = imgData.image.replace("ipfs://", ipfsGateway);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return url;
+      const imgData = await response.json();
+      if (typeof imgData?.image === "string")
+        url = imgData.image.replace("ipfs://", ipfsGateway);
+    } catch (err) {
+      // network failure, non-JSON body, or malformed metadata; fall back to url
+      console.log("unable to fetch asset metadata:", err);
+    }
   }
 
   return url;
