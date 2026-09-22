@@ -178,10 +178,10 @@ const asset = ref<modelsv2.Asset>(store.nativeAsset);
 const showInboxWarning = ref(false);
 
 const amountLabel = computed(() => {
-  return `Amount (${asset.value.params?.unitName || asset.value.params?.name})`;
+  return `Amount (${asset.value?.params?.unitName || asset.value?.params?.name})`;
 });
 const closeRemainderToTip = computed(() =>
-  asset.value.index === 0n
+  !asset.value?.index
     ? `Specify this field to close the sending account, and transfer all
       remaining funds, after the fee and amount are paid, to this address.`
     : `Specify this field to remove the asset holding from the sending
@@ -414,9 +414,10 @@ async function refresh() {
   showRevocationTarget.value = false;
   const prevAsset = asset.value;
   const prevAssetValid = props.acct.info?.assets?.some(
-    (a) => a.assetId === prevAsset.index
+    (a) => a.assetId === prevAsset?.index && a.amount > 0
   );
   form.value?.reset();
+  asset.value = prevAssetValid ? prevAsset : store.nativeAsset;
   assets.value = [store.nativeAsset];
   toAuto.value = addrs.value;
   rekeyToAuto.value = addrs.value;
@@ -429,7 +430,8 @@ async function refresh() {
       }
     })
   );
-  asset.value = prevAssetValid ? prevAsset : store.nativeAsset;
+  const loaded = assets.value.find((a) => a.index === asset.value?.index);
+  asset.value = loaded ?? store.nativeAsset;
 }
 
 watch(
