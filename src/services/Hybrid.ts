@@ -8,6 +8,7 @@ import HdWallet from "./HdWallet";
 import type { AccountSubs } from "@/types";
 
 export const DOM_SEP = "HybridED25519Falcon1024-v1:";
+const FALCON_SEED_LEN = 48;
 
 const lsigTealTMPL = `#pragma version 12
 #pragma typetrack false
@@ -92,10 +93,6 @@ txn RekeyTo
 global ZeroAddress
 ==`;
 
-const HKDF_SALT = utf8ToBytes("lute-hybrid-salt-v1");
-const HKDF_INFO = utf8ToBytes("lute-hybrid-edwards-v1");
-const FALCON_SEED_LEN = 48;
-
 const Hybrid = {
   getLsigTeal(edPublic: Uint8Array, falconPublic: Uint8Array) {
     return lsigTealTMPL
@@ -105,11 +102,11 @@ const Hybrid = {
   },
   keyPair(seed: Buffer, edPublic: Uint8Array) {
     if (seed.length !== 64) throw new Error("expected 64-byte BIP-39 seed");
-    const prk = extract(sha512, seed, HKDF_SALT);
+    const prk = extract(sha512, seed);
     const falconSeed = expand(
       sha512,
       prk,
-      concatBytes(HKDF_INFO, edPublic),
+      concatBytes(utf8ToBytes(DOM_SEP), edPublic),
       FALCON_SEED_LEN
     );
     prk.fill(0);
