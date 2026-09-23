@@ -66,12 +66,7 @@ export async function signer(
             seeds[acct.seedId] = await Seed.unlockSeed(seedData, password);
           }
           if (acct.hybrid) {
-            const prev = txnGroup
-              .slice(0, idx)
-              .reverse()
-              .find((t) => t.sender.equals(txn.sender));
-            const needsSigs =
-              !prev || !!prev.rekeyTo || !!prev.payment?.closeRemainderTo;
+            const needsSigs = Hybrid.needsSigs(txnGroup, idx);
 
             let args: Uint8Array[] | undefined;
             if (needsSigs) {

@@ -3,9 +3,14 @@ import Algo from "@/services/Algo";
 import Hybrid from "@/services/Hybrid";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
-import { isBadPassword, needsPassword, send, sendOrPostMessage } from "@/utils";
+import {
+  isBadPassword,
+  needsPassword,
+  send,
+  sendOrPostMessage,
+  simulateFees,
+} from "@/utils";
 import { signer } from "@/utils/signers";
-import { microAlgo } from "@algorandfoundation/algokit-utils";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
 
 const INVALID = { cause: 4300 };
@@ -15,7 +20,12 @@ export default class LuteTxns {
   dtxns: Transaction[];
   store = useAppStore();
   msig?: LuteMsig;
-  lsig?: { count: number; adjusted?: boolean };
+  lsig?: {
+    count: number;
+    program: Uint8Array;
+    dummies: number;
+    adjusted?: boolean;
+  };
   atc = new algosdk.AtomicTransactionComposer();
   nonce?: bigint;
   groupWarn: boolean = false;
@@ -176,7 +186,11 @@ export default class LuteTxns {
           }
         }
         if (acct?.hybrid) {
-          this.lsig = { count: sameSender };
+          this.lsig = {
+            count: sameSender,
+            program: Uint8Array.fromBase64(acct.hybrid.lsig),
+            dummies: sameSender < 2 ? 1 : 0,
+          };
         } else if (acct?.appId) {
           const app = await Msig.loadApp(acct.appId);
           if (!app) throw Error("Invalid Application");
@@ -268,38 +282,47 @@ export default class LuteTxns {
   }
 
   async modifyGroup() {
-    if (!this.lsig) throw Error("Invalid Falcon Transaction");
-    const sp = await Algo.algod.getTransactionParams().do();
-    // remove groups and adjust fees
-    let j = 0;
-    const newTxns = this.decode().map((t, i) => {
-      delete t.group;
-      if (this.toSign(i)) t.fee += j ? 96n : sp.minFee;
-      j++;
-      return t;
-    });
-    // add dummy txns, calc group, add dummy lsigs
-    const { dummyLsig, dummyTxns } = await Hybrid.getDummy(sp, 1);
-    newTxns.push(...dummyTxns);
-    algosdk.assignGroupID(newTxns);
+    try {
+      if (!this.lsig) throw Error("Invalid Falcon Transaction");
+      const suggestedParams = await Algo.algod.getTransactionParams().do();
+      const dummy = this.lsig.dummies
+        ? await Hybrid.getDummy(suggestedParams, this.lsig.dummies)
+        : undefined;
+      const newTxns = this.decode().map((t) => {
+        delete t.group;
+        return t;
+      });
+      if (dummy) newTxns.push(...dummy.dummyTxns);
+      // let algod price the group, then raise hybrid fees to cover it
+      const plan = Hybrid.feeSimTxns(
+        newTxns,
+        (idx) => this.toSign(idx),
+        this.lsig.program,
+        suggestedParams,
+        dummy && { lsig: dummy.dummyLsig, count: dummy.dummyTxns.length }
+      );
+      await simulateFees(plan, { suggestedParams });
 
-    // alter txns and dtxns
-    newTxns.map((t, i) => {
-      if (i < this.txns.length) {
-        this.txns[i]!.txn = t.toByte().toBase64();
-      } else {
-        const wt: WalletTransaction = {
-          txn: t.toByte().toBase64(),
-          signers: [],
-          stxn: algosdk
-            .signLogicSigTransactionObject(t, dummyLsig)
-            .blob.toBase64(),
-        };
-        this.txns.push(wt);
-      }
-    });
-    this.dtxns = this.decode();
-    this.lsig.adjusted = true;
+      // alter txns and dtxns
+      newTxns.forEach((t, i) => {
+        if (i < this.txns.length) {
+          this.txns[i]!.txn = t.toByte().toBase64();
+        } else {
+          const wt: WalletTransaction = {
+            txn: t.toByte().toBase64(),
+            signers: [],
+            stxn: algosdk
+              .signLogicSigTransactionObject(t, dummy!.dummyLsig)
+              .blob.toBase64(),
+          };
+          this.txns.push(wt);
+        }
+      });
+      this.dtxns = this.decode();
+      this.lsig.adjusted = true;
+    } catch (err: any) {
+      this.handleError(err);
+    }
   }
 
   private async listenForSigs() {
