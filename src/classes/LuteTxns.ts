@@ -5,6 +5,7 @@ import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
 import { isBadPassword, needsPassword, send, sendOrPostMessage } from "@/utils";
 import { signer } from "@/utils/signers";
+import { microAlgo } from "@algorandfoundation/algokit-utils";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
 
 const INVALID = { cause: 4300 };
@@ -266,18 +267,19 @@ export default class LuteTxns {
     }
   }
 
-  async addDummyTxns() {
+  async modifyGroup() {
     if (!this.lsig) throw Error("Invalid Falcon Transaction");
-    const dummyCount = this.lsig.count;
     const sp = await Algo.algod.getTransactionParams().do();
     // remove groups and adjust fees
+    let j = 0;
     const newTxns = this.decode().map((t, i) => {
       delete t.group;
-      if (this.toSign(i)) t.fee += sp.minFee;
+      if (this.toSign(i)) t.fee += j ? 96n : sp.minFee;
+      j++;
       return t;
     });
     // add dummy txns, calc group, add dummy lsigs
-    const { dummyLsig, dummyTxns } = await Hybrid.getDummy(sp, dummyCount);
+    const { dummyLsig, dummyTxns } = await Hybrid.getDummy(sp, 1);
     newTxns.push(...dummyTxns);
     algosdk.assignGroupID(newTxns);
 

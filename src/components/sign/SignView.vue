@@ -46,13 +46,13 @@
             and an error will be returned to the app.
           </v-card-text>
           <v-card-text v-if="lsigRestrict" class="text-error">
-            ERROR: Hybrid LogicSig accounts do not currently support signing
-            groups larger than 8 transactions.
+            ERROR: Hybrid LogicSig accounts do not support signing groups larger
+            than {{ MAX_LSIGS }} transactions.
           </v-card-text>
           <v-container class="text-center">
             <v-btn
               text="Proceed"
-              @click="luteTxns.addDummyTxns()"
+              @click="luteTxns.modifyGroup()"
               :disabled="lsigRestrict"
             />
           </v-container>
@@ -142,7 +142,12 @@ const showMsig = computed(
 const showLsig = computed(
   () => !!luteTxns.value.lsig && !luteTxns.value.lsig.adjusted
 );
-const lsigRestrict = computed(() => (luteTxns.value.lsig?.count || 0) > 8);
+
+const MAX_LSIGS = 15;
+
+const lsigRestrict = computed(
+  () => (luteTxns.value.lsig?.count || 0) > MAX_LSIGS
+);
 const signCount = computed(() =>
   luteTxns.value.atc.getStatus()
     ? luteTxns.value.atc?.count()

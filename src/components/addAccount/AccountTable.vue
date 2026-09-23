@@ -14,7 +14,13 @@
       <template #[`item.address`]="{ item, index }">
         {{ formatAddr(item.address) }}
         <div class="text-grey text-caption">
-          {{ `44'/283'/${index}'/0/0` }}
+          <template v-if="item.hybrid">
+            <v-icon class="pb-1" :icon="mdiArrowUpLeft" />
+            {{ formatAddr(item.hybrid.edAddr) }}
+          </template>
+          <template v-else>
+            {{ `44'/283'/${index}'/0/0` }}
+          </template>
         </div>
       </template>
       <template #[`item.amount`]="{ item }">
@@ -63,7 +69,7 @@
 <script lang="ts" setup>
 import type { AccountSubs } from "@/types";
 import { formatAddr, bigintToString } from "@/utils";
-import { mdiChevronDown } from "@mdi/js";
+import { mdiArrowUpLeft, mdiChevronDown } from "@mdi/js";
 
 defineProps({
   accounts: {
