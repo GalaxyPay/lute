@@ -122,34 +122,26 @@ const Hybrid = {
     const edAddrs = await HdWallet.deriveAddrs(seed, startIndex);
     return await Promise.all(
       edAddrs.map(async (edAddr) => {
-        const acct = await this.algoAccount(seed, edAddr.value);
-        const ai: AccountSubs = await Algo.algod
-          .accountInformation(acct.addr)
-          .do();
-        const aa = await getAuthAccts(acct.addr);
+        const edPublic = Address.fromString(edAddr.value).publicKey;
+        const falconPair = this.keyPair(seed, edPublic);
+        let lsigTeal;
+        try {
+          lsigTeal = this.getLsigTeal(edPublic, falconPair.publicKey);
+        } finally {
+          falconPair.privateKey.fill(0);
+        }
+        const compiledSig = await Algo.algod.compile(lsigTeal).do();
+        const logicSig = new algosdk.LogicSigAccount(
+          Uint8Array.fromBase64(compiledSig.result)
+        );
+        const addr = logicSig.address().toString();
+        const ai: AccountSubs = await Algo.algod.accountInformation(addr).do();
+        const aa = await getAuthAccts(addr);
         ai.subs = aa;
-        ai.hybrid = { edAddr: edAddr.value, lsig: acct.lsig };
+        ai.hybrid = { edAddr: edAddr.value, lsig: compiledSig.result };
         return ai;
       })
     );
-  },
-  async algoAccount(seed: Buffer, edAddr: string) {
-    const edPublic = Address.fromString(edAddr).publicKey;
-    const falconPair = this.keyPair(seed, edPublic);
-    let lsigTeal;
-    try {
-      lsigTeal = this.getLsigTeal(edPublic, falconPair.publicKey);
-    } finally {
-      falconPair.privateKey.fill(0);
-    }
-    const compiledSig = await Algo.algod.compile(lsigTeal).do();
-    const logicSig = new algosdk.LogicSigAccount(
-      Uint8Array.fromBase64(compiledSig.result)
-    );
-    return {
-      lsig: compiledSig.result,
-      addr: logicSig.address().toString(),
-    };
   },
   async getDummy(suggestedParams: algosdk.SuggestedParams, count: number) {
     const enc = new TextEncoder();

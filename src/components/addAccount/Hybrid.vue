@@ -27,9 +27,14 @@ onBeforeMount(async () => {
 });
 
 async function getAddrs(startIndex: number = 0) {
-  const accts = await Hybrid.deriveAccts(seed, startIndex);
-  accounts.value = accounts.value.concat(accts);
-  store.snackbar.display = false;
+  try {
+    const accts = await Hybrid.deriveAccts(seed, startIndex);
+    accounts.value = accounts.value.concat(accts);
+    store.snackbar.display = false;
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err.message, "error");
+  }
 }
 
 async function addAccounts(selected: AccountSubs[]) {
