@@ -65,9 +65,9 @@
   </v-dialog>
 </template>
 <script lang="ts" setup>
-import Algo, { getSuggestedParams } from "@/services/Algo";
+import Algo from "@/services/Algo";
 import type { AccountInfo } from "@/types";
-import { send } from "@/utils";
+import { priceTxns, send } from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import { mdiClose, mdiCloseCircle, mdiPlusCircle } from "@mdi/js";
 import algosdk from "algosdk";
@@ -111,7 +111,7 @@ async function optIn() {
   try {
     const { valid } = await form.value.validate();
     if (!valid || !asset.value) return;
-    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
     const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       assetIndex: assetId.value,
       receiver: props.acct.addr,
@@ -120,6 +120,7 @@ async function optIn() {
       amount: 0,
     });
     closeDialog();
+    await priceTxns([txn], props.acct);
     const stxn = await luteSigner([txn]);
     await send(stxn, "Opted-In to Asset");
   } catch (err: any) {

@@ -79,10 +79,10 @@
 
 <script lang="ts" setup>
 import router from "@/router";
-import Algo, { getSuggestedParams } from "@/services/Algo";
+import Algo from "@/services/Algo";
 import NameService from "@/services/NameService";
 import type { AccountInfo, NsLookup } from "@/types";
-import { b64url, getAssetInfo, stringToBigint } from "@/utils";
+import { b64url, getAssetInfo, probeFee, stringToBigint } from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import algosdk, { modelsv2, Transaction } from "algosdk";
 
@@ -185,7 +185,7 @@ async function propose() {
   try {
     if (!senderAsset.value?.params || !receiverAsset.value?.params)
       throw Error("Invalid Assets");
-    const suggestedParams = await getSuggestedParams(props.sender.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
 
     let txn1: Transaction;
     if (!senderAsset.value.index) {
@@ -227,6 +227,7 @@ async function propose() {
         ),
       });
     }
+    txn1.fee = await probeFee(props.sender);
     algosdk.assignGroupID([txn1, txn2]);
     const resp = await luteSigner([txn1, txn2], [0]);
     store.snackbar.display = false;

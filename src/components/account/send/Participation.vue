@@ -99,9 +99,9 @@
 </template>
 
 <script lang="ts" setup>
-import Algo, { getSuggestedParams } from "@/services/Algo";
+import Algo from "@/services/Algo";
 import type { AccountInfo, KeyRegTxn } from "@/types";
-import { send } from "@/utils";
+import { priceTxns, send } from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import { mdiInformationOutline } from "@mdi/js";
 import algosdk from "algosdk";
@@ -209,12 +209,13 @@ async function calcAvgBlockTime() {
 
 async function offline() {
   try {
-    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
     const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
       sender: props.acct.addr,
       suggestedParams,
       nonParticipation: false,
     });
+    await priceTxns([txn], props.acct);
     const stxn = await luteSigner([txn]);
     await send(stxn);
   } catch (err: any) {
@@ -232,12 +233,8 @@ async function submit() {
     const { valid } = await form.value.validate();
     if (!valid) return;
 
-    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
     keyreg.value.sender = props.acct.addr;
-    if (incentiveEligible.value) {
-      suggestedParams.flatFee = true;
-      suggestedParams.fee = 2n * 10n ** 6n;
-    }
     const obj = {
       ...(keyreg.value as any),
       voteKey: b64ToUint8(keyreg.value.voteKey),
@@ -247,6 +244,11 @@ async function submit() {
     };
     const txn =
       algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject(obj);
+    if (incentiveEligible.value) {
+      txn.fee = 2n * 10n ** 6n;
+    } else {
+      await priceTxns([txn], props.acct);
+    }
     const stxn = await luteSigner([txn]);
     await send(stxn);
     form.value?.reset();

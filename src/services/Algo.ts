@@ -55,10 +55,4 @@ export async function getAuthAccts(addr: string): Promise<string[]> {
   }
 }
 
-export async function getSuggestedParams(isFalcon1024: boolean) {
-  const sp = await Algo.algod.getTransactionParams().do();
-  if (isFalcon1024) sp.minFee = 3000n;
-  return sp;
-}
-
 export default Algo;
