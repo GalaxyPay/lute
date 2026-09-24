@@ -15,6 +15,15 @@ export { refresh } from "./refresh";
 export { resolveProtocol } from "./resolveProtocol";
 export { send } from "./send";
 export {
+  composerTxns,
+  falconPlaceholderSigner,
+  feeForUsage,
+  priceTxns,
+  probeFee,
+  simulateFees,
+  type FeeSimTxn,
+} from "./simulateFees";
+export {
   signDataSafe,
   signDataUnsafe,
   signDataResponseSafe,

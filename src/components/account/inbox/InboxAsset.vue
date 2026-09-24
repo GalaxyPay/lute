@@ -49,9 +49,16 @@
 
 <script lang="ts" setup>
 import { Arc59Factory } from "@/clients/Arc59Client";
-import Algo, { getSuggestedParams } from "@/services/Algo";
+import Algo from "@/services/Algo";
 import type { AccountInfo } from "@/types";
-import { bigintToString, getAssetInfo, resolveProtocol } from "@/utils";
+import {
+  bigintToString,
+  composerTxns,
+  getAssetInfo,
+  priceTxns,
+  resolveProtocol,
+  send,
+} from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import { mdiCheck, mdiClose, mdiInformationOutline } from "@mdi/js";
@@ -122,7 +129,7 @@ async function claim() {
       composer.arc59ClaimAlgo({ args: {}, staticFee: (0).algo() });
     }
     // If the claimer hasn't already opted in, add a transaction to do so
-    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
     if (!claimerOptedIn) {
       const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: props.acct.addr,
@@ -133,14 +140,16 @@ async function claim() {
       });
       composer.addTransaction(txn, luteSigner);
     }
+    // starting point for the simulate that populates resources; priceTxns
+    // then sets the exact fee
     const fee = (
       Number(suggestedParams.minFee) * outerTxnCount +
       innerTxnCount * 1000
     ).microAlgos();
     composer.arc59Claim({ args: { asa: props.asset.assetId }, staticFee: fee });
-    await composer.send({ populateAppCallResources: true });
-    store.refresh++;
-    store.setSnackbar("Claimed Asset", "success");
+    const txns = await composerTxns(await composer.composer());
+    const stxns = await luteSigner(await priceTxns(txns, props.acct));
+    await send(stxns, "Claimed Asset");
     emit("complete");
   } catch (err: any) {
     console.error(err);
@@ -152,14 +161,14 @@ async function claim() {
 async function reject() {
   try {
     const appClient = getAppClient();
-    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
     const fee = (Number(suggestedParams.minFee) + 2000).microAlgos();
-    await appClient
+    const composer = appClient
       .newGroup()
-      .arc59Reject({ args: { asa: props.asset.assetId }, staticFee: fee })
-      .send({ populateAppCallResources: true });
-    store.refresh++;
-    store.setSnackbar("Rejected Asset", "success");
+      .arc59Reject({ args: { asa: props.asset.assetId }, staticFee: fee });
+    const txns = await composerTxns(await composer.composer());
+    const stxns = await luteSigner(await priceTxns(txns, props.acct));
+    await send(stxns, "Rejected Asset");
     emit("complete");
   } catch (err: any) {
     console.error(err);

@@ -131,12 +131,14 @@
 
 <script lang="ts" setup>
 import { Arc59Factory } from "@/clients/Arc59Client";
-import Algo, { getSuggestedParams } from "@/services/Algo";
+import Algo from "@/services/Algo";
 import NameService from "@/services/NameService";
 import type { AccountInfo } from "@/types";
 import {
   bigintToString,
+  composerTxns,
   getAssetInfo,
+  priceTxns,
   send,
   stringToBigint,
   whenLoaded,
@@ -251,7 +253,7 @@ async function submit() {
     if (!valid) return;
 
     const enc = new TextEncoder();
-    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
     const note64 = note.value ? enc.encode(note.value) : undefined;
     let txn;
     if (asset.value.index) {
@@ -294,6 +296,7 @@ async function submit() {
       }
     }
     if (!txn) throw Error("Invalid Transaction");
+    await priceTxns([txn], props.acct);
     const stxn = await luteSigner([txn]);
     await send(stxn);
   } catch (err: any) {
@@ -307,7 +310,7 @@ async function arc59SendAsset() {
     showInboxWarning.value = false;
     if (!asset.value.params) throw Error("Invalid Asset");
     if (!store.network.inboxRouter) throw Error("Invalid Router");
-    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
     const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
     algorand.setDefaultSigner(luteSigner);
     algorand.setDefaultValidityWindow(1000);
@@ -372,6 +375,8 @@ async function arc59SendAsset() {
       composer.arc59OptRouterIn({ args: { asa: asset.value.index } });
     // An extra itxn is if we are also sending ALGO for the receiver claim
     const totalItxns = itxns + (receiverAlgoPQ === 0n ? 0n : 1n);
+    // starting point for the simulate that populates resources; priceTxns
+    // then sets the exact fee
     const fee = Number(
       suggestedParams.minFee + totalItxns * 1000n
     ).microAlgos();
@@ -398,9 +403,9 @@ async function arc59SendAsset() {
       accountReferences,
       assetReferences,
     });
-    await composer.send();
-    store.refresh++;
-    store.setSnackbar("Success", "success");
+    const txns = await composerTxns(await composer.composer());
+    const stxns = await luteSigner(await priceTxns(txns, props.acct));
+    await send(stxns);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");

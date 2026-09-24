@@ -76,9 +76,15 @@
 </template>
 
 <script lang="ts" setup>
-import { getSuggestedParams } from "@/services/Algo";
+import Algo from "@/services/Algo";
 import type { AccountInfo } from "@/types";
-import { bigintToString, getAssetInfo, resolveProtocol, send } from "@/utils";
+import {
+  bigintToString,
+  getAssetInfo,
+  priceTxns,
+  resolveProtocol,
+  send,
+} from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import { mdiClose, mdiInformationOutline } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
@@ -140,7 +146,7 @@ async function closeOut() {
   }
   try {
     showReceiver.value = false;
-    const suggestedParams = await getSuggestedParams(props.acct.isFalcon25);
+    const suggestedParams = await Algo.algod.getTransactionParams().do();
     const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       sender: props.acct.addr,
       receiver: props.acct.addr,
@@ -149,6 +155,7 @@ async function closeOut() {
       assetIndex: props.asset.assetId,
       suggestedParams,
     });
+    await priceTxns([txn], props.acct);
     const stxn = await luteSigner([txn]);
     await send(stxn, "Closed Out of Asset");
   } catch (err: any) {
