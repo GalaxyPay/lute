@@ -42,7 +42,7 @@
               luteTxns.lsig?.dummies ? ", and a dummy transaction added" : ""
             }}.
           </v-card-text>
-          <v-card-text>
+          <v-card-text v-if="!store.luteTxns">
             Also, the transactions will be submitted to the chain by the wallet
             and an error will be returned to the app.
           </v-card-text>
