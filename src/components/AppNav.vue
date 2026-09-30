@@ -26,13 +26,13 @@
       </v-btn>
     </v-bottom-navigation>
   </template>
-  <template v-else>
-    <v-navigation-drawer
-      v-model="navDrawer"
-      :permanent="mdAndUp"
-      floating
-      color="background"
-    >
+  <v-navigation-drawer
+    v-model="navDrawer"
+    :permanent="mdAndUp"
+    floating
+    color="background"
+  >
+    <template v-if="!xs">
       <v-list-item
         v-for="item in items"
         :key="item.title"
@@ -48,67 +48,67 @@
         to="/settings"
       />
       <v-divider />
-      <v-list-item
-        title="NFD Segments"
-        href="https://app.nf.domains/name/lute.algo?view=segments"
-        target="_blank"
-      >
-        <template #prepend>
-          <v-icon>
-            <n-f-d-logo :width="18" color="currentColor" />
-          </v-icon>
-        </template>
-      </v-list-item>
-      <v-list-item
-        title="Discord"
-        href="https://discord.gg/JuFu6J8ddc"
-        target="_blank"
-      >
-        <template #prepend>
-          <v-icon>
-            <discord-logo :width="20" color="currentColor" />
-          </v-icon>
-        </template>
-      </v-list-item>
-      <v-list-item
-        title="GitHub"
-        href="https://github.com/GalaxyPay/lute"
-        target="_blank"
-      >
-        <template #prepend>
-          <v-icon>
-            <github-logo :width="21" color="currentColor" />
-          </v-icon>
-        </template>
-      </v-list-item>
-      <v-container class="pt-6">
-        <v-select
-          label="Network"
-          density="compact"
-          :items="networks"
-          item-title="name"
-          v-model="network"
-        />
-      </v-container>
-      <template #append>
-        <div v-if="store.isWeb" class="text-center">
-          <a
-            href="https://chromewebstore.google.com/detail/lute/kiaoohollfkjhikdifohdckeidckokjh"
-            target="_blank"
-          >
-            <img src="@/assets/store.png" />
-          </a>
-        </div>
-        <div class="text-center pa-2" style="color: #9aa0a5; font-size: 9px">
-          Lute • Version
-          {{ appVersion }} •
-          <router-link to="/privacy" class="text-grey">
-            Privacy Policy
-          </router-link>
-        </div>
+    </template>
+    <v-list-item
+      title="NFD Segments"
+      href="https://app.nf.domains/name/lute.algo?view=segments"
+      target="_blank"
+    >
+      <template #prepend>
+        <v-icon>
+          <n-f-d-logo :width="18" color="currentColor" />
+        </v-icon>
       </template>
-    </v-navigation-drawer>
-  </template>
+    </v-list-item>
+    <v-list-item
+      title="Discord"
+      href="https://discord.gg/JuFu6J8ddc"
+      target="_blank"
+    >
+      <template #prepend>
+        <v-icon>
+          <discord-logo :width="20" color="currentColor" />
+        </v-icon>
+      </template>
+    </v-list-item>
+    <v-list-item
+      title="GitHub"
+      href="https://github.com/GalaxyPay/lute"
+      target="_blank"
+    >
+      <template #prepend>
+        <v-icon>
+          <github-logo :width="21" color="currentColor" />
+        </v-icon>
+      </template>
+    </v-list-item>
+    <v-container class="pt-6">
+      <v-select
+        label="Network"
+        density="compact"
+        :items="networks"
+        item-title="name"
+        v-model="network"
+      />
+    </v-container>
+    <template #append>
+      <div v-if="store.isWeb" class="text-center">
+        <a
+          href="https://chromewebstore.google.com/detail/lute/kiaoohollfkjhikdifohdckeidckokjh"
+          target="_blank"
+        >
+          <img src="@/assets/store.png" />
+        </a>
+      </div>
+      <div class="text-center pa-2" style="color: #9aa0a5; font-size: 9px">
+        Lute • Version
+        {{ appVersion }} •
+        <router-link to="/privacy" class="text-grey">
+          Privacy Policy
+        </router-link>
+      </div>
+    </template>
+  </v-navigation-drawer>
 </template>
 
 <script setup lang="ts">
