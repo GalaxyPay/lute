@@ -1,6 +1,12 @@
-import { set } from "@/dbLute";
-import algosdk, { type Account } from "algosdk";
-import { generateKey } from "falcon-1024";
+export {
+  badPassword,
+  ed25519Sign,
+  getFalconAddress,
+  isBadPassword,
+  isCancelled,
+  needsPassword,
+  UserCancelled,
+} from "./keys";
 
 export { getAssetInfo } from "./assetInfo";
 export {
@@ -43,20 +49,6 @@ export async function fetchAsync(url: string) {
   } catch {
     // console.error(err)
   }
-}
-
-export async function storeKey(acct: Account) {
-  const b64prefix = "MC4CAQAwBQYDK2VwBCIEIA==";
-  const pkcs8Prefix = Uint8Array.fromBase64(b64prefix);
-  const pkcs8 = new Uint8Array([...pkcs8Prefix, ...acct.sk.slice(0, 32)]);
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pkcs8,
-    { name: "Ed25519" },
-    false,
-    ["sign"]
-  );
-  await set("keys", acct.addr.toString(), key);
 }
 
 export function ipfs2http(url: string) {
@@ -144,14 +136,6 @@ export async function selectDevice() {
   });
 }
 
-export function isBadPassword(err: any) {
-  return err?.name === "OperationError";
-}
-
-export function needsPassword(err: any) {
-  return err?.message === "Password Required";
-}
-
 export function deepClone(value: any): any {
   if (!value || typeof value !== "object") {
     return value;
@@ -200,12 +184,3 @@ export function copyToClipboard(val: string) {
   store.setSnackbar("Copied", "info", 1000);
 }
 
-export function getFalconAddress(mn: string) {
-  const seed = algosdk.pq25WordMnemonicToSeed(mn, algosdk.FALCON_1024_SCHEME);
-  const { publicKey } = generateKey(seed);
-  const { address } = algosdk.addressFromPQKey(
-    algosdk.FALCON_1024_SCHEME,
-    publicKey
-  );
-  return address;
-}

@@ -1,22 +1,19 @@
-import {
-  KDF_LEGACY_ITERATIONS,
-  deriveKeyFromPassSalt,
-  seedGcmParams,
-} from "@/services/kdf";
-import type { AnySeedData } from "@/types";
+import { importMk } from "@/services/kdf";
+import type { MasterKey } from "@/types";
 
 /**
- * Session unlock, extension only.
+ * Session unlock, extension only, password mode only.
  *
  * The web build has no memory-only store: sessionStorage is not shared with the
  * sign popup (its opener is the dApp, a different origin) and anything else
  * would mean writing a password shortcut to disk. browser.storage.session is
  * never persisted, is wiped on browser restart, and is not visible to content
- * scripts, so the feature is offered there and nowhere else.
+ * scripts, so the feature is offered there and nowhere else. A device-mode
+ * wallet has nothing to unlock.
  *
- * What is cached is the per-seed derived AES key, never the password. An unlock
- * therefore cannot be replayed as a password, gives nothing to brute-force, and
- * leaves mnemonic and child key export still prompting.
+ * What is cached is the keystore master key, never the password. An unlock
+ * therefore cannot be replayed as a password, and mnemonic export still
+ * prompts because it never reads this cache.
  *
  * Every browser.* reference lives inside a function guarded by isWeb, because
  * `browser` is only auto-imported in extension builds.
@@ -30,15 +27,14 @@ const ALARM = "lute-lock";
 const HARD_CAP_MS = 8 * 60 * 60 * 1000;
 
 interface UnlockState {
-  // Seed id -> base64 raw AES-256 key. Raw bytes rather than a structured-cloned
+  // Raw master key, base64. Raw bytes rather than a structured-cloned
   // CryptoKey because storage.session does not reliably round-trip CryptoKey,
   // and in a memory-only area readable solely by trusted extension contexts the
-  // distinction buys nothing: either form decrypts the seed.
-  //
-  // The id is the autoincrement id for a bip39 seed and the address for a
-  // Falcon-1024 one. Object keys are strings either way, so state written by a
-  // build that only cached bip39 seeds still reads back unchanged.
-  keys: Record<string, string>;
+  // distinction buys nothing.
+  mk: string;
+  // Header id the key belongs to, so a key from before a mode switch in
+  // another context is never used against the new keystore.
+  id: string;
   expiresAt: number;
   hardExpiresAt: number;
 }
@@ -56,14 +52,19 @@ async function write(state: UnlockState) {
 }
 
 function live(state: UnlockState | undefined) {
-  if (!state) return false;
+  // State written by 1.x (a per-seed key map) has no `mk` and reads as locked.
+  if (!state?.mk) return false;
   return Date.now() < Math.min(state.expiresAt, state.hardExpiresAt);
 }
 
 const Unlock = {
   enabled() {
     const store = useAppStore();
-    return !store.isWeb && store.autoLockMinutes > 0;
+    return (
+      !store.isWeb &&
+      store.autoLockMinutes > 0 &&
+      store.keystoreMode === "password"
+    );
   },
 
   /**
@@ -99,69 +100,27 @@ const Unlock = {
     return true;
   },
 
-  async get(seedId: number | string) {
+  /** The cached master key, if the wallet is unlocked for this header id. */
+  async get(id: string): Promise<MasterKey | undefined> {
     if (!(await this.isUnlocked())) return undefined;
     const state = await read();
-    const raw = state?.keys[String(seedId)];
-    if (!raw) return undefined;
-    return await crypto.subtle.importKey(
-      "raw",
-      Uint8Array.fromBase64(raw),
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"]
-    );
+    if (!state || state.id !== id) return undefined;
+    const raw = Uint8Array.fromBase64(state.mk);
+    try {
+      return { key: await importMk(raw), id };
+    } finally {
+      raw.fill(0);
+    }
   },
 
-  /**
-   * Unlock the wallet. Derives a key for every local seed, not just the one
-   * being signed with: a lazily filled map would leave a seed you have not
-   * signed with yet prompting while the wallet reads as unlocked. Both seed
-   * flavors are covered — a Falcon account is no less unlocked than a bip39
-   * one. Passkey seeds have no password and are skipped.
-   */
-  async unlock(pass: string) {
+  /** Start (or restart) an unlock window for a freshly unwrapped master key. */
+  async unlock(raw: Uint8Array, id: string) {
     const store = useAppStore();
     if (!this.enabled()) return;
-    const locals = [...store.seeds, ...store.falcon25Seeds].filter(
-      (s) => s.data && s.salt && s.iv
-    );
-    const derived = await Promise.all(
-      locals.map(async (sd) => {
-        const key = await deriveKeyFromPassSalt(
-          pass,
-          sd.salt!,
-          sd.iterations ?? KDF_LEGACY_ITERATIONS,
-          true
-        );
-        // Cache only keys proven against their ciphertext. Seeds are meant to
-        // share the wallet password, but one that does not must miss the cache
-        // and prompt — not read as unlocked with a key that cannot decrypt it.
-        try {
-          const ent = await crypto.subtle.decrypt(
-            seedGcmParams(sd),
-            key,
-            sd.data!
-          );
-          new Uint8Array(ent).fill(0);
-        } catch {
-          return undefined;
-        }
-        const raw = await crypto.subtle.exportKey("raw", key);
-        return [sd.id, new Uint8Array(raw).toBase64()] as const;
-      })
-    );
-    const proven = derived.filter((d) => !!d) as [number | string, string][];
     const now = Date.now();
-    const state = await read();
     await write({
-      // Merge over a live state rather than replacing it: entering the odd
-      // seed's own password must not evict the wallet-password keys, and vice
-      // versa. Each entry was just proven, so newer always wins.
-      keys: {
-        ...(live(state) ? state!.keys : {}),
-        ...Object.fromEntries(proven),
-      },
+      mk: raw.toBase64(),
+      id,
       expiresAt: now + store.autoLockMinutes * 60_000,
       hardExpiresAt: now + HARD_CAP_MS,
     });
@@ -169,8 +128,8 @@ const Unlock = {
   },
 
   /**
-   * Slide the idle window. Called only after a successful cached decrypt, never
-   * on failures and never on general UI activity — tying the refresh to actual
+   * Slide the idle window. Called only after the cached key was used, never on
+   * failures and never on general UI activity — tying the refresh to actual
    * key use is what stops an idle timer becoming a permanent unlock.
    */
   async touch() {
@@ -185,28 +144,6 @@ const Unlock = {
         state!.hardExpiresAt
       ),
     });
-  },
-
-  /**
-   * Cache one seed's key under the existing window without extending it, for a
-   * seed created while already unlocked.
-   */
-  async add(sd: AnySeedData, pass: string) {
-    const store = useAppStore();
-    // Takes the record directly: a seed written moments ago is not in the
-    // store caches until the next getCache().
-    if (store.isWeb || !sd.salt || !(await this.isUnlocked())) return;
-    const state = await read();
-    if (!state) return;
-    const key = await deriveKeyFromPassSalt(
-      pass,
-      sd.salt,
-      sd.iterations ?? KDF_LEGACY_ITERATIONS,
-      true
-    );
-    const raw = await crypto.subtle.exportKey("raw", key);
-    state.keys[String(sd.id)] = new Uint8Array(raw).toBase64();
-    await write(state);
   },
 
   async clear() {

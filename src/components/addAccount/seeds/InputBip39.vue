@@ -1,29 +1,29 @@
 <template>
   <import-key :number-of-words="24" button-text="Import" @mn="handleMnemonic" />
-  <password-confirm :visible="show" @close="handlePass" />
+  <keystore-unlock ref="unlocker" />
 </template>
 
 <script lang="ts" setup>
-import Seed from "@/services/Seed";
+import Keystore from "@/services/Keystore";
+import type { Unlocker } from "@/types";
+import { isCancelled } from "@/utils";
+import * as bip39 from "@scure/bip39";
 
 const emit = defineEmits(["seed"]);
 
 const store = useAppStore();
-const mnemonic = ref("");
-const show = ref(false);
+const unlocker = ref<Unlocker>();
 
-function handleMnemonic(mn: string) {
-  mnemonic.value = mn;
-  show.value = true;
-}
-
-async function handlePass(success: boolean, pass: string) {
-  show.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-  } else {
-    const { id, seed } = await Seed.storeBip39Seed(mnemonic.value, pass);
-    emit("seed", id, seed);
+async function handleMnemonic(mn: string) {
+  try {
+    const mk = await unlocker.value!.ensureMk();
+    const id = await Keystore.storeMnemonic(mk, "bip39", mn);
+    const seed = Buffer.from(bip39.mnemonicToSeedSync(mn));
+    emit("seed", Number(id.split(":")[1]), seed);
+  } catch (err: any) {
+    if (isCancelled(err)) return;
+    console.error(err);
+    store.setSnackbar(err.message, "error");
   }
 }
 </script>

@@ -24,7 +24,7 @@
           />
           <v-card-actions>
             <v-spacer />
-            <v-btn text="Submit" type="submit" :loading="checking" />
+            <v-btn text="Submit" type="submit" />
           </v-card-actions>
         </v-form>
       </v-container>
@@ -33,18 +33,16 @@
 </template>
 
 <script lang="ts" setup>
-import Seed from "@/services/Seed";
+// Collects a password and hands it to the caller, which checks it by using it
+// (unwrapping the keystore, or decrypting a 1.x seed). See KeystoreUnlock.
 import { mdiClose } from "@mdi/js";
 
-const store = useAppStore();
 const required = (v: string) => !!v || "Required";
 const form = ref();
 const password = ref();
-const checking = ref(false);
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  verify: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(["close"]);
@@ -68,21 +66,8 @@ watch(
 );
 
 async function confirmPassword() {
-  try {
-    const { valid } = await form.value.validate();
-    if (!valid) return;
-
-    if (!props.verify) return emit("close", true, password.value);
-
-    checking.value = true;
-    if (await Seed.verifyPassword(password.value))
-      emit("close", true, password.value);
-    else emit("close", false);
-  } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
-  } finally {
-    checking.value = false;
-  }
+  const { valid } = await form.value.validate();
+  if (!valid) return;
+  emit("close", true, password.value);
 }
 </script>

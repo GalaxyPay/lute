@@ -42,13 +42,13 @@
       </template>
     </v-card>
   </v-container>
-  <password-confirm :visible="showPass" :verify="false" @close="handlePass" />
+  <password-confirm :visible="showPass" @close="handlePass" />
 </template>
 
 <script lang="ts" setup>
 import LuteData from "@/classes/LuteData";
 import LuteDataOld from "@/classes/LuteData.old";
-import Unlock from "@/services/Unlock";
+import Signer from "@/services/Signer";
 import {
   isFromOpener,
   postReady,
@@ -142,17 +142,15 @@ async function trySign(pass?: string) {
 async function passwordCheck() {
   try {
     signing.value = true;
-    const acct = store.accounts.find(
-      (a) => a.addr === luteData.value!.siwa!.account_address
+    // Includes HD sibling rows, which carry their parent's seed.
+    const acct = store.acctInfo.find(
+      (a) =>
+        a.addr === luteData.value!.siwa!.account_address &&
+        a.subType !== "rekey"
     );
-    if (acct?.seedId && acct.slot != null) {
-      const seedData = store.seeds.find((s) => s.id === acct.seedId);
-      if (!seedData) throw Error("Invalid Seed");
-      if (seedData.data && !(await Unlock.isUnlocked())) showPass.value = true;
-    }
-    if (!showPass.value) {
-      await trySign();
-    }
+    if ((await Signer.gate(acct ? [acct] : [])) === "password")
+      showPass.value = true;
+    else await trySign();
   } catch (err: any) {
     luteData.value?.handleError(err);
   }
@@ -161,10 +159,7 @@ async function passwordCheck() {
 
 async function handlePass(success: boolean, pass: string) {
   showPass.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-    return;
-  }
+  if (!success) return;
   await trySign(pass);
 }
 

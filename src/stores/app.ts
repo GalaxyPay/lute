@@ -2,11 +2,16 @@
 import type LuteTxns from "@/classes/LuteTxns";
 import { networks } from "@/data";
 import { get, getAll, keys, set } from "@/dbLute";
+import { secretStatus } from "@/services/accountSecret";
 import type {
   AccountHD,
   AccountInfo,
   Arc55App,
   FalconSeedData,
+  KeystoreHeader,
+  KeystoreMeta,
+  KeystoreMode,
+  KeystoreRecord,
   LuteAccount,
   Network,
   NsObject,
@@ -39,6 +44,13 @@ export const useAppStore = defineStore("app", {
     keys: [] as string[],
     seeds: [] as SeedData[],
     falcon25Seeds: [] as FalconSeedData[],
+    // Keystore record ids, kinds and forms; never the ciphertext.
+    keystore: [] as KeystoreMeta[],
+    hasKeystore: false,
+    // The mode the wallet is in, or will be once its header is written.
+    keystoreMode: "device" as KeystoreMode,
+    // A 1.x password verifier not yet replaced by a keystore header.
+    legacyVerifier: false,
     drawer: false,
     debug: false,
     snoop: false,
@@ -71,15 +83,19 @@ export const useAppStore = defineStore("app", {
         )
         .forEach((a) => {
           function getCanSign(acct: LuteAccount) {
-            const isHot = state.keys.includes(acct.addr);
-            const isFalcon25 = state.falcon25Seeds.some(
-              (s) => s.id === acct.addr
-            );
+            const secret = secretStatus(acct, state);
+            const isFalcon25 =
+              state.falcon25Seeds.some((s) => s.id === acct.addr) ||
+              state.keystore.some((k) => k.id === `falcon25:${acct.addr}`);
+            const isHot =
+              !isFalcon25 &&
+              (state.keys.includes(acct.addr) ||
+                state.keystore.some((k) => k.id === `algo25:${acct.addr}`));
             const canSign = isHot || isFalcon25 || acct.slot != null;
-            return { info, isHot, isFalcon25, canSign };
+            return { info, isHot, isFalcon25, canSign, secret };
           }
           const info = this.info.find((i) => i.address === a.addr);
-          const { isHot, isFalcon25, canSign } = getCanSign(a);
+          const { isHot, isFalcon25, canSign, secret } = getCanSign(a);
           if (isHot && !this.hotWallet) return;
           const authAcct = this.accounts.find(
             (a) => a.addr === info?.authAddr?.toString()
@@ -93,6 +109,7 @@ export const useAppStore = defineStore("app", {
               isHot,
               isFalcon25,
               canSign,
+              secret,
               info,
               globalIdx,
               ns: this.nsObj[a.addr],
@@ -109,6 +126,7 @@ export const useAppStore = defineStore("app", {
                   isHot: false,
                   isFalcon25,
                   canSign,
+                  secret,
                   subType: "rekey",
                   info: i,
                   globalIdx,
@@ -127,6 +145,7 @@ export const useAppStore = defineStore("app", {
                   isHot: false,
                   isFalcon25: false,
                   canSign,
+                  secret,
                   subType: "hd",
                   info: i,
                   globalIdx,
@@ -214,6 +233,14 @@ export const useAppStore = defineStore("app", {
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
       this.falcon25Seeds = await getAll("falcon25-seeds");
+      this.keystore = ((await getAll("keystore")) as KeystoreRecord[]).map(
+        ({ id, kind, form }) => ({ id, kind, form })
+      );
+      const header: KeystoreHeader | undefined = await get("app", "keystore");
+      this.legacyVerifier = !!(await get("app", "password"));
+      this.hasKeystore = !!header;
+      this.keystoreMode =
+        header?.mode ?? (this.legacyVerifier ? "password" : "device");
     },
     async setTheme(name: string | null) {
       await set("app", "theme", name || "dark");

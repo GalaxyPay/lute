@@ -1,5 +1,4 @@
-import HdWallet from "@/services/HdWallet";
-import Seed from "@/services/Seed";
+import Signer, { SignContext } from "@/services/Signer";
 import type { Siwa } from "@/types";
 import {
   isBadPassword,
@@ -8,7 +7,6 @@ import {
   selectDevice,
   sendOrPostMessage,
 } from "@/utils";
-import { hotSign } from "@/utils/signers";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 import { encodeAddress } from "algosdk";
@@ -200,20 +198,15 @@ export default class LuteData {
       const toSign = new Uint8Array([...dataHash, ...authHash]);
 
       let signature: Uint8Array;
-      if (acct?.seedId && acct.slot != null) {
-        let seed = Buffer.alloc(0);
+      // Sign-in requests are ed25519 only (the schema pins the type), which a
+      // Falcon key cannot produce.
+      if (acct.isFalcon25) throw ERROR_INVALID_SIGNER;
+      if (acct.seedId && acct.slot != null) {
+        const ctx = new SignContext(password);
         try {
-          const seedData = this.store.seeds.find((s) => s.id === acct.seedId);
-          if (!seedData) throw Error("Invalid Seed");
-          seed = await Seed.unlockSeed(seedData, password);
-          signature = await HdWallet.sign(
-            seed,
-            acct.slot,
-            toSign,
-            acct?.info?.addrIdx
-          );
+          signature = await Signer.signBytes(acct, toSign, ctx);
         } finally {
-          seed.fill(0);
+          ctx.dispose();
         }
       } else if (acct?.slot != null) {
         this.stdSignData.hdPath = `m/44'/283'/${acct.slot}'/0/0`;
@@ -236,7 +229,12 @@ export default class LuteData {
         const resp = await algoApp.signData(this.stdSignData, this.metadata);
         signature = resp.signature;
       } else {
-        signature = await hotSign(signerAddr, toSign);
+        const ctx = new SignContext(password);
+        try {
+          signature = await Signer.signBytes(acct, toSign, ctx);
+        } finally {
+          ctx.dispose();
+        }
       }
       const signerResponse: StdSignDataResponse = {
         ...this.stdSignData,

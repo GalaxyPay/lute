@@ -107,14 +107,63 @@
             </v-radio-group>
           </v-col>
         </v-row>
-        <v-row v-if="!store.isWeb" align="center">
+        <v-row align="center">
+          <v-col>
+            <v-icon :icon="mdiKeyChange" class="mb-1 mr-2" /> Wallet Password
+            <div
+              v-if="store.keystoreMode === 'password'"
+              style="color: #9aa0a5; font-size: 0.7em"
+            >
+              Protects every account stored in this browser: HD, Algo25 and
+              Falcon. Ledger and passkey accounts are not affected.
+            </div>
+            <div v-else class="text-warning" style="font-size: 0.7em">
+              Not set. Accounts stored in this browser sign without a password,
+              and anyone with access to this browser profile can use them.
+            </div>
+          </v-col>
+          <v-col class="text-right">
+            <template v-if="store.keystoreMode === 'password'">
+              <v-btn
+                text="Change"
+                :size="xs ? 'small' : 'default'"
+                @click="showRotate = true"
+              />
+              <v-btn
+                v-if="store.hasKeystore"
+                text="Remove"
+                variant="plain"
+                color="error"
+                :size="xs ? 'small' : 'default'"
+                @click="showRemove = true"
+              />
+              <v-btn
+                v-else
+                text="Forgot"
+                variant="plain"
+                :size="xs ? 'small' : 'default'"
+                @click="forgotPassword()"
+              />
+            </template>
+            <v-btn
+              v-else
+              text="Set Password"
+              :size="xs ? 'small' : 'default'"
+              @click="showCreate = true"
+            />
+          </v-col>
+        </v-row>
+        <v-row
+          v-if="!store.isWeb && store.keystoreMode === 'password'"
+          align="center"
+        >
           <v-col>
             <v-icon :icon="mdiLockClock" class="mb-1 mr-2" /> Lock After
             Inactivity
             <div style="color: #9aa0a5; font-size: 0.7em">
-              Skip the password when signing, until the wallet has been idle
-              this long. Always locks 8 hours after initial unlock, regardless
-              of activity.
+              Skip the password when signing with any account stored in this
+              browser, until the wallet has been idle this long. Always locks 8
+              hours after initial unlock, regardless of activity.
             </div>
           </v-col>
           <v-col>
@@ -142,19 +191,26 @@
             </v-row>
           </v-col>
         </v-row>
-        <v-row v-if="hasPassword" align="center">
+        <v-row align="center">
           <v-col>
-            <v-icon :icon="mdiKeyChange" class="mb-1 mr-2" /> Wallet Password
+            <v-icon :icon="mdiArchiveLock" class="mb-1 mr-2" /> Backup
             <div style="color: #9aa0a5; font-size: 0.7em">
-              Re-encrypts every locally stored seed. Does not affect Algo25,
-              Ledger, or passkey accounts.
+              An encrypted file of your accounts, to move them between the Lute
+              web app and extension. Your mnemonics remain the backup that
+              matters.
             </div>
           </v-col>
           <v-col class="text-right">
             <v-btn
-              text="Change Password"
+              text="Backup"
               :size="xs ? 'small' : 'default'"
-              @click="showRotate = true"
+              @click="backupMode = 'backup'"
+            />
+            <v-btn
+              text="Restore"
+              variant="plain"
+              :size="xs ? 'small' : 'default'"
+              @click="backupMode = 'restore'"
             />
           </v-col>
         </v-row>
@@ -220,17 +276,23 @@
   </v-container>
   <CustomNetwork :visible="showCustom" @close="showCustom = false" />
   <PasswordRotate :visible="showRotate" @close="showRotate = false" />
+  <PasswordRemove :visible="showRemove" @close="showRemove = false" />
+  <v-dialog v-model="showCreate" max-width="600" persistent>
+    <password-create @close="showCreate = false" />
+  </v-dialog>
+  <backup-restore :mode="backupMode" @close="backupMode = undefined" />
 </template>
 
 <script lang="ts" setup>
 import { Arc59Factory } from "@/clients/Arc59Client";
 import { networks } from "@/data";
-import { get, set } from "@/dbLute";
+import { set } from "@/dbLute";
 import Algo from "@/services/Algo";
 import Unlock from "@/services/Unlock";
 import { luteSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import {
+  mdiArchiveLock,
   mdiBug,
   mdiContentSave,
   mdiEye,
@@ -249,12 +311,25 @@ const theme = useTheme();
 
 const showCustom = ref(false);
 const showRotate = ref(false);
-const hasPassword = ref(false);
+const showRemove = ref(false);
+const showCreate = ref(false);
+const backupMode = ref<"backup" | "restore">();
 
 onMounted(async () => {
-  hasPassword.value = !!(await get("app", "password"));
   await Unlock.isUnlocked();
 });
+
+function forgotPassword() {
+  if (
+    !confirm(
+      `This sets a new wallet password. Seeds protected by your old password stay locked until you enter that password when signing, or until you upgrade each account by re-entering its mnemonic.
+
+Continue?`
+    )
+  )
+    return;
+  showCreate.value = true;
+}
 
 const autoLockOptions = [
   { title: "Off", value: 0 },

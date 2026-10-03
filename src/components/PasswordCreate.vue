@@ -1,10 +1,14 @@
 <template>
   <v-card>
     <v-card-title class="d-flex">
-      Add A Password
+      Set a Wallet Password
       <v-spacer />
-      <v-icon :icon="mdiClose" size="small" @click="emit('close')" />
+      <v-icon :icon="mdiClose" size="small" @click="emit('close', false)" />
     </v-card-title>
+    <v-card-text class="pb-0" style="color: #9aa0a5; font-size: 0.8em">
+      Protects every account stored in this browser. There is no way to recover
+      it: if you forget it, you will need your mnemonics.
+    </v-card-text>
     <v-container>
       <v-form
         ref="form"
@@ -33,7 +37,7 @@
         />
         <v-card-actions>
           <v-spacer />
-          <v-btn text="Submit" type="submit" />
+          <v-btn text="Submit" type="submit" :loading="saving" />
         </v-card-actions>
       </v-form>
     </v-container>
@@ -41,7 +45,7 @@
 </template>
 
 <script lang="ts" setup>
-import Seed from "@/services/Seed";
+import Keystore from "@/services/Keystore";
 import { mdiClose } from "@mdi/js";
 
 const store = useAppStore();
@@ -50,6 +54,7 @@ const match = (v: string) => v === pass1.value || "Mismatch";
 const form = ref();
 const pass1 = ref();
 const pass2 = ref();
+const saving = ref(false);
 
 const emit = defineEmits(["close"]);
 
@@ -58,11 +63,16 @@ async function confirmPassword() {
     const { valid } = await form.value.validate();
     if (!valid) return;
 
-    await Seed.setPassword(pass1.value);
-    emit("close");
+    saving.value = true;
+    await Keystore.newPassword(pass1.value);
+    await store.getCache();
+    store.setSnackbar("Password Set", "success");
+    emit("close", true);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
+  } finally {
+    saving.value = false;
   }
 }
 </script>

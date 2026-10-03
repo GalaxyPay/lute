@@ -67,13 +67,14 @@
       </template>
     </v-card>
   </v-container>
-  <password-confirm :visible="showPass" :verify="false" @close="handlePass" />
+  <password-confirm :visible="showPass" @close="handlePass" />
 </template>
 
 <script lang="ts" setup>
 import LuteTxns from "@/classes/LuteTxns";
 import Algo from "@/services/Algo";
-import Unlock from "@/services/Unlock";
+import Signer from "@/services/Signer";
+import type { AccountInfo } from "@/types";
 import {
   isFromOpener,
   postReady,
@@ -216,28 +217,20 @@ async function passwordCheck() {
   try {
     signing.value = true;
     const authAddrs = luteTxns.value.txns.map((txn) => txn.authAddr);
+    const accts: AccountInfo[] = [];
     for (const [idx, txn] of luteTxns.value.dtxns.entries()) {
       if (!toSign(idx)) continue;
       const from = txn.sender.toString();
       const addr =
         luteTxns.value.msig?.signerAddr ||
         authAddrs?.[idx] ||
-        store.info.find((i) => i.address === from)?.authAddr ||
+        store.info.find((i) => i.address === from)?.authAddr?.toString() ||
         from;
       const acct = store.acctInfo.find((a) => a.addr === addr);
-      if (acct?.seedId || acct?.isFalcon25) {
-        const seedData = acct.isFalcon25
-          ? store.falcon25Seeds.find((s) => s.id === acct.addr)
-          : store.seeds.find((s) => s.id === acct.seedId);
-        if (!seedData) throw Error("Invalid Seed");
-        if (seedData.data && !(await Unlock.isUnlocked()))
-          showPass.value = true;
-        break;
-      }
+      if (acct) accts.push(acct);
     }
-    if (!showPass.value) {
-      await trySign();
-    }
+    if ((await Signer.gate(accts)) === "password") showPass.value = true;
+    else await trySign();
   } catch (err: any) {
     luteTxns.value.handleError(err);
   }
@@ -246,11 +239,11 @@ async function passwordCheck() {
 
 async function handlePass(success: boolean, pass: string) {
   showPass.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-    return;
-  }
+  if (!success) return;
   await trySign(pass);
+  // The first password entry may have moved 1.x seeds into the keystore; the
+  // in-app signer stays open, so refresh what it shows.
+  if (store.luteTxns) await store.getCache();
 }
 
 window.onbeforeunload = () => {

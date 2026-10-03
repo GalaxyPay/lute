@@ -11,15 +11,15 @@
             : "new account"
       }}.
     </v-card-text>
-    <v-card-text>It will only be shown once.</v-card-text>
     <v-card-text>
-      Make sure you have a secure location to store your mnemonic. It is the
-      only way to recover your {{ isBip39 ? "wallet" : "account" }} in the
-      future.
+      Write it down and keep it somewhere secure. It is the only way to recover
+      your {{ isBip39 ? "wallet" : "account" }} if this browser's data is lost.
+      You can reveal it again later from the account menu while it is still
+      stored here.
     </v-card-text>
     <v-card-text>
-      If your mnemonic is lost, you will be locked out of your
-      {{ isBip39 ? "wallet" : "account" }} <b>FOREVER</b>.
+      If your mnemonic is lost along with this browser's data, you will be
+      locked out of your {{ isBip39 ? "wallet" : "account" }} <b>FOREVER</b>.
     </v-card-text>
     <v-card-actions>
       <v-spacer />
@@ -41,35 +41,13 @@
       <div style="font-family: monospace">{{ addr }}</div>
     </v-card-text>
     <v-card-text>
-      <div class="text-h6 pb-2 d-flex">
-        Mnemonic: <v-spacer />
-        <v-btn text="Copy" @click="copyToClipboard(mnemonicArray.join(' '))" />
-      </div>
-      <v-row style="font-family: monospace">
-        <v-col
-          v-for="n in props.numberOfWords"
-          :key="n"
-          cols="6"
-          sm="4"
-          class="py-0"
-        >
-          <v-text-field
-            :model-value="mnemonicArray[n - 1]"
-            variant="plain"
-            readonly
-            hide-details
-            density="compact"
-          >
-            <template #prepend>{{ n < 10 ? "&nbsp;" + n : n }}.</template>
-          </v-text-field>
-        </v-col>
-      </v-row>
+      <mnemonic-display :words="mnemonicArray" />
     </v-card-text>
     <v-card-text>
       Make sure you have the entire
       <b>{{ props.numberOfWords }}-word mnemonic</b>, or you will
-      <b>lose access to this {{ isBip39 ? "wallet" : "account" }} forever</b>.
-      You will <b>not</b> be able to recover it.
+      <b>lose access to this {{ isBip39 ? "wallet" : "account" }} forever</b>
+      if this browser's data is lost.
     </v-card-text>
     <v-card-actions>
       <v-spacer />
@@ -86,23 +64,17 @@
       </v-row>
       <v-card-actions>
         <v-spacer />
-        <v-btn text="Create" type="submit" />
+        <v-btn text="Create" type="submit" :loading="saving" />
       </v-card-actions>
     </v-form>
   </v-container>
-  <password-confirm :visible="show" @close="handlePass" />
+  <keystore-unlock ref="unlocker" />
 </template>
 
 <script lang="ts" setup>
-import { set } from "@/dbLute";
-import Seed from "@/services/Seed";
-import type { LuteAccount } from "@/types";
-import {
-  copyToClipboard,
-  deepClone,
-  getFalconAddress,
-  storeKey,
-} from "@/utils";
+import Keystore from "@/services/Keystore";
+import type { LuteAccount, Unlocker } from "@/types";
+import { copyToClipboard, getFalconAddress, isCancelled } from "@/utils";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import algosdk from "algosdk";
@@ -114,8 +86,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close", "hideTabs", "seed"]);
-const show = ref(false);
 const store = useAppStore();
+const unlocker = ref<Unlocker>();
+const saving = ref(false);
 const isBip39 = computed(() => props.numberOfWords === 24);
 const acct = props.convertion
   ? algosdk.mnemonicToSecretKey(props.convertion)
@@ -135,42 +108,33 @@ async function submit() {
   try {
     const { valid } = await form.value.validate();
     if (!valid) return;
-    if (isBip39.value || props.isFalcon) {
-      show.value = true;
-    } else {
-      await storeKey(acct);
-      const accts: LuteAccount[] = deepClone(store.accounts);
-      accts.push({ addr: acct.addr.toString() });
-      await set("app", "accounts", accts);
-      await store.getCache();
-      store.refresh++;
-      store.setSnackbar("Account Created", "success");
-      emit("close");
+    saving.value = true;
+    const mk = await unlocker.value!.ensureMk();
+    if (isBip39.value) {
+      const id = await Keystore.storeMnemonic(mk, "bip39", mn);
+      const seed = Buffer.from(bip39.mnemonicToSeedSync(mn));
+      emit("seed", Number(id.split(":")[1]), seed);
+      return;
     }
+    const kind = props.isFalcon ? "falcon25" : "algo25";
+    const address = addr.toString();
+    await Keystore.storeMnemonic(mk, kind, mn, {
+      id: `${kind}:${address}`,
+      accounts: (current: LuteAccount[]) =>
+        current.some((a) => a.addr === address)
+          ? current
+          : [...current, { addr: address }],
+    });
+    await store.getCache();
+    store.refresh++;
+    store.setSnackbar("Account Created", "success");
+    emit("close");
   } catch (err: any) {
+    if (isCancelled(err)) return;
     console.error(err);
     store.setSnackbar(err.message, "error");
-  }
-}
-
-async function handlePass(success: boolean, pass: string) {
-  show.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-  } else {
-    if (isBip39.value) {
-      const { id, seed } = await Seed.storeBip39Seed(mn, pass);
-      emit("seed", id, seed);
-    } else if (props.isFalcon) {
-      const address = await Seed.storeFalconSeed(mn, pass);
-      const accts: LuteAccount[] = deepClone(store.accounts);
-      accts.push({ addr: address.toString() });
-      await set("app", "accounts", accts);
-      await store.getCache();
-      store.refresh++;
-      store.setSnackbar("Account Created", "success");
-      emit("close");
-    }
+  } finally {
+    saving.value = false;
   }
 }
 </script>

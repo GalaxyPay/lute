@@ -39,12 +39,14 @@
       </v-col>
     </v-row>
   </v-container>
+  <keystore-unlock ref="unlocker" />
 </template>
 
 <script lang="ts" setup>
-import { set } from "@/dbLute";
 import Algo from "@/services/Algo";
-import { bigintToString, deepClone, formatAddr, storeKey } from "@/utils";
+import Keystore from "@/services/Keystore";
+import type { LuteAccount, Unlocker } from "@/types";
+import { bigintToString, formatAddr, isCancelled } from "@/utils";
 import algosdk, { type Account, modelsv2 } from "algosdk";
 
 const selected = ref([]);
@@ -55,6 +57,7 @@ const headers: any[] = [
 ];
 
 const store = useAppStore();
+const unlocker = ref<Unlocker>();
 const accts = ref<Account[]>();
 const accounts = ref<modelsv2.Account[]>([]);
 const emit = defineEmits(["close"]);
@@ -92,21 +95,40 @@ onMounted(async () => {
 });
 
 async function addAccounts() {
-  const add = selected.value
-    .filter((a) => !store.accounts.some((acct) => acct.addr === a))
-    .map((a) => {
-      const acct = accts.value?.find((acct) => acct.addr.toString() === a);
-      if (!acct) throw Error("Invalid Account");
-      storeKey(acct);
-      return {
-        addr: a,
-        hot: true,
-      };
-    });
-  const newVal = deepClone(store.accounts.concat(add));
-  await set("app", "accounts", newVal);
-  await store.getCache();
-  store.refresh++;
-  emit("close");
+  try {
+    const add = (selected.value as string[])
+      .filter((a) => !store.accounts.some((acct) => acct.addr === a))
+      .map((a) => {
+        const acct = accts.value?.find((acct) => acct.addr.toString() === a);
+        if (!acct) throw Error("Invalid Account");
+        return acct;
+      });
+    const mk = await unlocker.value!.ensureMk();
+    await Keystore.putSecrets(
+      mk,
+      add.map((acct) => ({
+        kind: "algo25" as const,
+        form: "seed" as const,
+        id: `algo25:${acct.addr}`,
+        plaintext: acct.sk.slice(0, 32),
+      })),
+      {
+        accounts: (current: LuteAccount[]) =>
+          current.concat(
+            add
+              .map((acct) => acct.addr.toString())
+              .filter((addr) => !current.some((c) => c.addr === addr))
+              .map((addr) => ({ addr }))
+          ),
+      }
+    );
+    await store.getCache();
+    store.refresh++;
+    emit("close");
+  } catch (err: any) {
+    if (isCancelled(err)) return;
+    console.error(err);
+    store.setSnackbar(err.message, "error");
+  }
 }
 </script>

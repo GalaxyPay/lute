@@ -10,9 +10,9 @@
         Make sure your recovery phrase(s) are backed up before continuing.
       </v-card-text>
       <v-card-text class="pb-0" style="color: #9aa0a5; font-size: 0.8em">
-        This re-encrypts every seed stored in this browser. Algo25, Ledger,
-        watch, multi-sig, and passkey accounts are not affected because none of
-        them are protected by this password.
+        The password protects every account stored in this browser: HD, Algo25
+        and Falcon. Ledger, watch, multi-sig, and passkey accounts are not
+        affected.
       </v-card-text>
       <v-container>
         <v-form ref="form" @submit.prevent="rotate()" validate-on="submit">
@@ -60,7 +60,7 @@
 </template>
 
 <script lang="ts" setup>
-import Seed from "@/services/Seed";
+import Keystore from "@/services/Keystore";
 import { mdiClose } from "@mdi/js";
 
 const store = useAppStore();
@@ -101,16 +101,17 @@ async function rotate() {
     if (!valid) return;
 
     rotating.value = true;
-    if (!(await Seed.rotatePassword(current.value, pass1.value))) {
+    if (!(await Keystore.rotate(current.value, pass1.value))) {
       store.setSnackbar("Incorrect Password", "error");
       return;
     }
+    await store.getCache();
     store.setSnackbar("Password Changed", "success");
     emit("close");
   } catch (err: any) {
     console.error(err);
-    // Nothing was written: rotation pre-flights every decrypt and commits in a
-    // single transaction, so the old password still works.
+    // Nothing was written: the new header is committed in one transaction, so
+    // the old password still works.
     store.setSnackbar(`Password unchanged. ${err.message}`, "error");
   } finally {
     rotating.value = false;

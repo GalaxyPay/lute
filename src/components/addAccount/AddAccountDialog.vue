@@ -78,10 +78,7 @@
                   </v-col>
                   <v-col>
                     {{ HOT }}
-                    <v-chip text="Legacy" size="small" class="ml-1" />
-                    <div class="text-grey">
-                      25-word seed, single account, non-extractable
-                    </div>
+                    <div class="text-grey">25-word seed, single account</div>
                   </v-col>
                 </v-row>
               </v-container>

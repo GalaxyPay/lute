@@ -13,6 +13,13 @@
         <template #[`item.type`]="{ item }">
           {{ item.credentialId ? "Passkey" : "Local" }}
         </template>
+        <template #[`item.exportable`]="{ item }">
+          <v-chip
+            v-if="!item.credentialId && !item.exportable"
+            text="Legacy"
+            size="x-small"
+          />
+        </template>
         <template #bottom />
       </v-data-table>
     </v-container>
@@ -79,56 +86,108 @@
     v-else-if="type === 'passkey'"
     @seed="(id, seed) => $emit('seed', id, seed)"
   />
+  <keystore-unlock ref="unlocker" />
   <password-confirm :visible="showPass" @close="handlePass" />
 </template>
 
 <script setup lang="ts">
-import { getAll } from "@/dbLute";
+import { get, getAll } from "@/dbLute";
+import Keystore from "@/services/Keystore";
 import Seed from "@/services/Seed";
-import type { SeedData } from "@/types";
+import type {
+  KeystoreRecord,
+  SeedData,
+  Unlocker,
+} from "@/types";
+import { isBadPassword, isCancelled } from "@/utils";
 import { mdiDevices, mdiOpenInApp, mdiPlusCircle } from "@mdi/js";
+
+interface SeedRow {
+  id: number;
+  credentialId?: string;
+  exportable?: boolean;
+  // @legacy-read A 1.x seed still under its own password.
+  legacy?: SeedData;
+}
 
 const emit = defineEmits(["close", "seed"]);
 
 const store = useAppStore();
+const unlocker = ref<Unlocker>();
 const showPass = ref(false);
-let seedId: number;
 const newSeed = ref(false);
 const type = ref();
-const seeds = ref<SeedData[]>([]);
+const seeds = ref<SeedRow[]>([]);
 const headers: any[] = [
   { title: "#", key: "id", sortable: false },
   { title: "Type", key: "type", sortable: false },
+  { key: "exportable", sortable: false, align: "end" },
 ];
 
 onBeforeMount(async () => {
-  seeds.value = await getAll("seeds");
+  const legacyAndPasskey = (await getAll("seeds")) as SeedData[];
+  const keystore = ((await getAll("keystore")) as KeystoreRecord[]).filter(
+    (r) => r.kind === "bip39"
+  );
+  seeds.value = [
+    ...legacyAndPasskey
+      .filter((s) => s.credentialId)
+      .map((s) => ({ id: s.id, credentialId: s.credentialId })),
+    ...keystore.map((r) => ({
+      id: Number(r.id.split(":")[1]),
+      exportable: Keystore.isExportable(r.kind, r.form),
+    })),
+    ...legacyAndPasskey
+      .filter(
+        (s) => s.data && !keystore.some((r) => r.id === `bip39:${s.id}`)
+      )
+      .map((s) => ({ id: s.id, legacy: s })),
+  ].sort((a, b) => a.id - b.id);
 });
 
-let seedData: SeedData;
-async function getSeed(_event: any, row: any) {
-  seedData = row.item;
-  seedId = seedData.id;
-  if (seedData.credentialId) {
-    try {
-      const { seed } = await Seed.getPasskeySeed(seedData.credentialId);
-      emit("seed", seedId, seed);
-    } catch (err: any) {
-      console.error(err);
-      store.setSnackbar(err.message, "error");
+let picked: SeedRow;
+async function getSeed(_event: any, row: { item: SeedRow }) {
+  picked = row.item;
+  try {
+    if (picked.credentialId) {
+      const { seed } = await Seed.getPasskeySeed(picked.credentialId);
+      emit("seed", picked.id, seed);
+      return;
     }
-  } else {
+    // The first password entry migrates 1.x seeds into the keystore, so a
+    // legacy row is tried there first.
+    const mk = await unlocker.value!.ensureMk();
+    const id = `bip39:${picked.id}`;
+    if (await get("keystore", id)) {
+      const { rec, plaintext } = await Keystore.getSecret(mk, id);
+      const seed = Buffer.from(
+        Keystore.signingMaterial(rec.kind, rec.form, plaintext)
+      );
+      plaintext.fill(0);
+      emit("seed", picked.id, seed);
+      return;
+    }
+    if (!picked.legacy) throw Error("Invalid Seed");
+    // Still in its old store: it is under a different password.
     showPass.value = true;
+  } catch (err: any) {
+    if (isCancelled(err)) return;
+    console.error(err);
+    store.setSnackbar(err.message, "error");
   }
 }
 
 async function handlePass(success: boolean, pass: string) {
   showPass.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-  } else {
-    const seed = await Seed.decryptSeed(pass, seedData);
-    emit("seed", seedId, seed);
+  if (!success) return;
+  try {
+    const seed = await Seed.decryptSeed(pass, picked.legacy!);
+    emit("seed", picked.id, seed);
+  } catch (err: any) {
+    store.setSnackbar(
+      isBadPassword(err) ? "Incorrect Password" : err.message,
+      "error"
+    );
   }
 }
 </script>

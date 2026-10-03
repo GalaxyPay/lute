@@ -133,3 +133,55 @@ export async function legacyVerifierHash(pass: string, salt: Uint8Array) {
   );
   return new Uint8Array(hash).toBase64();
 }
+
+/**
+ * Lower the PBKDF2 cost for unit tests only; 600k iterations per derivation
+ * would make the suite take minutes. Records carry their own iteration count,
+ * so a lowered value can never be mistaken for the real one at read time.
+ */
+export function setKdfIterationsForTests(iterations: number) {
+  KDF.iterations = iterations;
+}
+
+export function randomBytes(n: number) {
+  return crypto.getRandomValues(new Uint8Array(n));
+}
+
+const enc = new TextEncoder();
+
+/**
+ * Additional data for a keystore record. Binding kind and form as well as the
+ * id means a record relabelled from one-way material to exportable material
+ * fails its tag check instead of exporting a phrase that restores nothing.
+ */
+export function keystoreAad(kind: string, form: string, id: string) {
+  return enc.encode(`lute-keystore:${kind}:${form}:${id}`);
+}
+
+/** Additional data for the wrapped master key, bound to its header id. */
+export function mkAad(id: string) {
+  return enc.encode(`lute-keystore:mk:${id}`);
+}
+
+/**
+ * Import raw master key bytes. Non-extractable unless the session unlock cache
+ * needs the bytes, in which case the caller already holds them anyway.
+ */
+export async function importMk(raw: Uint8Array, extractable = false) {
+  return await crypto.subtle.importKey(
+    "raw",
+    Buffer.from(raw),
+    { name: "AES-GCM" },
+    extractable,
+    ["encrypt", "decrypt"]
+  );
+}
+
+/** A fresh master key that can never leave WebCrypto, for device mode. */
+export async function generateDeviceMk() {
+  return await crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}

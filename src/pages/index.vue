@@ -25,6 +25,30 @@
         </div>
       </v-card-text>
       <v-container v-else>
+        <v-alert
+          v-if="upgradeCount"
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mb-2"
+          closable
+        >
+          {{ upgradeCount }} account{{ upgradeCount > 1 ? "s were" : " was" }}
+          added before Lute could show mnemonics. To make
+          {{ upgradeCount > 1 ? "them" : "it" }} exportable, choose Upgrade
+          Account from the account menu and re-enter the mnemonic.
+        </v-alert>
+        <v-alert
+          v-if="noPassword"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mb-2"
+          closable
+        >
+          This wallet has no password. Anyone with access to this browser
+          profile can sign with its accounts. Set one in Settings.
+        </v-alert>
         <v-data-table
           :loading="!!store.loading"
           loading-text="Loading Accounts..."
@@ -64,6 +88,12 @@
                   <span v-else :class="expireClass(item.ns?.timeExpires)">
                     {{ item.name || item.ns?.name }}
                     <expire-chip v-if="!xxs" class="ml-1" :ns="item.ns" />
+                    <v-chip
+                      v-if="!item.subType && isUpgradeable(item.secret)"
+                      text="Legacy"
+                      size="x-small"
+                      class="ml-1"
+                    />
                   </span>
                 </div>
                 <span
@@ -176,18 +206,20 @@
                       </v-menu>
                     </v-list-item>
                     <v-list-item
-                      v-if="item.seedId && getCredential(item.seedId)"
-                      title="Backup HD Seed"
+                      v-if="
+                        item.secret === 'keystore' || item.secret === 'passkey'
+                      "
+                      title="Export Mnemonic"
                       :prepend-icon="mdiFormatListNumbered"
-                      @click="getMnemonic(item.seedId)"
+                      @click="exportAcct = item"
+                    />
+                    <v-list-item
+                      v-if="isUpgradeable(item.secret)"
+                      title="Upgrade Account"
+                      :prepend-icon="mdiArrowUpBoldCircleOutline"
+                      @click="upgradeAcct = item"
                     />
                   </template>
-                  <v-list-item
-                    v-if="false /*item.seedId*/"
-                    title="Export Key"
-                    :prepend-icon="mdiKey"
-                    @click="exportChildKey(item)"
-                  />
                   <v-list-item
                     v-if="!item.subType"
                     title="Remove Account"
@@ -207,40 +239,20 @@
     </v-card>
   </v-container>
   <add-account-dialog :visible="showAdd" @close="showAdd = false" />
-  <v-dialog v-model="showMnemonic" max-width="600" persistent>
-    <v-card title="Seed Mnemonic:">
-      <v-container>
-        <v-row style="font-family: monospace">
-          <v-col v-for="n in 24" :key="n" cols="6" sm="4" class="py-0">
-            <v-text-field
-              :model-value="mnemonicArray[n - 1]"
-              variant="plain"
-              readonly
-              hide-details
-              density="compact"
-            >
-              <template #prepend>{{ n < 10 ? "&nbsp;" + n : n }}.</template>
-            </v-text-field>
-          </v-col>
-        </v-row>
-      </v-container>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Copy" @click="copyToClipboard(mnemonicArray.join(' '))" />
-        <v-btn text="Close" @click="closeMnemonic()" />
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
-  <password-confirm :visible="showPass" @close="handlePass" />
+  <export-mnemonic :account="exportAcct" @close="exportAcct = undefined" />
+  <upgrade-account :account="upgradeAcct" @close="upgradeAcct = undefined" />
 </template>
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import { del, set } from "@/dbLute";
+import { keystoreTx, set } from "@/dbLute";
 import router from "@/router";
-import HdWallet from "@/services/HdWallet";
-import Seed from "@/services/Seed";
-import type { AccountInfo, LuteAccount, SeedData } from "@/types";
+import {
+  isHd,
+  isLocalSecret,
+  isUpgradeable,
+} from "@/services/accountSecret";
+import type { AccountInfo, LuteAccount } from "@/types";
 import {
   bigintToString,
   copyToClipboard,
@@ -249,6 +261,7 @@ import {
 } from "@/utils";
 import {
   mdiArrowDownThin,
+  mdiArrowUpBoldCircleOutline,
   mdiArrowUpThin,
   mdiCheck,
   mdiContentCopy,
@@ -260,7 +273,6 @@ import {
   mdiFormatVerticalAlignBottom,
   mdiFormatVerticalAlignTop,
   mdiInformationOutline,
-  mdiKey,
   mdiMenuDown,
   mdiPencil,
   mdiRefresh,
@@ -272,8 +284,19 @@ const { smAndUp, width } = useDisplay();
 const xxs = computed(() => width.value < 450);
 const store = useAppStore();
 const showAdd = ref(false);
-const showPass = ref(false);
 const rename = ref<any>({});
+const exportAcct = ref<AccountInfo>();
+const upgradeAcct = ref<AccountInfo>();
+
+const upgradeCount = computed(
+  () =>
+    store.acctInfo.filter((a) => !a.subType && isUpgradeable(a.secret)).length
+);
+const noPassword = computed(
+  () =>
+    store.keystoreMode === "device" &&
+    store.acctInfo.some((a) => !a.subType && isLocalSecret(a.secret))
+);
 const headers = computed(() => {
   const val: any[] = [{ key: "addr" }];
   if (smAndUp.value) val.push({ key: "info.assets" });
@@ -322,23 +345,38 @@ async function renameAccount() {
 }
 
 async function removeAccount(addr: string) {
-  if (
-    !confirm(
-      `If you remove this account it will still exist on the blockchain but you will not be able to access it in Lute.
-
-Are you sure you want to continue?`
-    )
-  )
-    return;
-  await del("keys", addr);
-  await del("falcon25-seeds", addr);
-  const ix = store.accounts.findIndex((a) => a.addr === addr);
-  if (ix !== -1) {
-    const newVal = deepClone(store.accounts.toSpliced(ix, 1));
-    await set("app", "accounts", newVal);
-    await store.getCache();
-    store.refresh++;
-  }
+  const acct = store.acctInfo.find((a) => a.addr === addr && !a.subType);
+  const local = !!acct && isLocalSecret(acct.secret);
+  const hd = !!acct && isHd(acct);
+  const notes = [
+    "If you remove this account it will still exist on the blockchain but you will not be able to access it in Lute.",
+  ];
+  if (local && !hd)
+    notes.push(
+      "Its key is deleted from this browser. Make sure you have its mnemonic."
+    );
+  if (hd)
+    notes.push(
+      "The HD seed stays in this browser, so the account can be added back from it."
+    );
+  notes.push("Are you sure you want to continue?");
+  if (!confirm(notes.join("\n\n"))) return;
+  // One transaction, reading the account list from the database rather than
+  // this page's cache, so a concurrent change in another window is kept.
+  await keystoreTx(async (tx) => {
+    const app = tx.objectStore("app");
+    const current: LuteAccount[] = (await app.get("accounts")) ?? [];
+    app.put(
+      current.filter((a) => a.addr !== addr),
+      "accounts"
+    );
+    tx.objectStore("keys").delete(addr);
+    tx.objectStore("falcon25-seeds").delete(addr);
+    tx.objectStore("keystore").delete(`algo25:${addr}`);
+    tx.objectStore("keystore").delete(`falcon25:${addr}`);
+  });
+  await store.getCache();
+  store.refresh++;
 }
 
 function acctDetails(_event: any, row: any) {
@@ -421,44 +459,6 @@ async function setAcctNetwork(acct: LuteAccount, network: string) {
   await store.getCache();
   store.refresh++;
   store.setSnackbar("Account Network Set", "success");
-}
-
-function getCredential(seedId: number) {
-  return store.seeds.find((s) => s.id === seedId)?.credentialId;
-}
-
-const showMnemonic = ref(false);
-const mnemonicArray = ref<string[]>([]);
-
-async function getMnemonic(seedId: number) {
-  const { mn } = await Seed.getPasskeyMnemonic(getCredential(seedId));
-  mnemonicArray.value = mn.split(" ");
-  showMnemonic.value = true;
-  store.snackbar.display = false;
-}
-
-let acctInfo: AccountInfo;
-let seedData: SeedData | undefined;
-async function exportChildKey(ai: AccountInfo) {
-  acctInfo = ai;
-  seedData = store.seeds.find((s) => s.id === acctInfo.seedId);
-  if (!seedData) throw Error("Invalid Seed");
-  if (seedData.data) showPass.value = true;
-}
-
-async function handlePass(success: boolean, pass: string) {
-  showPass.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-  } else {
-    const backupKey = await HdWallet.deriveChildKey(pass, acctInfo, seedData);
-    console.log(backupKey);
-  }
-}
-
-function closeMnemonic() {
-  showMnemonic.value = false;
-  mnemonicArray.value = [];
 }
 </script>
 
