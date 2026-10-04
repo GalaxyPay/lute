@@ -74,7 +74,7 @@
 <script lang="ts" setup>
 import Keystore from "@/services/Keystore";
 import type { LuteAccount, Unlocker } from "@/types";
-import { copyToClipboard, getFalconAddress, isCancelled } from "@/utils";
+import { copyToClipboard, getFalconKey, isCancelled } from "@/utils";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import algosdk from "algosdk";
@@ -96,8 +96,8 @@ const acct = props.convertion
 const mn = isBip39.value
   ? bip39.generateMnemonic(wordlist, 256)
   : algosdk.secretKeyToMnemonic(acct.sk);
-const falconAddr = props.isFalcon ? getFalconAddress(mn) : undefined;
-const addr = falconAddr || acct.addr;
+const falconKey = props.isFalcon ? getFalconKey(mn) : undefined;
+const addr = falconKey?.address || acct.addr;
 const mnemonicArray = mn.split(" ");
 const page = ref(0);
 const challenge = Math.floor(Math.random() * props.numberOfWords) + 1;
@@ -118,12 +118,15 @@ async function submit() {
     }
     const kind = props.isFalcon ? "falcon25" : "algo25";
     const address = addr.toString();
+    const newAcct: LuteAccount = falconKey
+      ? { addr: address, falconPk: falconKey.publicKey.toBase64() }
+      : { addr: address };
     await Keystore.storeMnemonic(mk, kind, mn, {
       id: `${kind}:${address}`,
       accounts: (current: LuteAccount[]) =>
         current.some((a) => a.addr === address)
           ? current
-          : [...current, { addr: address }],
+          : [...current, newAcct],
     });
     await store.getCache();
     store.refresh++;

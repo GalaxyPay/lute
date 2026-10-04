@@ -29,7 +29,7 @@
 <script lang="ts" setup>
 import Keystore from "@/services/Keystore";
 import type { LuteAccount, Unlocker } from "@/types";
-import { getFalconAddress, isCancelled } from "@/utils";
+import { getFalconKey, isCancelled } from "@/utils";
 
 const emit = defineEmits(["close"]);
 const store = useAppStore();
@@ -39,7 +39,9 @@ const unlocker = ref<Unlocker>();
 
 async function handleMnemonic(mn: string) {
   try {
-    const address = getFalconAddress(mn).toString();
+    const key = getFalconKey(mn);
+    const address = key.address.toString();
+    const falconPk = key.publicKey.toBase64();
     if (store.accounts.some((a) => a.addr === address)) {
       emit("close");
       throw Error(
@@ -52,7 +54,7 @@ async function handleMnemonic(mn: string) {
       accounts: (current: LuteAccount[]) =>
         current.some((a) => a.addr === address)
           ? current
-          : [...current, { addr: address }],
+          : [...current, { addr: address, falconPk }],
     });
     await store.getCache();
     store.refresh++;

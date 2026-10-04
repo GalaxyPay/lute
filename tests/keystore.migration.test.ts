@@ -1,5 +1,7 @@
 import HdWallet from "@/services/HdWallet";
+import { getFalconKey } from "@/utils/keys";
 import * as bip39 from "@scure/bip39";
+import algosdk from "algosdk";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildV3,
@@ -176,6 +178,13 @@ describe("envelope migration", () => {
     );
     ctx.dispose();
     expect(signer.address.toString()).toBe(fx.falconAddr);
+    // The key handed back for backfilling falconPk is the account's own.
+    expect(signer.publicKey).toEqual(getFalconKey(FALCON_MN).publicKey);
+    const { address } = algosdk.addressFromPQKey(
+      algosdk.FALCON_1024_SCHEME,
+      signer.publicKey
+    );
+    expect(address.toString()).toBe(fx.falconAddr);
   });
 
   it("still signs with a seed under a different password", async () => {

@@ -236,6 +236,13 @@ export interface LuteAccount {
   seedId?: number;
   xpub?: string;
   idxs?: number[];
+  /**
+   * Base64 Falcon-1024 public key of a Falcon25 account. Public, like xpub, so
+   * dapps can be given the account's empty signature without unlocking the
+   * seed. Missing on accounts created before it was recorded until the seed is
+   * next used to sign.
+   */
+  falconPk?: string;
 }
 
 /**

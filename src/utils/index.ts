@@ -2,6 +2,7 @@ export {
   badPassword,
   ed25519Sign,
   getFalconAddress,
+  getFalconKey,
   isBadPassword,
   isCancelled,
   needsPassword,

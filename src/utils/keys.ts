@@ -29,19 +29,36 @@ export function badPassword() {
   return new DOMException("Incorrect Password", "OperationError");
 }
 
-export function getFalconAddress(mn: string) {
+/** Address and public key of a Falcon25 mnemonic, from one keygen. */
+export function getFalconKey(mn: string) {
   const seed = algosdk.pq25WordMnemonicToSeed(mn, algosdk.FALCON_1024_SCHEME);
-  return falconAddressFromKeySeed(seed);
+  try {
+    return falconKeyFromKeySeed(seed);
+  } finally {
+    seed.fill(0);
+  }
 }
 
-/** The address of a falcon key seed (the hashed form of a 25-word seed). */
-export function falconAddressFromKeySeed(keySeed: Uint8Array) {
+export function getFalconAddress(mn: string) {
+  return getFalconKey(mn).address;
+}
+
+/**
+ * Address and public key of a falcon key seed (the hashed form of a 25-word
+ * seed). The public key is what an account records as `falconPk`.
+ */
+export function falconKeyFromKeySeed(keySeed: Uint8Array) {
   const { publicKey } = generateKey(keySeed);
   const { address } = algosdk.addressFromPQKey(
     algosdk.FALCON_1024_SCHEME,
     publicKey
   );
-  return address;
+  return { address, publicKey };
+}
+
+/** The address of a falcon key seed (the hashed form of a 25-word seed). */
+export function falconAddressFromKeySeed(keySeed: Uint8Array) {
+  return falconKeyFromKeySeed(keySeed).address;
 }
 
 // PKCS#8 header for a raw Ed25519 private key; the 32-byte seed follows it.

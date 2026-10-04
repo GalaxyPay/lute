@@ -49,6 +49,14 @@ export async function signer(
         let sig: Uint8Array;
         if (acct.isFalcon25) {
           const f25 = await Signer.falconSigner(acct, ctx);
+          // Backfill the public key on accounts created before it was
+          // recorded. The address is derived from this very key, so the
+          // pairing cannot be wrong. Best effort: signing must not fail.
+          const falconAddr = f25.address.toString();
+          if (!store.accounts.find((a) => a.addr === falconAddr)?.falconPk)
+            await store
+              .saveFalconPk(falconAddr, f25.publicKey)
+              .catch((err) => console.error(err));
           const stxn = await signTransactionWithSigner(txn, f25.txnSigner);
           signedTxns.push(stxn.blob);
           continue;
