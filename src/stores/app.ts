@@ -273,20 +273,6 @@ export const useAppStore = defineStore("app", {
       if (member) return member;
       throw Error("Not a Member of Multi-Sig");
     },
-    /**
-     * Record a Falcon25 account's public key if it has none yet. Reads the
-     * account list from the database rather than the cache so a stale cache in
-     * this context cannot undo another context's edit. The caller must pass
-     * the address derived from this key.
-     */
-    async saveFalconPk(addr: string, publicKey: Uint8Array) {
-      const accts: LuteAccount[] = (await get("app", "accounts")) || [];
-      const acct = accts.find((a) => a.addr === addr);
-      if (!acct || acct.falconPk) return;
-      acct.falconPk = publicKey.toBase64();
-      await set("app", "accounts", accts);
-      await this.getCache();
-    },
     async removeMsigAccount(appId: bigint) {
       const ix = this.accounts.findIndex((a) => a.appId === appId);
       if (ix === -1) return;

@@ -1,3 +1,4 @@
+import { getFalconKey } from "@/utils/keys";
 import { describe, expect, it } from "vitest";
 import {
   buildV3,
@@ -82,6 +83,23 @@ describe("upgrading an account", () => {
       3,
     ]);
     expect(await Keystore.exportMnemonic(mk, "bip39:4")).toBe(HD_OTHER_MN);
+  });
+
+  it("records a Falcon account's public key when it is missing", async () => {
+    const { Keystore, db, mk, fx } = await upgraded();
+    // As for a 1.x Falcon seed the migration skipped (another password).
+    const accts = ((await db.get("app", "accounts")) as any[]).map(
+      ({ falconPk: _, ...a }) => a
+    );
+    await db.set("app", "accounts", accts);
+    await Keystore.upgradeSecret(mk, "falcon25", FALCON_MN, {
+      addr: fx.falconAddr,
+    });
+    const after = (await db.get("app", "accounts")) as any[];
+    expect(after.find((a) => a.addr === fx.falconAddr)?.falconPk).toBe(
+      getFalconKey(FALCON_MN).publicKey.toBase64()
+    );
+    expect(after.filter((a) => a.falconPk).length).toBe(1);
   });
 
   it("never deletes a passkey credential", async () => {

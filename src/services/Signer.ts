@@ -24,13 +24,6 @@ import algosdk, {
 } from "algosdk";
 import { generateKey, signCompressed } from "falcon-1024";
 
-/** A Falcon-1024 account's signer, with the public key it signs under. */
-export interface FalconSigner {
-  address: Address;
-  txnSigner: TransactionSigner;
-  publicKey: Uint8Array;
-}
-
 /**
  * State for one signing request: the password if one was typed, the master key
  * once obtained, and decrypted signing material so a group signs with each
@@ -40,7 +33,10 @@ export class SignContext {
   pass?: string;
   private mk?: MasterKey;
   private material = new Map<string, Uint8Array>();
-  private falcon = new Map<string, FalconSigner>();
+  private falcon = new Map<
+    string,
+    { address: Address; txnSigner: TransactionSigner }
+  >();
 
   constructor(pass?: string) {
     this.pass = pass;
@@ -64,7 +60,10 @@ export class SignContext {
     return this.falcon.get(addr);
   }
 
-  setFalconSigner(addr: string, signer: FalconSigner) {
+  setFalconSigner(
+    addr: string,
+    signer: { address: Address; txnSigner: TransactionSigner }
+  ) {
     this.falcon.set(addr, signer);
   }
 
@@ -173,14 +172,8 @@ const Signer = {
     return await hotSign(acct.addr, bytes);
   },
 
-  /**
-   * A transaction signer for a Falcon-1024 account, with its public key so the
-   * caller can record it on the account.
-   */
-  async falconSigner(
-    acct: AccountInfo,
-    ctx: SignContext
-  ): Promise<FalconSigner> {
+  /** A transaction signer for a Falcon-1024 account. */
+  async falconSigner(acct: AccountInfo, ctx: SignContext) {
     const existing = ctx.falconSigner(acct.addr);
     if (existing) return existing;
     const keySeed = await falconKeySeed(acct, ctx);
@@ -190,9 +183,8 @@ const Signer = {
       falcon1024Signer: async (bytesToSign: Uint8Array) =>
         signCompressed(privateKey, bytesToSign),
     };
-    const { address, txnSigner } =
+    const signer =
       algosdk.addressWithSignersFromRawFalcon1024Signer(signingKey);
-    const signer = { address, txnSigner, publicKey };
     ctx.setFalconSigner(acct.addr, signer);
     return signer;
   },

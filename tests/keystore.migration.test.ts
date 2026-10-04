@@ -1,7 +1,6 @@
 import HdWallet from "@/services/HdWallet";
 import { getFalconKey } from "@/utils/keys";
 import * as bip39 from "@scure/bip39";
-import algosdk from "algosdk";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildV3,
@@ -73,6 +72,15 @@ describe.each(["legacy", "raw", "current"] as const)(
       );
       const falcon = await Keystore.getSecret(mk, `falcon25:${fx.falconAddr}`);
       expect(falcon.plaintext).toEqual(falconAddress(FALCON_MN).keySeed);
+
+      // 1.x never stored the Falcon public key; the move records it, and
+      // touches no other account.
+      const accts = (await db.get("app", "accounts")) as any[];
+      const withPk = accts.filter((a) => a.falconPk);
+      expect(withPk.map((a) => a.addr)).toEqual([fx.falconAddr]);
+      expect(withPk[0].falconPk).toBe(
+        getFalconKey(FALCON_MN).publicKey.toBase64()
+      );
     });
   }
 );
@@ -87,6 +95,8 @@ describe("envelope migration", () => {
     expect(await db.get("app", "password")).toBeTruthy();
     expect(await db.getAll("keystore")).toEqual([]);
     expect(((await db.getAll("seeds")) as any[]).length).toBe(4);
+    const accts = (await db.get("app", "accounts")) as any[];
+    expect(accts.some((a) => a.falconPk)).toBe(false);
   });
 
   it("creates one keystore when two contexts enter the password at once", async () => {
@@ -178,13 +188,6 @@ describe("envelope migration", () => {
     );
     ctx.dispose();
     expect(signer.address.toString()).toBe(fx.falconAddr);
-    // The key handed back for backfilling falconPk is the account's own.
-    expect(signer.publicKey).toEqual(getFalconKey(FALCON_MN).publicKey);
-    const { address } = algosdk.addressFromPQKey(
-      algosdk.FALCON_1024_SCHEME,
-      signer.publicKey
-    );
-    expect(address.toString()).toBe(fx.falconAddr);
   });
 
   it("still signs with a seed under a different password", async () => {

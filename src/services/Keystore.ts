@@ -57,7 +57,13 @@ import type {
   PasswordKeystoreHeader,
   SeedData,
 } from "@/types";
-import { badPassword, getFalconAddress, isBadPassword } from "@/utils/keys";
+import {
+  badPassword,
+  falconKeyFromKeySeed,
+  getFalconAddress,
+  getFalconKey,
+  isBadPassword,
+} from "@/utils/keys";
 import {
   BIP32DerivationType,
   fromSeed,
@@ -287,6 +293,17 @@ export interface PutOptions {
   accounts?: (current: LuteAccount[], ids: string[]) => LuteAccount[];
 }
 
+/**
+ * Set falconPk (base64, keyed by address) on accounts that lack it. An account
+ * that already has one keeps it, and addresses not in the list are ignored.
+ */
+function withFalconPks(accounts: LuteAccount[], pks: Map<string, string>) {
+  return accounts.map((a) => {
+    const falconPk = pks.get(a.addr);
+    return falconPk && !a.falconPk ? { ...a, falconPk } : a;
+  });
+}
+
 const Keystore = {
   validLength,
   isExportable,
@@ -427,6 +444,9 @@ const Keystore = {
    * signable, not exportable until the mnemonic is re-entered. Records under a
    * different password are left in place.
    *
+   * Each moved Falcon account also gets its public key recorded (falconPk),
+   * which 1.x never stored, so it can be described to dapps without unlocking.
+   *
    * With `create`, the new header is written in the same transaction and the
    * 1.x verifier is deleted; a conflict propagates so the caller can retry.
    * With `expect` (an existing header) this is opportunistic: a conflict means
@@ -446,6 +466,7 @@ const Keystore = {
     const recs: KeystoreRecord[] = [];
     const movedSeeds: number[] = [];
     const movedFalcons: string[] = [];
+    const falconPks = new Map<string, string>();
     let skipped = 0;
     const carry = async (
       sd: SeedData | FalconSeedData,
@@ -466,6 +487,12 @@ const Keystore = {
           return false;
         }
         recs.push(await encryptRecord(mk, kind, form, `${kind}:${sd.id}`, pt));
+        if (kind === "falcon25") {
+          // Record the key under the address it derives, never the record id,
+          // so a mislabelled record cannot attach a key to the wrong account.
+          const { address, publicKey } = falconKeyFromKeySeed(pt);
+          falconPks.set(address.toString(), publicKey.toBase64());
+        }
         return true;
       } finally {
         pt.fill(0);
@@ -498,6 +525,10 @@ const Keystore = {
       for (const id of movedSeeds) tx.objectStore("seeds").delete(id);
       for (const addr of movedFalcons)
         tx.objectStore("falcon25-seeds").delete(addr);
+      if (falconPks.size) {
+        const current: LuteAccount[] = (await app.get("accounts")) ?? [];
+        app.put(stampAccounts(withFalconPks(current, falconPks)), "accounts");
+      }
     });
     if (opts.create) await write;
     else {
@@ -672,7 +703,19 @@ const Keystore = {
         : kind === "falcon25"
           ? { falcon25: [target.addr] }
           : { keys: [target.addr] };
-    return await this.storeMnemonic(mk, kind, mn, { id, deleteLegacy });
+    // A 1.x Falcon seed under a different password is skipped by the
+    // migration, so its account may still lack falconPk. Record it here.
+    let accounts: PutOptions["accounts"];
+    if (kind === "falcon25") {
+      const { address, publicKey } = getFalconKey(mn);
+      const pks = new Map([[address.toString(), publicKey.toBase64()]]);
+      accounts = (current) => withFalconPks(current, pks);
+    }
+    return await this.storeMnemonic(mk, kind, mn, {
+      id,
+      deleteLegacy,
+      accounts,
+    });
   },
 
   async exportMnemonic(mk: MasterKey, id: string) {
