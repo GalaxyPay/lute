@@ -12,6 +12,10 @@ import VueRouter from "vue-router/vite";
 
 export const sharedConfig: UserConfig = {
   root: r("src"),
+  // Separate from the web app's cache (vite.config.ts): when `pnpm dev` and
+  // `pnpm devx` run together, a shared one is re-optimized by each in turn
+  // and the other serves stale dependency chunks (504).
+  cacheDir: r("node_modules/.vite-ext"),
   resolve: {
     alias: {
       "@/": `${r("src")}/`,

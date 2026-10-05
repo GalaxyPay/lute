@@ -1,3 +1,6 @@
+import { syncOrigins } from "@/ext/syncOrigins";
+import { createSyncRelay, type RelayPort } from "@/ext/syncRelay";
+import { syncWindowBounds } from "@/ext/syncWindow";
 import { onMessage } from "webext-bridge/background";
 import type { DeclarativeNetRequest } from "webextension-polyfill";
 
@@ -25,13 +28,85 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
   await browser.storage.session.remove(UNLOCK_KEY);
 });
 
+/*
+ * Where the extension receives a sync the web app sends. The side panel sits
+ * beside the web app, so it is preferred, but Chrome only opens it in
+ * response to a user action. The web app asks for it through the content
+ * script straight after its password is submitted ("sync-panel-request"),
+ * the same route dApp sign requests take. The relay's own connection carries
+ * no user action, so when the panel did not open it falls back to a popup.
+ */
+const panelAttempts = new Map<number, Promise<boolean>>();
+
+onMessage("sync-panel-request", (message) => {
+  const tabId = message.sender.tabId;
+  const path = `${buildUrl("sync", "Lute", tabId)}&panel=1`;
+  sp.setOptions({ path });
+  // Called straight away, not after an await, so the user action still counts.
+  const attempt: Promise<boolean> = sp.open({ tabId }).then(
+    () => true,
+    () => {
+      // Leave the panel showing the wallet next time, not a dead sync page.
+      sp.setOptions({ path: BASE_PATH });
+      return false;
+    }
+  );
+  panelAttempts.set(tabId, attempt);
+  setTimeout(() => {
+    if (panelAttempts.get(tabId) === attempt) panelAttempts.delete(tabId);
+  }, 10_000);
+});
+
+/**
+ * Whether the side panel opened for this tab's sync. The panel request and
+ * the sync connection can arrive in either order, so wait briefly for it.
+ */
+async function panelOpened(tabId: number, waitMs = 1500) {
+  const deadline = Date.now() + waitMs;
+  while (!panelAttempts.has(tabId) && Date.now() < deadline)
+    await new Promise((r) => setTimeout(r, 100));
+  const attempt = panelAttempts.get(tabId);
+  if (!attempt) return false;
+  panelAttempts.delete(tabId);
+  return await attempt;
+}
+
+const syncRelay = createSyncRelay({
+  origins: syncOrigins(import.meta.env.DEV),
+  async openReceiver(tabId) {
+    // The panel page connects as the receiver by itself.
+    if (await panelOpened(tabId)) return;
+    // Otherwise a popup over the web app's window, so both stay in view.
+    const url = browser.runtime.getURL(buildUrl("sync", "Lute", tabId));
+    let over;
+    try {
+      const tab = await browser.tabs.get(tabId);
+      over = await browser.windows.get(tab.windowId!);
+    } catch {
+      // Position is a nicety; open it anyway.
+    }
+    await browser.windows.create({
+      url,
+      type: "popup",
+      focused: true,
+      ...syncWindowBounds(over),
+    });
+  },
+});
+
 browser.runtime.onConnect.addListener(function (port) {
   if (port.name === "luteSidepanel") {
     port.onDisconnect.addListener(async () => {
       sp.setOptions({ path: BASE_PATH });
     });
+  } else {
+    syncRelay.internal(port as RelayPort);
   }
 });
+
+browser.runtime.onConnectExternal.addListener((port) =>
+  syncRelay.external(port as RelayPort)
+);
 
 function buildUrl(action: string, name: string, tabId: number) {
   const params = new URLSearchParams({ action, name, tabId: tabId.toString() });

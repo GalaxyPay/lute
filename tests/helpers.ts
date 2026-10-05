@@ -1,3 +1,4 @@
+import type { SyncMessage, SyncTransport } from "@/services/SyncSession";
 import { IDBFactory } from "fake-indexeddb";
 import { vi } from "vitest";
 
@@ -12,8 +13,6 @@ export async function fresh(seed?: () => Promise<void>) {
   if (seed) await seed();
   const kdf = await import("@/services/kdf");
   kdf.setKdfIterationsForTests(1000);
-  const backup = await import("@/services/Backup");
-  backup.setBackupIterationsForTests(1000);
   // The same module the @/stores/app alias resolves to in vitest.config.ts.
   const { testStore } = await import("./stubs/store");
   Object.assign(testStore, {
@@ -34,7 +33,8 @@ export async function fresh(seed?: () => Promise<void>) {
     SignContext: (await import("@/services/Signer")).SignContext,
     Seed: (await import("@/services/Seed")).default,
     Unlock: (await import("@/services/Unlock")).default,
-    Backup: backup.default,
+    Transfer: (await import("@/services/Transfer")).default,
+    SyncSession: await import("@/services/SyncSession"),
     accountSecret: await import("@/services/accountSecret"),
     store: testStore,
   };
@@ -52,4 +52,50 @@ export async function loadCaches(env: Env) {
     ({ id, kind, form }) => ({ id, kind, form })
   );
   store.keystoreMode = await env.Keystore.mode();
+}
+
+/**
+ * Two connected in-memory transports, standing in for the ports the background
+ * relays. Like a real Port, delivery is asynchronous and in order, messages
+ * sent before a close still arrive, and the other end learns of the close after
+ * them.
+ */
+export function pairedTransports(): [SyncTransport, SyncTransport] {
+  type End = {
+    handler?: (m: SyncMessage) => void;
+    buffered: SyncMessage[];
+    onClose?: () => void;
+    closed: boolean;
+  };
+  const shut = (e: End) => {
+    if (e.closed) return;
+    e.closed = true;
+    e.onClose?.();
+  };
+  const make = (me: End, peer: End): SyncTransport => ({
+    send(m) {
+      if (me.closed) return;
+      const copy = structuredClone(m);
+      setTimeout(() => {
+        if (peer.closed) return;
+        if (peer.handler) peer.handler(copy);
+        else peer.buffered.push(copy);
+      }, 0);
+    },
+    onMessage(cb) {
+      me.handler = cb;
+      me.buffered.splice(0).forEach(cb);
+    },
+    onClose(cb) {
+      if (me.closed) cb();
+      else me.onClose = cb;
+    },
+    close() {
+      shut(me);
+      setTimeout(() => shut(peer), 0);
+    },
+  });
+  const a: End = { buffered: [], closed: false };
+  const b: End = { buffered: [], closed: false };
+  return [make(a, b), make(b, a)];
 }

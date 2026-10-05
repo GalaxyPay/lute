@@ -7,7 +7,8 @@
     "playwright.config.*",
     "scripts",
     "src/ext/manifest.*",
-    "vitest.config.*"
+    "vitest.config.*",
+    "src/ext/syncOrigins.ts"
   ],
   "compilerOptions": {
     "composite": true,

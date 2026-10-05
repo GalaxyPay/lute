@@ -31,7 +31,7 @@ pnpm i
 | `pnpm build`  | Production web build to `/dist`            |
 | `pnpm buildx` | Production extension build to `/extension` |
 | `pnpm lint`   | Lint and auto-fix                          |
-| `pnpm test`   | Unit tests (keystore, migration, backup)   |
+| `pnpm test`   | Unit tests (keystore, migration, sync)     |
 
 ## Upgrading from 1.x
 
@@ -41,6 +41,8 @@ Lute 2.0 stores every local key in one keystore, protected by a single wallet pa
 - To make such an account exportable, choose **Upgrade Account** from its menu and re-enter its mnemonic. Lute checks it against the account's public key, so nothing else is needed. This is optional and can be done one account at a time.
 - Algo25 accounts are now covered by the wallet password, if one is set.
 - Once upgraded, the browser's data cannot be opened by Lute 1.x.
+- Your mnemonics are your backup. Lute does not export key files.
+- To copy accounts between the web app and the extension in the same browser, use **Sync to Extension** or **Sync to Web App** in Settings. The receiving wallet asks you to confirm, then adds the accounts it doesn't already have.
 
 ## Contributing
 

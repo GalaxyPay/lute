@@ -12,6 +12,7 @@
     "devx:background": "npm run buildx:background -- --mode development",
     "devx:web": "vite --config vite.config.ext.mts",
     "devx:js": "npm run buildx:js -- --mode development",
+    "devx:client": "vite build --config vite.config.client.mts --mode development",
     "build": "vite build",
     "buildx": "cross-env NODE_ENV=production run-s clear buildx:web buildx:prepare buildx:background buildx:js",
     "buildx:prepare": "esno scripts/prepare.ts",

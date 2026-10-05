@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import type { Manifest } from "webextension-polyfill";
 import type PkgType from "../../package.json";
 import { isDev, isFirefox, port, r } from "../../scripts/utils";
+import { syncOrigins } from "./syncOrigins";
 
 const connect = ["http:", "https:"];
 if (isDev) connect.push("ws:");
@@ -77,6 +78,14 @@ export async function getManifest() {
     },
     host_permissions: ["*://ipfs.algonode.dev/*", "*://*.4160.nodely.io/*"],
   };
+
+  // Lets lute.app open a port to the extension for wallet sync, with Chrome
+  // enforcing the origin. Chromium only; a Firefox build would need another
+  // channel (see src/services/syncTransports.ts).
+  if (!isFirefox)
+    (manifest as any).externally_connectable = {
+      matches: syncOrigins(isDev).map((o) => `${o}/*`),
+    };
 
   // add sidepanel
   if (isFirefox) {

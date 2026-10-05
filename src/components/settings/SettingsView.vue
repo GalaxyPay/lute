@@ -193,25 +193,23 @@
         </v-row>
         <v-row align="center">
           <v-col>
-            <v-icon :icon="mdiArchiveLock" class="mb-1 mr-2" /> Backup
+            <v-icon :icon="mdiSync" class="mb-1 mr-2" /> Sync
             <div style="color: #9aa0a5; font-size: 0.7em">
-              An encrypted file of your accounts, to move them between the Lute
-              web app and extension. Your mnemonics remain the backup that
-              matters.
+              Copy this wallet's accounts and keys to the Lute
+              {{ store.isWeb ? "extension" : "web app" }} in this browser. Your
+              mnemonics are your backup; keep them safe.
             </div>
           </v-col>
           <v-col class="text-right">
             <v-btn
-              text="Backup"
+              v-if="!store.isWeb || canSyncToExtension"
+              :text="store.isWeb ? 'Sync to Extension' : 'Sync to Web App'"
               :size="xs ? 'small' : 'default'"
-              @click="backupMode = 'backup'"
+              @click="startSync()"
             />
-            <v-btn
-              text="Restore"
-              variant="plain"
-              :size="xs ? 'small' : 'default'"
-              @click="backupMode = 'restore'"
-            />
+            <div v-else style="color: #9aa0a5; font-size: 0.8em">
+              Install the Lute extension to sync
+            </div>
           </v-col>
         </v-row>
         <v-row align="center">
@@ -277,10 +275,19 @@
   <CustomNetwork :visible="showCustom" @close="showCustom = false" />
   <PasswordRotate :visible="showRotate" @close="showRotate = false" />
   <PasswordRemove :visible="showRemove" @close="showRemove = false" />
+  <keystore-unlock ref="unlocker" />
   <v-dialog v-model="showCreate" max-width="600" persistent>
     <password-create @close="showCreate = false" />
   </v-dialog>
-  <backup-restore :mode="backupMode" @close="backupMode = undefined" />
+  <v-dialog :model-value="!!sync" max-width="520" persistent>
+    <sync-session
+      v-if="sync"
+      :side="store.isWeb ? 'web' : 'ext'"
+      role="send"
+      :mk="sync.mk"
+      @close="sync = undefined"
+    />
+  </v-dialog>
 </template>
 
 <script lang="ts" setup>
@@ -288,17 +295,20 @@ import { Arc59Factory } from "@/clients/Arc59Client";
 import { networks } from "@/data";
 import { set } from "@/dbLute";
 import Algo from "@/services/Algo";
+import { extensionId } from "@/services/syncTransports";
+import type { MasterKey, Unlocker } from "@/types";
+import { isCancelled } from "@/utils";
 import Unlock from "@/services/Unlock";
 import { luteSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import {
-  mdiArchiveLock,
   mdiBug,
   mdiContentSave,
   mdiEye,
   mdiKeyChange,
   mdiLockClock,
   mdiSourceBranch,
+  mdiSync,
   mdiThemeLightDark,
   mdiTrayArrowDown,
 } from "@mdi/js";
@@ -313,10 +323,36 @@ const showCustom = ref(false);
 const showRotate = ref(false);
 const showRemove = ref(false);
 const showCreate = ref(false);
-const backupMode = ref<"backup" | "restore">();
+const unlocker = ref<Unlocker>();
+const sync = ref<{ mk: MasterKey }>();
+
+/**
+ * Unlock before the sync dialog opens. A prompt opened while that dialog is
+ * still opening loses focus to it.
+ */
+async function startSync() {
+  try {
+    // Always the typed password: this hands over every key in the wallet.
+    const mk = await unlocker.value!.ensureMk({ fresh: true });
+    // Ask the extension for its side panel while this click (or password
+    // submit) still counts as a user action; Chrome requires one.
+    if (store.isWeb)
+      window.dispatchEvent(
+        new CustomEvent("lute-connect", { detail: { action: "sync" } })
+      );
+    sync.value = { mk };
+  } catch (err: any) {
+    if (isCancelled(err)) return;
+    console.error(err);
+    store.setSnackbar(err.message, "error");
+  }
+}
+const canSyncToExtension = ref(false);
 
 onMounted(async () => {
   await Unlock.isUnlocked();
+  if (!store.isWeb) return;
+  canSyncToExtension.value = !!extensionId();
 });
 
 function forgotPassword() {
