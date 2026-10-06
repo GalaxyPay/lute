@@ -50,6 +50,7 @@
             <v-btn
               text="Connect"
               :disabled="!selected.length"
+              :loading="connecting"
               @click="connect()"
             />
           </v-col>
@@ -61,6 +62,7 @@
 
 <script lang="ts" setup>
 import router from "@/router";
+import Msig from "@/services/Msig";
 import {
   bigintToString,
   isFromOpener,
@@ -69,6 +71,7 @@ import {
   sendOrPostMessage,
   whenLoaded,
 } from "@/utils";
+import { emptySignatures } from "@/utils/emptySignature";
 import { useDisplay } from "vuetify";
 
 const store = useAppStore();
@@ -146,10 +149,26 @@ function home() {
   }
 }
 
-function connect() {
+const connecting = ref(false);
+
+async function connect() {
+  connecting.value = true;
+  const addrs: string[] = [...selected.value];
+  // How each account signs, for dapps that simulate fees. Best effort: an
+  // account Lute cannot describe is left out, and a failure never blocks the
+  // connection.
+  let sigs: Record<string, string> = {};
+  try {
+    sigs = await emptySignatures(addrs, store.acctInfo, (appId) =>
+      Msig.loadParams(appId)
+    );
+  } catch (err) {
+    console.error(err);
+  }
   const message = {
     action: "connect",
-    addrs: [...selected.value],
+    addrs,
+    emptySignatures: sigs,
     debug: store.debug,
   };
   sendOrPostMessage(message, tabId);

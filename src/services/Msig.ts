@@ -1,13 +1,39 @@
 import { MsigAppFactory } from "@/clients/MsigApp.client";
 import router from "@/router";
 import Algo from "@/services/Algo";
-import type { Arc55App, MsigGroup } from "@/types";
+import type { Arc55App, MsigGroup, MultisigMetadata } from "@/types";
 import { send } from "@/utils";
 import { luteSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import algosdk, { Transaction } from "algosdk";
 
 const Msig = {
+  /**
+   * An ARC-55 app's multisig parameters from its global state alone, without
+   * the boxes loadApp reads. Undefined if the app is missing or incomplete.
+   */
+  async loadParams(appId: bigint): Promise<MultisigMetadata | undefined> {
+    const appInfo = await Algo.algod.getApplicationByID(appId).do();
+    const addrs: string[] = [];
+    let threshold: number | undefined;
+    for (const s of appInfo.params?.globalState ?? []) {
+      if (s.key.length === 8)
+        addrs[algosdk.decodeUint64(s.key, "safe")] = algosdk.encodeAddress(
+          s.value.bytes
+        );
+      else if (new TextDecoder().decode(s.key) === "arc55_threshold")
+        threshold = Number(s.value.uint);
+    }
+    // A hole in the member indexes means the state is not a full member list.
+    if (
+      !threshold ||
+      !addrs.length ||
+      Object.keys(addrs).length !== addrs.length
+    )
+      return undefined;
+    return { version: 1, threshold, addrs };
+  },
+
   async loadApp(appId: bigint, ignore404: boolean = false) {
     try {
       const appInfo = await Algo.algod.getApplicationByID(appId).do();
