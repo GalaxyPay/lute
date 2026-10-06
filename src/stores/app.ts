@@ -223,6 +223,11 @@ export const useAppStore = defineStore("app", {
       this.networkName =
         this.allNetworks.find((n) => n.name === nn)?.name || networks[0]!.name;
       this.sandboxRouter = await get("app", "sandboxRouter");
+      const header: KeystoreHeader | undefined = await get("app", "keystore");
+      this.legacyVerifier = !!(await get("app", "password"));
+      this.hasKeystore = !!header;
+      this.keystoreMode =
+        header?.mode ?? (this.legacyVerifier ? "password" : "device");
       this.accounts = (await get("app", "accounts")) || [];
       this.debug = (await get("app", "debug")) ?? this.debug;
       this.snoop = (await get("app", "snoop")) ?? this.snoop;
@@ -236,11 +241,6 @@ export const useAppStore = defineStore("app", {
       this.keystore = ((await getAll("keystore")) as KeystoreRecord[]).map(
         ({ id, kind, form }) => ({ id, kind, form })
       );
-      const header: KeystoreHeader | undefined = await get("app", "keystore");
-      this.legacyVerifier = !!(await get("app", "password"));
-      this.hasKeystore = !!header;
-      this.keystoreMode =
-        header?.mode ?? (this.legacyVerifier ? "password" : "device");
     },
     async setTheme(name: string | null) {
       await set("app", "theme", name || "dark");

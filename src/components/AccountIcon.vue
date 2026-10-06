@@ -1,6 +1,6 @@
 <template>
   <v-badge
-    :model-value="isUpgradeable(item.secret)"
+    :model-value="isUpgradeable(item.secret) && !item.subType"
     location="top right"
     color="info"
     dot
