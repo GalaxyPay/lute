@@ -119,7 +119,8 @@
             </div>
             <div v-else class="text-warning" style="font-size: 0.7em">
               Not set. Accounts stored in this browser sign without a password,
-              and anyone with access to this browser profile can use them.
+              and anyone with access to this browser profile can use them and
+              export their mnemonics.
             </div>
           </v-col>
           <v-col class="text-right">

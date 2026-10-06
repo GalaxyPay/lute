@@ -25,30 +25,33 @@
         </div>
       </v-card-text>
       <v-container v-else>
-        <v-alert
-          v-if="upgradeCount"
-          type="info"
-          variant="tonal"
-          density="compact"
-          class="mb-2"
-          closable
-        >
-          {{ upgradeCount }} account{{ upgradeCount > 1 ? "s were" : " was" }}
-          added before Lute could show mnemonics. To make
-          {{ upgradeCount > 1 ? "them" : "it" }} exportable, choose Upgrade
-          Account from the account menu and re-enter the mnemonic.
-        </v-alert>
-        <v-alert
-          v-if="noPassword"
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="mb-2"
-          closable
-        >
-          This wallet has no password. Anyone with access to this browser
-          profile can sign with its accounts. Set one in Settings.
-        </v-alert>
+        <v-defaults-provider :defaults="{ VBtn: { color: 'on-surface' } }">
+          <v-alert
+            v-if="upgradeCount"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-2"
+            closable
+          >
+            {{ upgradeCount }} account{{ upgradeCount > 1 ? "s were" : " was" }}
+            added before Lute could show mnemonics. To make
+            {{ upgradeCount > 1 ? "them" : "it" }} exportable, choose Upgrade
+            Account from the account menu and re-enter the mnemonic.
+          </v-alert>
+          <v-alert
+            v-if="noPassword"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-2"
+            closable
+          >
+            This wallet has no password. Anyone with access to this browser
+            profile can sign with its accounts and export their mnemonics. Set
+            one in Settings.
+          </v-alert>
+        </v-defaults-provider>
         <v-data-table
           :loading="!!store.loading"
           loading-text="Loading Accounts..."
@@ -86,14 +89,8 @@
                     @click.stop
                   />
                   <span v-else :class="expireClass(item.ns?.timeExpires)">
+                    <expire-chip :ns="item.ns" />
                     {{ item.name || item.ns?.name }}
-                    <expire-chip v-if="!xxs" class="ml-1" :ns="item.ns" />
-                    <v-chip
-                      v-if="!item.subType && isUpgradeable(item.secret)"
-                      text="Legacy"
-                      size="x-small"
-                      class="ml-1"
-                    />
                   </span>
                 </div>
                 <span
@@ -217,6 +214,7 @@
                       v-if="isUpgradeable(item.secret)"
                       title="Upgrade Account"
                       :prepend-icon="mdiArrowUpBoldCircleOutline"
+                      base-color="info"
                       @click="upgradeAcct = item"
                     />
                   </template>
@@ -247,11 +245,7 @@
 import { networks } from "@/data";
 import { keystoreTx, set } from "@/dbLute";
 import router from "@/router";
-import {
-  isHd,
-  isLocalSecret,
-  isUpgradeable,
-} from "@/services/accountSecret";
+import { isHd, isLocalSecret, isUpgradeable } from "@/services/accountSecret";
 import type { AccountInfo, LuteAccount } from "@/types";
 import {
   bigintToString,

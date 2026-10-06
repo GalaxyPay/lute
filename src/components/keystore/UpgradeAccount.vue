@@ -16,12 +16,14 @@
         </template>
         Nothing changes on chain.
       </v-card-text>
-      <import-key
-        :key="account.addr"
-        :number-of-words="words"
-        button-text="Upgrade"
-        @mn="upgrade"
-      />
+      <v-container class="pt-0">
+        <import-key
+          :key="account.addr"
+          :number-of-words="words"
+          button-text="Upgrade"
+          @mn="upgrade"
+        />
+      </v-container>
     </v-card>
   </v-dialog>
   <keystore-unlock ref="unlocker" />
