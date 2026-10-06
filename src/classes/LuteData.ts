@@ -9,8 +9,9 @@ import {
 } from "@/utils";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import { encodeAddress } from "algosdk";
+import algosdk, { encodeAddress } from "algosdk";
 import { canonify } from "canonify";
+import { FALCON_DET1024_PUBKEY_SIZE } from "falcon-1024";
 import {
   AlgorandApp,
   type StdSignData,
@@ -51,6 +52,12 @@ export const ERROR_FAILED_DOMAIN_AUTH = new SignDataError(
   "Failed Domain Auth",
   4610
 );
+
+/** Public key size of each SIWA signature type. */
+const SIGNER_SIZE: Record<Siwa["type"], number> = {
+  ed25519: 32,
+  falcon1024: FALCON_DET1024_PUBKEY_SIZE,
+};
 
 export default class LuteData {
   stdSignData: StdSignData;
@@ -100,7 +107,7 @@ export default class LuteData {
         "request-id": z.string().optional(),
         chain_id: z.string(),
         resources: z.string().array().optional(),
-        type: z.literal("ed25519"),
+        type: z.enum(["ed25519", "falcon1024"]),
       }) as z.ZodType<Siwa>;
 
       switch (this.metadata.encoding) {
@@ -139,6 +146,9 @@ export default class LuteData {
           if (!canonifiedJson || canonifiedJson !== this.jsonString) {
             throw ERROR_BAD_JSON;
           }
+          // the signer must be a public key of the scheme the request names
+          if (this.stdSignData.signer.length !== SIGNER_SIZE[this.siwa.type])
+            throw ERROR_INVALID_SIGNER;
           // check that siwa.domain, signData.domain, and referrer all match
           if (
             this.siwa.domain !== this.stdSignData.domain ||
@@ -184,11 +194,20 @@ export default class LuteData {
   async sign(password?: string) {
     try {
       if (!this.jsonString || !this.siwa) throw ERROR_INVALID;
-      const signerAddr = encodeAddress(this.stdSignData.signer);
+      const signer = this.stdSignData.signer;
+      const isFalcon = this.siwa.type === "falcon1024";
+      // A Falcon address is a hash of its public key, an ed25519 address is
+      // the key itself.
+      const signerAddr = isFalcon
+        ? algosdk
+            .addressFromPQKey(algosdk.FALCON_1024_SCHEME, signer)
+            .address.toString()
+        : encodeAddress(signer);
       const acct = this.store.acctInfo
         .filter((a) => a.canSign && a.subType !== "rekey")
         .find((a) => a.addr === signerAddr);
-      if (!acct) throw ERROR_INVALID_SIGNER;
+      // The account must sign with the scheme the request names.
+      if (!acct || !!acct.isFalcon25 !== isFalcon) throw ERROR_INVALID_SIGNER;
 
       const enc = new TextEncoder();
       const dataHash = await sha256(enc.encode(this.jsonString));
@@ -198,10 +217,18 @@ export default class LuteData {
       const toSign = new Uint8Array([...dataHash, ...authHash]);
 
       let signature: Uint8Array;
-      // Sign-in requests are ed25519 only (the schema pins the type), which a
-      // Falcon key cannot produce.
-      if (acct.isFalcon25) throw ERROR_INVALID_SIGNER;
-      if (acct.seedId && acct.slot != null) {
+      if (isFalcon) {
+        const ctx = new SignContext(password);
+        try {
+          const res = await Signer.signFalconBytes(acct, toSign, ctx);
+          // The key held must be the one the dapp will verify against.
+          if (Buffer.compare(res.publicKey, signer) !== 0)
+            throw ERROR_INVALID_SIGNER;
+          signature = res.signature;
+        } finally {
+          ctx.dispose();
+        }
+      } else if (acct.seedId && acct.slot != null) {
         const ctx = new SignContext(password);
         try {
           signature = await Signer.signBytes(acct, toSign, ctx);

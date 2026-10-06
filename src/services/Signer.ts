@@ -172,6 +172,21 @@ const Signer = {
     return await hotSign(acct.addr, bytes);
   },
 
+  /**
+   * Falcon-1024 (compressed) signature over raw `bytes` for a Falcon account,
+   * with the public key it verifies under.
+   */
+  async signFalconBytes(acct: AccountInfo, bytes: Uint8Array, ctx: SignContext) {
+    if (!acct.isFalcon25) throw Error("Not a Falcon account");
+    const keySeed = await falconKeySeed(acct, ctx);
+    const { publicKey, privateKey } = generateKey(keySeed);
+    try {
+      return { publicKey, signature: signCompressed(privateKey, bytes) };
+    } finally {
+      privateKey.fill(0);
+    }
+  },
+
   /** A transaction signer for a Falcon-1024 account. */
   async falconSigner(acct: AccountInfo, ctx: SignContext) {
     const existing = ctx.falconSigner(acct.addr);
