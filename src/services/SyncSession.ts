@@ -18,6 +18,7 @@
  * This module has no browser APIs. It talks through a SyncTransport, so the
  * channel (Chrome externally_connectable today) can be swapped.
  */
+import Keystore from "@/services/Keystore";
 import Transfer, {
   type Skipped,
   type TransferPayload,
@@ -36,9 +37,9 @@ export type SyncErrorCode =
 
 export type SyncMessage =
   | { t: "hello"; pub: string }
-  | { t: "confirmed" }
+  | { t: "confirmed"; passwordProtected: boolean }
   | { t: "payload"; data: string }
-  | { t: "result"; added: number; skipped: Skipped[] }
+  | { t: "result"; added: number; upgraded: number; skipped: Skipped[] }
   | { t: "error"; code: SyncErrorCode; message: string };
 
 export interface SyncTransport {
@@ -51,7 +52,12 @@ export interface SyncTransport {
 
 export interface SyncResult {
   added: number;
+  // Accounts already on the receiver whose mnemonic became exportable.
+  upgraded: number;
   skipped: Skipped[];
+  // Whether the receiver has a wallet password. Without one, the keys sent
+  // are usable by anyone with access to its browser profile.
+  passwordProtected: boolean;
 }
 
 export class SyncError extends Error {
@@ -304,7 +310,7 @@ export async function runSender(
     hooks.onState?.("connecting");
     const key = await handshake(side, transport, inbox, timeoutMs);
     hooks.onState?.("waiting");
-    await inbox.expect("confirmed", timeoutMs);
+    const { passwordProtected } = await inbox.expect("confirmed", timeoutMs);
     hooks.onState?.("sending");
     const payload = await (hooks.build ?? Transfer.buildPayload)(hooks.mk, {
       from: side,
@@ -312,7 +318,12 @@ export async function runSender(
     });
     transport.send({ t: "payload", data: await seal(side, payload, key) });
     const result = await inbox.expect("result", timeoutMs);
-    return { added: result.added, skipped: result.skipped ?? [] };
+    return {
+      added: result.added,
+      upgraded: result.upgraded,
+      skipped: result.skipped,
+      passwordProtected: passwordProtected === true,
+    };
   } catch (err) {
     fail(transport, err);
   } finally {
@@ -338,7 +349,9 @@ export async function runReceiver(
     // Unlocked before confirming to the sender, so its keys only leave once
     // this side is ready to take them.
     const mk = await hooks.getMk();
-    transport.send({ t: "confirmed" });
+    // Read after unlocking: a password set while confirming counts.
+    const passwordProtected = (await Keystore.mode()) === "password";
+    transport.send({ t: "confirmed", passwordProtected });
     const msg = await inbox.expect("payload", timeoutMs);
     let payload: TransferPayload;
     try {
@@ -354,7 +367,7 @@ export async function runReceiver(
     hooks.onState?.("adding");
     const result = await (hooks.restore ?? Transfer.addPayload)(mk, payload);
     transport.send({ t: "result", ...result });
-    return result;
+    return { ...result, passwordProtected };
   } catch (err) {
     fail(transport, err);
   } finally {

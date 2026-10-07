@@ -13,6 +13,11 @@
       <v-card-text class="pt-0 text-warning">
         Only continue if you started this sync yourself.
       </v-card-text>
+      <v-card-text v-if="store.keystoreMode === 'device'" class="pt-0">
+        <no-password-notice />
+        The keys sent here will not be password protected. Set a password
+        first to keep them protected.
+      </v-card-text>
       <v-card-actions>
         <v-spacer />
         <v-btn text="Decline" @click="answer(false)" />
@@ -20,7 +25,11 @@
       </v-card-actions>
     </template>
     <template v-else-if="result">
-      <sync-result :summary="result.summary" :skipped="result.skipped" />
+      <sync-result
+        :summary="result.summary"
+        :skipped="result.skipped"
+        :warning="result.warning"
+      />
       <v-card-actions>
         <v-spacer />
         <v-btn text="Close" @click="close()" />
@@ -83,7 +92,7 @@ const emit = defineEmits(["close", "done"]);
 const store = useAppStore();
 const unlocker = ref<Unlocker>();
 const state = ref<SenderState | ReceiverState>("connecting");
-const result = ref<{ summary: string; skipped: Skipped[] }>();
+const result = ref<{ summary: string; skipped: Skipped[]; warning?: string }>();
 const error = ref<string>();
 const finished = computed(() => !!result.value || !!error.value);
 let transport: SyncTransport | undefined;
@@ -137,6 +146,10 @@ async function start() {
   }
 }
 
+function upgradedNote(n: number) {
+  return n ? ` ${n} account${n === 1 ? "" : "s"} upgraded.` : "";
+}
+
 async function send(onState: (s: SenderState) => void) {
   // Unlocked by the caller while its window was in front; the keys only
   // leave after the other side confirms.
@@ -150,16 +163,18 @@ async function send(onState: (s: SenderState) => void) {
     transport = opened.transport;
     closeWebWindow = opened.close;
   }
-  const { added, skipped } = await runSender(props.side, transport, {
-    appVersion: __APP_VERSION__,
-    onState,
-    mk,
-  });
+  const { added, upgraded, skipped, passwordProtected } = await runSender(
+    props.side,
+    transport,
+    { appVersion: __APP_VERSION__, onState, mk }
+  );
+  const other = props.side === "web" ? "the extension" : "the web app";
   result.value = {
-    summary: `${added} account${added === 1 ? "" : "s"} added to ${
-      props.side === "web" ? "the extension" : "the web app"
-    }.`,
+    summary: `${added} account${added === 1 ? "" : "s"} added to ${other}.${upgradedNote(upgraded)}`,
     skipped,
+    warning: passwordProtected
+      ? undefined
+      : `${otherName.value} has no password. Anyone with access to its browser profile can sign with these accounts and reveal their mnemonics. Set a password there to protect them.`,
   };
 }
 
@@ -168,7 +183,7 @@ async function receive(onState: (s: ReceiverState) => void) {
     props.side === "web"
       ? webTransport(props.token)
       : receiverTransport(props.tabId!);
-  const { added, skipped } = await runReceiver(props.side, transport, {
+  const { added, upgraded, skipped } = await runReceiver(props.side, transport, {
     onState,
     confirm: () => new Promise((resolve) => (answerConfirm = resolve)),
     getMk: () => unlocker.value!.ensureMk(),
@@ -176,7 +191,7 @@ async function receive(onState: (s: ReceiverState) => void) {
   await store.getCache();
   store.refresh++;
   result.value = {
-    summary: `${added} account${added === 1 ? "" : "s"} added.`,
+    summary: `${added} account${added === 1 ? "" : "s"} added.${upgradedNote(upgraded)}`,
     skipped,
   };
   // The sender shows the full result; this window has done its job.

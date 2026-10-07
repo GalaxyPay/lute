@@ -169,6 +169,21 @@ export function plaintextFromMnemonic(kind: KeystoreKind, mn: string) {
   }
 }
 
+/** The mnemonic behind an exportable plaintext (see plaintextFromMnemonic). */
+export function mnemonicFromPlaintext(kind: KeystoreKind, pt: Uint8Array) {
+  switch (kind) {
+    case "bip39":
+      return bip39.entropyToMnemonic(
+        pt.subarray(0, pt.length - BIP39_SEED_BYTES),
+        wordlist
+      );
+    case "algo25":
+      return algosdk.mnemonicFromSeed(pt);
+    case "falcon25":
+      return algosdk.mnemonicFromSeed(pt.subarray(0, 32));
+  }
+}
+
 async function buildPasswordHeader(
   pass: string,
   raw: Uint8Array,
@@ -297,7 +312,10 @@ export interface PutOptions {
  * Set falconPk (base64, keyed by address) on accounts that lack it. An account
  * that already has one keeps it, and addresses not in the list are ignored.
  */
-function withFalconPks(accounts: LuteAccount[], pks: Map<string, string>) {
+export function withFalconPks(
+  accounts: LuteAccount[],
+  pks: Map<string, string>
+) {
   return accounts.map((a) => {
     const falconPk = pks.get(a.addr);
     return falconPk && !a.falconPk ? { ...a, falconPk } : a;
@@ -309,6 +327,7 @@ const Keystore = {
   isExportable,
   signingMaterial,
   plaintextFromMnemonic,
+  mnemonicFromPlaintext,
   decryptRecord,
 
   async header(): Promise<KeystoreHeader | undefined> {
@@ -727,17 +746,7 @@ const Keystore = {
       );
     const pt = await decryptRecord(mk, rec);
     try {
-      switch (rec.kind) {
-        case "bip39":
-          return bip39.entropyToMnemonic(
-            pt.subarray(0, pt.length - BIP39_SEED_BYTES),
-            wordlist
-          );
-        case "algo25":
-          return algosdk.mnemonicFromSeed(pt);
-        case "falcon25":
-          return algosdk.mnemonicFromSeed(pt.subarray(0, 32));
-      }
+      return mnemonicFromPlaintext(rec.kind, pt);
     } finally {
       pt.fill(0);
     }

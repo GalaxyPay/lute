@@ -2,8 +2,12 @@ import algosdk from "algosdk";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildV3,
+  FALCON_MN,
   type Fixture,
   HD_MN,
+  HD_OTHER_MN,
+  hdAccount,
+  HOT_MN,
   MSIG_ADDR,
   PASSKEY_ADDR,
   PASS,
@@ -31,6 +35,34 @@ async function senderWallet() {
     accounts: (cur) => [...cur, { addr: NEW_HOT_ADDR }],
   });
   return { ...env, fx };
+}
+
+/**
+ * The same 1.x wallet with everything upgraded and a new account on the first
+ * HD seed: the sender for upgrading a copy of it that was only migrated.
+ */
+async function upgradedWallet() {
+  const env = await senderWallet();
+  const { fx, Keystore } = env;
+  const mk = await Keystore.unwrap(PASS);
+  await Keystore.upgradeSecret(mk, "algo25", HOT_MN, { addr: fx.hotAddr });
+  await Keystore.upgradeSecret(mk, "falcon25", FALCON_MN, {
+    addr: fx.falconAddr,
+  });
+  const hdA1 = await hdAccount(HD_MN, 1);
+  await Keystore.putSecrets(mk, [], {
+    accounts: (cur) => [...cur, { ...hdA1, slot: 1, seedId: 1 }],
+  });
+  return { ...env, hdA1 };
+}
+
+/** The 1.x wallet after its first password entry and nothing else. */
+async function migratedWallet() {
+  const env = await fresh(async () => {
+    await buildV3("current");
+  });
+  await env.Keystore.unlockWithPassword(PASS);
+  return env;
 }
 
 /** An extension wallet with a passkey seed (taking seed id 1) and one account. */
@@ -141,6 +173,8 @@ describe("one-way sync", () => {
     const [s, r] = await Promise.all([sent, received]);
     expect(r.added).toBe(8);
     expect(s).toEqual(r);
+    // The receiver is in device mode, and the sender learns so.
+    expect(s.passwordProtected).toBe(false);
     expect(r.skipped.map((x) => x.addr).sort()).toEqual(
       [PASSKEY_ADDR, fx.hotAddr, fx.hdOther0.addr].sort()
     );
@@ -224,6 +258,21 @@ describe("one-way sync", () => {
     expect(await snapshot(b)).toEqual(beforeB);
   });
 
+  it("counts a password the receiver sets while confirming", async () => {
+    const a = await senderWallet();
+    const b = await receiverWallet();
+    const { sent, received } = await run(a, b, {
+      confirm: async () => {
+        await b.Keystore.newPassword(PASS);
+        return true;
+      },
+      receiverGetMk: () => b.Keystore.unwrap(PASS),
+    });
+    const [s, r] = await Promise.all([sent, received]);
+    expect(s.passwordProtected).toBe(true);
+    expect(r.passwordProtected).toBe(true);
+  });
+
   it("tells the sender when the receiver cancels its unlock", async () => {
     const a = await senderWallet();
     const b = await receiverWallet();
@@ -239,5 +288,88 @@ describe("one-way sync", () => {
     expect(out.received).toMatchObject({ code: "cancelled" });
     expect(s.payloadSent).not.toHaveBeenCalled();
     expect(await snapshot(b)).toEqual(beforeB);
+  });
+});
+
+describe("sync upgrades", () => {
+  it("upgrades the receiver's one-way and 1.x copies from exportable secrets", async () => {
+    const a = await upgradedWallet();
+    const { fx, hdA1 } = a;
+    const b = await migratedWallet();
+    const receiverGetMk = () => b.Keystore.unwrap(PASS);
+    const beforeKeystore = (await b.db.getAll("keystore")).map((r: any) => r.id);
+
+    const { sent, received } = await run(a, b, { receiverGetMk });
+    const [s, r] = await Promise.all([sent, received]);
+    expect(s).toEqual(r);
+    expect(s.passwordProtected).toBe(true);
+    expect(r.added).toBe(2);
+    expect(r.upgraded).toBe(4);
+    const skippedAddrs = r.skipped.map((x) => x.addr);
+    for (const addr of [fx.hdA0.addr, fx.hdA2.addr, fx.hotAddr, fx.falconAddr])
+      expect(skippedAddrs).not.toContain(addr);
+    // Opaque on both sides: nothing to upgrade.
+    expect(r.skipped).toContainEqual({
+      addr: fx.hdB0.addr,
+      reason: "Already in this wallet",
+    });
+
+    const mk = await b.Keystore.unwrap(PASS);
+    expect(await b.Keystore.exportMnemonic(mk, "bip39:1")).toBe(HD_MN);
+    expect(await b.Keystore.exportMnemonic(mk, `algo25:${fx.hotAddr}`)).toBe(HOT_MN);
+    expect(
+      await b.Keystore.exportMnemonic(mk, `falcon25:${fx.falconAddr}`)
+    ).toBe(FALCON_MN);
+    // The 1.x CryptoKey is superseded.
+    expect(await b.db.keys("keys")).not.toContain(fx.hotAddr);
+    // The new account joins the seed this wallet already had; no second copy.
+    const accounts: any[] = await b.db.get("app", "accounts");
+    expect(accounts.find((x) => x.addr === hdA1.addr).seedId).toBe(1);
+    const ids = (await b.db.getAll("keystore")).map((r: any) => r.id);
+    expect(ids.filter((id: string) => id.startsWith("bip39:")).sort()).toEqual(
+      beforeKeystore.filter((id: string) => id.startsWith("bip39:")).sort()
+    );
+    expect(accounts.find((x) => x.addr === fx.falconAddr).falconPk).toBeTruthy();
+
+    // An exportable copy is never replaced.
+    const again = await run(a, b, { receiverGetMk });
+    const [, r2] = await Promise.all([again.sent, again.received]);
+    expect(r2.added).toBe(0);
+    expect(r2.upgraded).toBe(0);
+  });
+
+  it("does not upgrade from a secret that derives other accounts", async () => {
+    const a = await upgradedWallet();
+    const { fx } = a;
+    const b = await migratedWallet();
+    const payload = await a.Transfer.buildPayload(await a.Keystore.unwrap(PASS), {
+      from: "web",
+      appVersion: "test",
+    });
+    const swap = (id: string, data: string) => {
+      const s = payload.secrets.find((x) => x.id === id)!;
+      s.data = data;
+    };
+    swap(
+      "bip39:1",
+      a.Keystore.plaintextFromMnemonic("bip39", HD_OTHER_MN).plaintext.toBase64()
+    );
+    swap(
+      `algo25:${fx.hotAddr}`,
+      a.Keystore.plaintextFromMnemonic("algo25", NEW_HOT).plaintext.toBase64()
+    );
+    const mk = await b.Keystore.unwrap(PASS);
+    const before = await snapshot(b);
+    const r = await b.Transfer.addPayload(mk, payload);
+    expect(r.upgraded).toBe(1); // only the untouched Falcon secret
+    for (const addr of [fx.hdA0.addr, fx.hotAddr])
+      expect(r.skipped).toContainEqual({ addr, reason: "Already in this wallet" });
+    const rec: any = await b.db.get("keystore", "bip39:1");
+    expect(rec.form).toBe("seed");
+    expect(await b.db.get("keystore", `algo25:${fx.hotAddr}`)).toBeUndefined();
+    expect(await b.db.keys("keys")).toContain(fx.hotAddr);
+    expect((await b.db.get("keystore", "bip39:1")) as any).toEqual(
+      before.keystore.find((x: any) => x.id === "bip39:1")
+    );
   });
 });
