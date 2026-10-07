@@ -22,6 +22,35 @@ class SignTxnsError extends Error {
   }
 }
 
+/**
+ * An in-app request from a multisig account: the group went into the ARC-55
+ * app for the members to sign in the Multi-Sig tab, so there is nothing signed
+ * to hand back. Not a failure.
+ */
+export class MsigStored extends Error {
+  constructor(nonce: bigint) {
+    super(
+      `Stored as Multi-Sig group ${nonce}. Collect signatures in the Multi-Sig tab.`
+    );
+    this.name = "MsigStored";
+  }
+}
+
+export function isMsigStored(err: any) {
+  return err?.name === "MsigStored";
+}
+
+/** The snackbar for a failed in-app signing flow; a stored msig group is not one. */
+export function reportSignError(err: any, message: string = err?.message) {
+  const store = useAppStore();
+  if (isMsigStored(err)) {
+    store.setSnackbar(err.message, "success", 8000);
+    return;
+  }
+  console.error(err);
+  store.setSnackbar(message, "error");
+}
+
 export async function signer(
   txnGroup: Transaction[],
   indexesToSign?: number[],
@@ -156,6 +185,11 @@ export async function luteSignerWT(walletTxns: WalletTransaction[]) {
               message.detail.code || 4300
             )
           );
+          break;
+        }
+        case "stored": {
+          window.removeEventListener("modal-signer", listener);
+          reject(new MsigStored(message.detail.nonce));
           break;
         }
         case "close":

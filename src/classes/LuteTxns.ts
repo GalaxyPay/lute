@@ -24,6 +24,11 @@ export default class LuteTxns {
   groupValid = false;
   // A reply (error or result) was sent: the request is over.
   finished = false;
+  // The ATC calls its signer without a password, so the msig signer reads the
+  // one handed to sign() from here.
+  private password?: string;
+  private atcSigner: algosdk.TransactionSigner = (txnGroup, indexesToSign) =>
+    signer(txnGroup, indexesToSign, undefined, this.password);
   constructor(txns: WalletTransaction[], tabId?: number) {
     this.txns = txns;
     this.dtxns = this.decode();
@@ -206,7 +211,7 @@ export default class LuteTxns {
         method,
         sender,
         suggestedParams,
-        signer,
+        signer: this.atcSigner,
       });
       this.nonce = this.msig.app.arc55_nonce + 1n;
 
@@ -232,7 +237,7 @@ export default class LuteTxns {
             receiver: this.msig.app.acct.address,
             amount: mbrIncrease,
           }),
-          signer,
+          signer: this.atcSigner,
         };
         const boxName = Buffer.allocUnsafe(9);
         boxName.writeBigInt64BE(this.nonce);
@@ -252,7 +257,7 @@ export default class LuteTxns {
           sender,
           suggestedParams,
           boxes: [br],
-          signer,
+          signer: this.atcSigner,
         });
       });
       this.atc.buildGroup();
@@ -275,19 +280,20 @@ export default class LuteTxns {
     while (tracking) {
       try {
         const status = await Algo.algod.statusAfterBlock(round).do();
-        round = status.lastRound;
-        const { block } = await Algo.algod.block(round).do();
-        if (block.payset) {
-          await Promise.all(
-            block.payset.map(async (txn) => {
-              if (
-                txn.signedTxn.signedTxn.txn.applicationCall?.appIndex === appId
-              ) {
-                app = await Msig.loadApp(appId);
-                if (!app) throw Error("Invalid App");
-              }
-            })
+        // Several rounds can pass between polls; a signature in any of them
+        // counts, not only in the latest.
+        let touched = false;
+        for (let r = round + 1n; r <= status.lastRound; r++) {
+          const { block } = await Algo.algod.block(r).do();
+          touched ||= !!block.payset?.some(
+            (txn) =>
+              txn.signedTxn.signedTxn.txn.applicationCall?.appIndex === appId
           );
+        }
+        round = status.lastRound;
+        if (touched) {
+          app = await Msig.loadApp(appId);
+          if (!app) throw Error("Invalid App");
         }
         if (
           app.addrs.filter((a) =>
@@ -319,10 +325,23 @@ export default class LuteTxns {
       if (this.finished || !this.networkValid || !this.groupValid)
         throw Error("Invalid Request", INVALID);
       if (this.atc.getStatus()) {
-        await this.atc.gatherSignatures();
+        this.password = password;
+        try {
+          await this.atc.gatherSignatures();
+        } finally {
+          this.password = undefined;
+        }
         this.store.setSnackbar("Processing...", "info", -1);
         await this.atc.execute(Algo.algod, 10);
-        await this.listenForSigs();
+        if (this.store.luteTxns) {
+          // In-app, the members sign in the Multi-Sig tab, which this dialog
+          // would cover: hand back to the caller now.
+          this.sendAndClose({
+            action: "stored",
+            nonce: this.nonce,
+            debug: this.store.debug,
+          });
+        } else await this.listenForSigs();
       } else {
         const signedTxns: (Uint8Array | null)[] = [];
         const indexesToSign: number[] = [];

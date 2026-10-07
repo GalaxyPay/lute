@@ -42,7 +42,7 @@
 import { sendFromVault } from "@/services/NameService";
 import type { AccountInfo, NsRecord } from "@/types";
 import { bigintToString, getAssetInfo, resolveProtocol, send } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiCheck, mdiInformationOutline } from "@mdi/js";
 import { modelsv2 } from "algosdk";
 
@@ -94,8 +94,7 @@ async function claim() {
     await send(signedTxns, "Claimed Asset");
     emit("complete");
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 </script>

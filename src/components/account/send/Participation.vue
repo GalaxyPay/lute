@@ -102,7 +102,7 @@
 import Algo from "@/services/Algo";
 import type { AccountInfo, KeyRegTxn } from "@/types";
 import { priceTxns, send } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiInformationOutline } from "@mdi/js";
 import algosdk from "algosdk";
 
@@ -219,8 +219,7 @@ async function offline() {
     const stxn = await luteSigner([txn]);
     await send(stxn);
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 
@@ -253,8 +252,7 @@ async function submit() {
     await send(stxn);
     form.value?.reset();
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 

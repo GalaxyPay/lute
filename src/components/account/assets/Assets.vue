@@ -68,7 +68,7 @@
 import Algo from "@/services/Algo";
 import type { AccountInfo } from "@/types";
 import { priceTxns, send } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiClose, mdiCloseCircle, mdiPlusCircle } from "@mdi/js";
 import algosdk from "algosdk";
 
@@ -124,8 +124,7 @@ async function optIn() {
     const stxn = await luteSigner([txn]);
     await send(stxn, "Opted-In to Asset");
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
   store.overlay = false;
 }

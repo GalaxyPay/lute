@@ -85,7 +85,7 @@ import {
   resolveProtocol,
   send,
 } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiClose, mdiInformationOutline } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 
@@ -159,11 +159,10 @@ async function closeOut() {
     const stxn = await luteSigner([txn]);
     await send(stxn, "Closed Out of Asset");
   } catch (err: any) {
-    console.error(err);
     let message = err.message;
     if (err.status == 400)
       message = "Must close/destroy all Assets and Apps first.";
-    store.setSnackbar(message, "error");
+    reportSignError(err, message);
   }
   store.overlay = false;
 }

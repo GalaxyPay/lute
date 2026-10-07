@@ -64,8 +64,7 @@
         parties.
       </v-card-text>
       <v-container
-        v-for="grp in app?.groups.toReversed()"
-        v-show="grp.txns.length || grp.sigs?.length"
+        v-for="grp in shownGroups"
         :key="Number(grp.nonce)"
         class="pt-0"
       >
@@ -197,7 +196,7 @@ import Msig from "@/services/Msig";
 import type { Arc55App, MsigGroup, WalletTransaction } from "@/types";
 import { luteSignerWT } from "@/utils/signers";
 import { mdiCheck, mdiClose, mdiDelete, mdiInformationOutline } from "@mdi/js";
-import algosdk, { Transaction } from "algosdk";
+import algosdk from "algosdk";
 
 const props = defineProps<{ appId: bigint }>();
 const app = ref<Arc55App>();
@@ -262,8 +261,16 @@ const isAdmin = computed(() => {
   return signingAddr.value === app.value.arc55_admin;
 });
 
+// Every nonce up to the app's has a group, but a deleted group's boxes are
+// gone: no txns, and maybe a member's signatures left behind.
+const shownGroups = computed(() =>
+  app.value?.groups.toReversed().filter((g) => g.txns.length || g.sigs.length)
+);
+
+/** A group with no txns left has nothing to sign or submit. */
 function isExpired(grp: MsigGroup) {
-  return grp.txns[0]!.lastValid < currentRound.value;
+  const txn = grp.txns.find(Boolean);
+  return !txn || txn.lastValid < currentRound.value;
 }
 
 function isSigned(grp: MsigGroup) {
@@ -289,7 +296,8 @@ async function checkSubmitted() {
     )
     .forEach(async (grp: MsigGroup) => {
       try {
-        const txn: Transaction = grp.txns[0]!;
+        const txn = grp.txns.find(Boolean);
+        if (!txn) return;
         if (txn.lastValid < currentRound.value) {
           if (!Algo.indexer) throw Error("Indexer not configured");
           await Algo.indexer.lookupTransactionByID(txn.txID()).do();

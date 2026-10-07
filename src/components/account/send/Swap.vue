@@ -83,7 +83,7 @@ import Algo from "@/services/Algo";
 import NameService from "@/services/NameService";
 import type { AccountInfo, NsLookup } from "@/types";
 import { b64url, getAssetInfo, probeFee, stringToBigint } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import algosdk, { modelsv2, Transaction } from "algosdk";
 
 const props = defineProps<{ sender: AccountInfo }>();
@@ -238,8 +238,7 @@ async function propose() {
     form.value?.reset();
     await router.push({ path: "/swap", query });
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
   store.overlay = false;
 }

@@ -142,7 +142,7 @@ import {
   stringToBigint,
   whenLoaded,
 } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiInformation } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 
@@ -294,8 +294,7 @@ async function submit() {
     const stxn = await luteSigner([txn]);
     await send(stxn);
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 
@@ -316,8 +315,7 @@ async function arc59SendAsset() {
     const stxns = await luteSigner(await priceTxns(txns, props.acct));
     await send(stxns);
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
   store.overlay = false;
 }

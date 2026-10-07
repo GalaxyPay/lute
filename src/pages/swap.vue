@@ -38,7 +38,7 @@ import router from "@/router";
 import Algo from "@/services/Algo";
 import { bigintToString, copyToClipboard, send } from "@/utils";
 import { findNetwork } from "@/utils/networks";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import { parseSwap } from "@/utils/swap";
 import { modelsv2, Transaction } from "algosdk";
 
@@ -121,8 +121,7 @@ async function accept() {
     await send([stxn1, resp[1]!], "Swap Completed");
     router.replace("/");
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 

@@ -57,7 +57,7 @@ import {
   resolveProtocol,
   send,
 } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiCheck, mdiClose, mdiInformationOutline } from "@mdi/js";
 import { modelsv2 } from "algosdk";
 
@@ -116,8 +116,7 @@ async function claim() {
     await send(stxns, "Claimed Asset");
     emit("complete");
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
   store.overlay = false;
 }
@@ -129,8 +128,7 @@ async function reject() {
     await send(stxns, "Rejected Asset");
     emit("complete");
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
   store.overlay = false;
 }

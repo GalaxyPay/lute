@@ -16,20 +16,29 @@ import { algorand, funded, submit, useLocalNet } from "./helpers";
 
 const posted = vi.hoisted(() => [] as any[]);
 // The keys the wallet holds, by address. Stands in for the keystore, which
-// signer.test.ts covers; everything else here is the real code.
+// signer.test.ts covers; everything else here is the real code. The wallet is
+// a locked password wallet: signing needs the password the user typed.
 const held = vi.hoisted(() => new Map<string, Uint8Array>());
+const PASSWORD = vi.hoisted(() => "pw");
 
 vi.mock("@/utils", async (orig) => ({
   ...(await orig<typeof import("@/utils")>()),
   sendOrPostMessage: (m: any) => posted.push(m),
 }));
 vi.mock("@/utils/signers", () => ({
-  signer: async (group: algosdk.Transaction[], idxs: number[]) =>
-    idxs.map((i) => {
+  signer: async (
+    group: algosdk.Transaction[],
+    idxs: number[],
+    _authAddrs?: unknown,
+    password?: string
+  ) => {
+    if (password !== PASSWORD) throw Error("Password Required");
+    return idxs.map((i) => {
       const sk = held.get(group[i]!.sender.toString());
       if (!sk) throw Error(`No key for ${group[i]!.sender}`);
       return group[i]!.signTxn(sk);
-    }),
+    });
+  },
   luteSigner: vi.fn(),
 }));
 vi.mock("@/router", () => ({ default: { replace: vi.fn() } }));
@@ -158,7 +167,10 @@ async function dappRequest(d: Deployed, request: WalletTransaction[]) {
     bypass: false,
   });
   await lt.addToMsig();
-  const signing = lt.sign();
+  // SignView's first try, before the prompt: the password is needed.
+  expect(await lt.sign()).toBe(false);
+  // Then with what was typed into the prompt.
+  const signing = lt.sign(PASSWORD);
 
   // Sign only once the wallet is watching the chain, as other members would.
   await vi.waitFor(() => expect(waiting).toHaveBeenCalled(), {
@@ -212,5 +224,37 @@ describe("a dapp request for a multisig account", () => {
     await submit(signed);
 
     expect((await balance(sink)) - before).toBe(789n);
+  });
+});
+
+describe("an in-app request for a multisig account", () => {
+  it("is stored in the app and hands back without waiting for members", async () => {
+    const d = await deploy();
+    const proposer = d.members[0]!;
+    held.set(proposer.toString(), proposer.account.sk);
+    store.accounts = [{ addr: d.msigAddr, appId: d.appId }];
+    store.msigSigner = () => proposer.toString();
+    store.setSnackbar = vi.fn();
+    const sink = (await funded(0.1)).toString();
+    const txn = await payFrom(d.msigAddr, sink, 1);
+    const replies: any[] = [];
+    (globalThis as any).window.dispatchEvent = (e: any) =>
+      replies.push(e.detail);
+
+    const lt = new LuteTxns([{ txn: txn.toByte().toBase64() }]);
+    store.luteTxns = lt;
+    expect(await lt.validateNetwork()).toBe(true);
+    expect(await lt.prepare()).toBe(true);
+    await lt.addToMsig();
+    expect(await lt.sign(PASSWORD)).toBe(true);
+
+    expect(posted).toEqual([]);
+    expect(replies).toEqual([
+      expect.objectContaining({ action: "stored", nonce: 1n }),
+    ]);
+    expect(store.luteTxns).toBeUndefined();
+    const app = (await Msig.loadApp(d.appId))!;
+    expect(app.groups[0]!.txns.map((t) => t.txID())).toEqual([txn.txID()]);
+    expect(app.groups[0]!.sigs).toEqual([]);
   });
 });
