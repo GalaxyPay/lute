@@ -40,7 +40,11 @@
                 <v-col>
                   {{ HD }}
                   <div class="text-grey">
-                    24-word seed, derives multiple accounts
+                    {{
+                      hasSeed
+                        ? "Add another account from your seed"
+                        : "24-word seed, derives multiple accounts"
+                    }}
                   </div>
                 </v-col>
               </v-row>
@@ -188,6 +192,11 @@ const MN12 = "12-Word Account";
 const FALCON = "Falcon25 Account";
 
 const showMore = ref(false);
+const hasSeed = computed(
+  () =>
+    store.keystore.some((k) => k.id.startsWith("bip39:")) ||
+    store.seeds.length > 0
+);
 
 const props = defineProps({
   visible: { type: Boolean, default: false },

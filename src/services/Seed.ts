@@ -15,7 +15,7 @@ import { wordlist } from "@scure/bip39/wordlists/english.js";
 // passkey depends on this value, changing it invalidates all of them.
 const PRF_SALT = new TextEncoder().encode("Algorand");
 
-export type PasskeyErrorCode = "aborted" | "invalid" | "exists" | "prf";
+export type PasskeyErrorCode = "aborted" | "invalid" | "prf";
 
 export class PasskeyError extends Error {
   code: PasskeyErrorCode;
@@ -38,11 +38,6 @@ function asPasskeyError(err: any) {
     return new PasskeyError(
       "aborted",
       "No passkey was used. The request was cancelled, timed out, or the device holds no passkey for Lute."
-    );
-  if (err?.name === "InvalidStateError")
-    return new PasskeyError(
-      "exists",
-      "This device already has a passkey registered for Lute. Use the existing seed instead."
     );
   return err;
 }
@@ -117,7 +112,7 @@ const Seed = {
     if (!results.prf?.results?.first)
       throw new PasskeyError(
         "prf",
-        "This passkey cannot derive a seed because it was registered without prf support. Register a new passkey, or use one from a device that supports prf."
+        "This passkey cannot derive a seed because it was registered without prf support. Try a device that supports prf."
       );
     const mn = bip39.entropyToMnemonic(
       // @ts-expect-error
@@ -125,46 +120,6 @@ const Seed = {
       wordlist
     );
     return { mn, credential };
-  },
-
-  async registerPasskey() {
-    const store = useAppStore();
-    // A random user id per registration. Authenticators replace a discoverable
-    // credential when rp id and user id both match, so a fixed id makes every
-    // registration silently overwrite the previous passkey.
-    const userId = window.crypto.getRandomValues(new Uint8Array(32));
-    const name = `wallet+${userId.slice(0, 3).toHex()}@lute.app`;
-    store.setSnackbar("Waiting on Authenticator...", "info", -1);
-    let credential: Credential | null;
-    try {
-      credential = await navigator.credentials.create({
-        publicKey: {
-          authenticatorSelection: {
-            residentKey: "required",
-            userVerification: "required",
-          },
-          challenge: new Uint8Array(32),
-          extensions: { prf: {} },
-          pubKeyCredParams: [
-            { alg: -7, type: "public-key" },
-            { alg: -8, type: "public-key" },
-            { alg: -257, type: "public-key" },
-          ],
-          rp: { name: "Lute" },
-          user: {
-            id: userId,
-            name,
-            displayName: name,
-          },
-        },
-      });
-    } catch (err: any) {
-      throw asPasskeyError(err);
-    } finally {
-      store.snackbar.display = false;
-    }
-    if (!credential) throw new PasskeyError("invalid", "Invalid Credential");
-    return credential.id;
   },
 
   async getPasskeySeed(credentialId?: string) {

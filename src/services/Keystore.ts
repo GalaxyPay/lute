@@ -89,6 +89,10 @@ function concat(a: Uint8Array, b: Uint8Array) {
   return out;
 }
 
+function sameBytes(a: Uint8Array, b: Uint8Array) {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
 function newId() {
   return randomBytes(16).toHex();
 }
@@ -631,7 +635,11 @@ const Keystore = {
     }
   },
 
-  /** Store the exportable form of a mnemonic. Returns its keystore id. */
+  /**
+   * Store the exportable form of a mnemonic. Returns its keystore id. A bip39
+   * mnemonic already in the keystore keeps its id, so re-importing a seed does
+   * not create a second one; a one-way copy is upgraded in place.
+   */
   async storeMnemonic(
     mk: MasterKey,
     kind: KeystoreKind,
@@ -640,15 +648,54 @@ const Keystore = {
   ) {
     const { form, plaintext } = plaintextFromMnemonic(kind, mn);
     try {
-      const [id] = await this.putSecrets(
+      const id =
+        opts.id ??
+        (kind === "bip39" ? await this.findBip39(mk, plaintext) : undefined);
+      const [stored] = await this.putSecrets(
         mk,
-        [{ kind, form, id: opts.id, plaintext }],
+        [{ kind, form, id, plaintext }],
         opts
       );
-      return id!;
+      return stored!;
     } finally {
       plaintext.fill(0);
     }
+  },
+
+  /** The id of the keystore bip39 seed with this plaintext's seed, if any. */
+  async findBip39(mk: MasterKey, plaintext: Uint8Array) {
+    const seed = signingMaterial("bip39", "entropy", plaintext);
+    try {
+      const recs = ((await getAll("keystore")) as KeystoreRecord[]).filter(
+        (r) => r.kind === "bip39"
+      );
+      for (const rec of recs) {
+        const pt = await decryptRecord(mk, rec);
+        const other = signingMaterial("bip39", rec.form, pt);
+        pt.fill(0);
+        const same = sameBytes(seed, other);
+        other.fill(0);
+        if (same) return rec.id;
+      }
+    } finally {
+      seed.fill(0);
+    }
+  },
+
+  /**
+   * Delete an HD seed that no account uses: its keystore record, or the 1.x
+   * or passkey record in `seeds`. Refuses, writing nothing, if any account in
+   * the database still has this seed id.
+   */
+  async removeSeed(seedId: number) {
+    await keystoreTx(async (tx) => {
+      const accounts: LuteAccount[] =
+        (await tx.objectStore("app").get("accounts")) ?? [];
+      if (accounts.some((a) => a.seedId === seedId))
+        throw Error("This seed still has accounts in the wallet");
+      tx.objectStore("keystore").delete(`bip39:${seedId}`);
+      tx.objectStore("seeds").delete(seedId);
+    });
   },
 
   /**

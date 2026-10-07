@@ -153,6 +153,49 @@ describe("records", () => {
   });
 });
 
+describe("hd seeds", () => {
+  it("keeps one seed for a mnemonic imported twice", async () => {
+    const { Keystore, db } = await fresh();
+    const mk = await Keystore.getMk();
+    const first = await Keystore.storeMnemonic(mk, "bip39", HD_MN);
+    await Keystore.storeMnemonic(mk, "bip39", HD2_MN);
+    expect(await Keystore.storeMnemonic(mk, "bip39", HD_MN)).toBe(first);
+    expect(
+      (await db.getAll("keystore")).filter((r: any) => r.kind === "bip39")
+    ).toHaveLength(2);
+    expect(await db.get("app", "nextSeedId")).toBe(3);
+  });
+
+  it("upgrades a one-way copy of a re-imported seed in place", async () => {
+    const { Keystore } = await fresh();
+    const mk = await Keystore.getMk();
+    const seed = (await import("@scure/bip39")).mnemonicToSeedSync(HD_MN);
+    await Keystore.putSecrets(mk, [
+      { kind: "bip39", form: "seed", id: "bip39:7", plaintext: seed },
+    ]);
+    expect(await Keystore.storeMnemonic(mk, "bip39", HD_MN)).toBe("bip39:7");
+    expect(await Keystore.exportMnemonic(mk, "bip39:7")).toBe(HD_MN);
+  });
+
+  it("removes a seed only when no account uses it", async () => {
+    const { Keystore, Seed, db } = await fresh();
+    const mk = await Keystore.getMk();
+    const used = await Keystore.storeMnemonic(mk, "bip39", HD_MN);
+    const unused = await Keystore.storeMnemonic(mk, "bip39", HD2_MN);
+    const passkey = await Seed.storePasskeyCred("cred");
+    const usedId = Number(used.split(":")[1]);
+    await db.set("app", "accounts", [{ addr: "A", seedId: usedId, slot: 0 }]);
+    await expect(Keystore.removeSeed(usedId)).rejects.toThrow(
+      "still has accounts"
+    );
+    expect(await db.get("keystore", used)).toBeDefined();
+    await Keystore.removeSeed(Number(unused.split(":")[1]));
+    await Keystore.removeSeed(passkey);
+    expect(await db.get("keystore", unused)).toBeUndefined();
+    expect(await db.get("seeds", passkey)).toBeUndefined();
+  });
+});
+
 describe("changing the password", () => {
   async function walletWithSecrets() {
     const env = await fresh();

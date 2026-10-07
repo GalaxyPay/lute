@@ -1,38 +1,10 @@
 <template>
-  <v-container v-show="page === 0">
+  <v-container v-show="page === 0" class="pt-0 px-0">
     <v-card-text>
-      On the next screen you will be provided with the address and mnemonic for
-      your
-      {{
-        isBip39
-          ? "HD wallet"
-          : props.convertion
-            ? "converted account"
-            : "new account"
-      }}.
+      Write this mnemonic down and keep it somewhere secure. It is the only way
+      to recover your {{ isBip39 ? "wallet" : "account" }} if this browser's
+      data is lost.
     </v-card-text>
-    <v-card-text>
-      Write it down and keep it somewhere secure. It is the only way to recover
-      your {{ isBip39 ? "wallet" : "account" }} if this browser's data is lost.
-      You can reveal it again later from the account menu while it is still
-      stored here.
-    </v-card-text>
-    <v-card-text>
-      If your mnemonic is lost along with this browser's data, you will be
-      locked out of your {{ isBip39 ? "wallet" : "account" }} <b>FOREVER</b>.
-    </v-card-text>
-    <v-card-actions>
-      <v-spacer />
-      <v-btn
-        text="Next"
-        @click="
-          page = 1;
-          $emit('hideTabs');
-        "
-      />
-    </v-card-actions>
-  </v-container>
-  <v-container v-show="page === 1" class="pt-0 px-0">
     <v-card-text v-if="!isBip39">
       <div class="text-h6 pb-2 d-flex">
         Address: <v-spacer />
@@ -51,10 +23,16 @@
     </v-card-text>
     <v-card-actions>
       <v-spacer />
-      <v-btn text="Next" @click="page = 2" />
+      <v-btn
+        text="Next"
+        @click="
+          page = 1;
+          $emit('hideTabs');
+        "
+      />
     </v-card-actions>
   </v-container>
-  <v-container v-show="page === 2" class="pt-0">
+  <v-container v-show="page === 1" class="pt-0">
     <v-form ref="form" @submit.prevent="submit()" validate-on="submit">
       <v-row justify="center">
         <v-col cols="6">

@@ -386,6 +386,15 @@ export interface FalconSeedData extends Omit<SeedData, "id" | "credentialId"> {
 
 export type AnySeedData = SeedData | FalconSeedData;
 
+/** An HD seed as offered when adding accounts. */
+export interface SeedRow {
+  id: number;
+  credentialId?: string;
+  exportable?: boolean;
+  // @legacy-read A 1.x seed still under its own password.
+  legacy?: SeedData;
+}
+
 export type KeystoreKind = "bip39" | "algo25" | "falcon25";
 
 /**

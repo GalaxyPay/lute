@@ -6,6 +6,7 @@
       :items="accounts"
       :headers="headers"
       items-per-page="-1"
+      :item-selectable="(item: AccountSubs) => !added.includes(item.address)"
       show-select
       return-object
     >
@@ -13,6 +14,12 @@
       <template #bottom />
       <template #[`item.address`]="{ item, index }">
         {{ formatAddr(item.address) }}
+        <v-chip
+          v-if="added.includes(item.address)"
+          text="Added"
+          size="x-small"
+          class="ml-1"
+        />
         <div class="text-grey text-caption">
           {{ `44'/283'/${index}'/0/0` }}
         </div>
@@ -65,11 +72,14 @@ import type { AccountSubs } from "@/types";
 import { formatAddr, bigintToString } from "@/utils";
 import { mdiChevronDown } from "@mdi/js";
 
-defineProps({
+const props = defineProps({
   accounts: {
     type: Array as PropType<AccountSubs[]>,
     default: [] as AccountSubs[],
   },
+  // Addresses from this seed already in the wallet.
+  added: { type: Array as PropType<string[]>, default: () => [] },
+  preselect: { type: Object as PropType<AccountSubs> },
   loading: { type: Boolean, default: false },
 });
 
@@ -77,6 +87,15 @@ defineEmits(["getAddrs", "addAccounts"]);
 
 const store = useAppStore();
 const selected = ref<AccountSubs[]>([]);
+
+// Rows arrive after mount, so the next unused account is selected once known.
+watch(
+  () => props.preselect,
+  (acct) => {
+    if (acct && !selected.value.length) selected.value = [acct];
+  },
+  { immediate: true }
+);
 const headers: any[] = [
   { title: "Select All", key: "address", sortable: false },
   { key: "amount", align: "end", sortable: false },
