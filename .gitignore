@@ -34,3 +34,4 @@ extension/manifest.json
 src/*.d.ts
 *.zip
 .eslintrc-auto-import.json
+coverage

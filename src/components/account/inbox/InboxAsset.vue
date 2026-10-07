@@ -48,21 +48,18 @@
 </template>
 
 <script lang="ts" setup>
-import { Arc59Factory } from "@/clients/Arc59Client";
-import Algo from "@/services/Algo";
+import Inbox from "@/services/Inbox";
 import type { AccountInfo } from "@/types";
 import {
   bigintToString,
-  composerTxns,
   getAssetInfo,
   priceTxns,
   resolveProtocol,
   send,
 } from "@/utils";
 import { luteSigner } from "@/utils/signers";
-import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import { mdiCheck, mdiClose, mdiInformationOutline } from "@mdi/js";
-import algosdk, { modelsv2 } from "algosdk";
+import { modelsv2 } from "algosdk";
 
 const store = useAppStore();
 const props = defineProps({
@@ -102,53 +99,20 @@ function formatAmount() {
     : "-";
 }
 
-function getAppClient() {
-  if (!store.network.inboxRouter) throw Error("Invalid Router");
-  const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
-  algorand.setDefaultSigner(luteSigner);
-  algorand.setDefaultValidityWindow(1000);
-  const factory = new Arc59Factory({
-    defaultSender: props.acct.addr,
-    algorand,
-  });
-  return factory.getAppClientById({ appId: BigInt(store.network.inboxRouter) });
-}
-
 async function claim() {
   try {
-    const appClient = getAppClient();
-    const composer = appClient.newGroup();
-    const claimerOptedIn = props.acct.info?.assets?.some(
+    const claimerOptedIn = !!props.acct.info?.assets?.some(
       (a) => a.assetId === props.asset.assetId
     );
-    let outerTxnCount = 1;
-    let innerTxnCount = 2;
-    if (props.inboxInfo.minBalance < props.inboxInfo.amount) {
-      outerTxnCount++;
-      innerTxnCount++;
-      composer.arc59ClaimAlgo({ args: {}, staticFee: (0).algo() });
-    }
-    // If the claimer hasn't already opted in, add a transaction to do so
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
-    if (!claimerOptedIn) {
-      const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-        sender: props.acct.addr,
-        receiver: props.acct.addr,
-        amount: 0,
-        assetIndex: props.asset.assetId,
-        suggestedParams,
-      });
-      composer.addTransaction(txn, luteSigner);
-    }
-    // starting point for the simulate that populates resources; priceTxns
-    // then sets the exact fee
-    const fee = (
-      Number(suggestedParams.minFee) * outerTxnCount +
-      innerTxnCount * 1000
-    ).microAlgos();
-    composer.arc59Claim({ args: { asa: props.asset.assetId }, staticFee: fee });
-    const txns = await composerTxns(await composer.composer());
-    const stxns = await luteSigner(await priceTxns(txns, props.acct));
+    const { txns, feeIndexes } = await Inbox.claimTxns(
+      props.acct.addr,
+      props.asset.assetId,
+      claimerOptedIn,
+      props.inboxInfo
+    );
+    const stxns = await luteSigner(
+      await priceTxns(txns, props.acct, feeIndexes)
+    );
     await send(stxns, "Claimed Asset");
     emit("complete");
   } catch (err: any) {
@@ -160,13 +124,7 @@ async function claim() {
 
 async function reject() {
   try {
-    const appClient = getAppClient();
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
-    const fee = (Number(suggestedParams.minFee) + 2000).microAlgos();
-    const composer = appClient
-      .newGroup()
-      .arc59Reject({ args: { asa: props.asset.assetId }, staticFee: fee });
-    const txns = await composerTxns(await composer.composer());
+    const txns = await Inbox.rejectTxns(props.acct.addr, props.asset.assetId);
     const stxns = await luteSigner(await priceTxns(txns, props.acct));
     await send(stxns, "Rejected Asset");
     emit("complete");

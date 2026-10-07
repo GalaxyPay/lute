@@ -2,6 +2,7 @@ import LuteTxns from "@/classes/LuteTxns";
 import Signer, { SignContext } from "@/services/Signer";
 import type { LuteMsig, WalletTransaction } from "@/types";
 import { selectDevice } from "@/utils";
+import { signingAddr } from "@/utils/signingAddr";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 import algosdk, { signTransactionWithSigner, Transaction } from "algosdk";
@@ -38,12 +39,7 @@ export async function signer(
     const signedTxns: Uint8Array[] = [];
     for (const [idx, txn] of txnGroup.entries()) {
       if (!indexesToSign || indexesToSign.includes(idx)) {
-        const sender = txn.sender.toString();
-        const addr =
-          msig?.signerAddr ||
-          authAddrs?.[idx] ||
-          store.info.find((i) => i.address === sender)?.authAddr?.toString() ||
-          sender;
+        const addr = signingAddr(txn, authAddrs?.[idx], msig, store.info);
         const acct = store.acctInfo.find((a) => a.addr === addr);
         if (!acct) throw Error("Account Not Found");
         let sig: Uint8Array;

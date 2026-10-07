@@ -3,6 +3,7 @@ import Algo from "@/services/Algo";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
 import { isBadPassword, needsPassword, sendOrPostMessage } from "@/utils";
+import { findNetwork } from "@/utils/networks";
 import { signer } from "@/utils/signers";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
 
@@ -17,6 +18,12 @@ export default class LuteTxns {
   nonce?: bigint;
   groupWarn: boolean = false;
   tabId?: number;
+  // The validators report a failure to the dapp instead of throwing, so sign()
+  // checks these rather than trusting the caller to stop.
+  networkValid = false;
+  groupValid = false;
+  // A reply (error or result) was sent: the request is over.
+  finished = false;
   constructor(txns: WalletTransaction[], tabId?: number) {
     this.txns = txns;
     this.dtxns = this.decode();
@@ -30,6 +37,7 @@ export default class LuteTxns {
   }
 
   private sendAndClose(message: any) {
+    this.finished = true;
     if (this.store.luteTxns) {
       window.dispatchEvent(
         new CustomEvent("modal-signer", { detail: message })
@@ -42,6 +50,8 @@ export default class LuteTxns {
   }
 
   async handleError(err: any) {
+    // The dapp already has its answer.
+    if (this.finished) return;
     const message = {
       action: "error",
       code: err.cause,
@@ -61,13 +71,10 @@ export default class LuteTxns {
       ).length;
       if (this.txns.length !== sameNetwork)
         throw Error("Mixed Networks", INVALID);
-      const network = this.store.allNetworks.find(
-        (n) =>
-          n.genesisID ===
-            (this.dtxns[0]?.genesisID === "sandnet-v1"
-              ? "dockernet-v1"
-              : this.dtxns[0]?.genesisID) &&
-          (n.genesisHash === firstHash || !n.genesisHash)
+      const network = findNetwork(
+        this.store.allNetworks,
+        this.dtxns[0]?.genesisID,
+        firstHash
       )?.name;
       if (!network) throw Error("Unknown Network", INVALID);
       if (this.store.luteTxns) {
@@ -78,6 +85,7 @@ export default class LuteTxns {
         this.store.networkName = network;
         this.store.refresh++;
       }
+      this.networkValid = true;
       return true;
     } catch (err: any) {
       this.handleError(err);
@@ -117,9 +125,24 @@ export default class LuteTxns {
           }
         });
       }
+      this.groupValid = true;
     } catch (err: any) {
       this.handleError(err);
     }
+  }
+
+  /**
+   * The checks after the request's network is selected and loaded: the group,
+   * then whether a multisig app should collect the signatures. Each failure
+   * has already been reported to the requester. True if the request may be
+   * shown for signing.
+   */
+  async prepare() {
+    if (!this.networkValid || this.finished) return false;
+    await this.validateGroup();
+    if (!this.groupValid) return false;
+    await this.msigCheck();
+    return !this.finished;
   }
 
   private toSign(ix: number): boolean {
@@ -131,6 +154,7 @@ export default class LuteTxns {
       const hasAuthAddr = this.txns.filter((t) => !!t.authAddr).length;
       if (hasAuthAddr) return;
       const toBeSigned = this.dtxns.filter((_txn, idx) => this.toSign(idx));
+      if (!toBeSigned.length) return;
       const firstSender = toBeSigned[0]!.sender.toString();
       const sameSender = toBeSigned.filter(
         (t) => t.sender.toString() === firstSender
@@ -292,6 +316,8 @@ export default class LuteTxns {
 
   async sign(password?: string) {
     try {
+      if (this.finished || !this.networkValid || !this.groupValid)
+        throw Error("Invalid Request", INVALID);
       if (this.atc.getStatus()) {
         await this.atc.gatherSignatures();
         this.store.setSnackbar("Processing...", "info", -1);

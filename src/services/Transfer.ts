@@ -23,7 +23,12 @@ import {
   type SecretContext,
   secretStatus,
 } from "@/services/accountSecret";
-import Keystore, { type SecretItem, withFalconPks } from "@/services/Keystore";
+import Keystore, {
+  type SecretItem,
+  signingMaterial,
+  validLength,
+  withFalconPks,
+} from "@/services/Keystore";
 import type {
   FalconSeedData,
   KeystoreForm,
@@ -33,9 +38,45 @@ import type {
   MasterKey,
   SeedData,
 } from "@/types";
-import { getFalconKey } from "@/utils/keys";
+import {
+  ed25519Sign,
+  falconAddressFromKeySeed,
+  getFalconKey,
+} from "@/utils/keys";
+import { Address } from "algosdk";
 
 export type WalletSide = "web" | "ext";
+
+const PROBE = new TextEncoder().encode("lute-sync:key-check");
+
+/**
+ * Whether a single-key secret signs for `addr`. An ed25519 key is checked by
+ * signing, so its public key never has to be derived outside WebCrypto.
+ */
+async function signsFor(s: TransferSecret, addr: string) {
+  const pt = Uint8Array.fromBase64(s.data);
+  try {
+    if (!validLength(s.kind, s.form, pt.length)) return false;
+    const material = signingMaterial(s.kind, s.form, pt);
+    try {
+      if (s.kind === "falcon25")
+        return falconAddressFromKeySeed(material).toString() === addr;
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new Uint8Array(Address.fromString(addr).publicKey),
+        { name: "Ed25519" },
+        false,
+        ["verify"]
+      );
+      const sig = await ed25519Sign(material, PROBE);
+      return await crypto.subtle.verify({ name: "Ed25519" }, key, sig, PROBE);
+    } finally {
+      material.fill(0);
+    }
+  } finally {
+    pt.fill(0);
+  }
+}
 
 export interface TransferSecret {
   kind: KeystoreKind;
@@ -182,6 +223,8 @@ const Transfer = {
     };
     const falconPks = new Map<string, string>();
     const upgraded = new Set<string>();
+    // Fresh accounts whose key does not sign for their address.
+    const mismatched = new Set<string>();
     try {
       for (const s of payload.secrets) {
         if (s.kind === "bip39") {
@@ -227,6 +270,11 @@ const Transfer = {
           });
           seedOf.push(oldId);
         } else if (fresh.some((a) => keystoreId(s.kind, a) === s.id)) {
+          const owner = fresh.find((a) => keystoreId(s.kind, a) === s.id)!;
+          if (!(await signsFor(s, owner.addr))) {
+            mismatched.add(owner.addr);
+            continue;
+          }
           items.push({
             kind: s.kind,
             form: s.form,
@@ -260,6 +308,8 @@ const Transfer = {
       for (const a of payload.accounts)
         if (byAddr.has(a.addr) && !upgraded.has(a.addr))
           skipped.push({ addr: a.addr, reason: "Already in this wallet" });
+      for (const addr of mismatched)
+        skipped.push({ addr, reason: "Its key does not match its address" });
       let added = 0;
       await Keystore.putSecrets(mk, items, {
         deleteLegacy,
@@ -272,6 +322,7 @@ const Transfer = {
           const add: LuteAccount[] = [];
           for (const a of fresh) {
             if (now.some((c) => c.addr === a.addr)) continue;
+            if (mismatched.has(a.addr)) continue;
             if (a.seedId != null && a.slot != null) {
               const seedId = seedIds.get(a.seedId);
               // Its seed did not travel; the account would be unusable.

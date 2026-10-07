@@ -152,9 +152,12 @@ export function createSyncRelay(opts: RelayOptions) {
         if (busy())
           return refuse(port, "busy", "Another sync is already in progress.");
         wait(waitingWeb, tabId, port);
-        Promise.resolve(opts.openReceiver(tabId)).catch(() =>
-          refuse(port, "failed", "The extension could not open its window.")
-        );
+        Promise.resolve(opts.openReceiver(tabId)).catch(() => {
+          // Disconnecting our own end fires no onDisconnect here, so release
+          // the wait now or the relay stays busy until the TTL.
+          if (waitingWeb.get(tabId)?.port === port) take(waitingWeb, tabId);
+          refuse(port, "failed", "The extension could not open its window.");
+        });
       } else if (port.name.startsWith("lute-sync:")) {
         const sender = take(waitingTokens, port.name.slice("lute-sync:".length));
         if (!sender)

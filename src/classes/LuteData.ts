@@ -67,6 +67,9 @@ export default class LuteData {
   store = useAppStore();
   jsonString?: string;
   siwa?: Siwa;
+  // Set only once validate() passes every check; sign() refuses otherwise.
+  // A failed check parses siwa first, so siwa alone does not mean valid.
+  validated = false;
 
   constructor(
     stdSignData: StdSignData,
@@ -93,6 +96,7 @@ export default class LuteData {
   }
 
   async validate() {
+    this.validated = false;
     try {
       const siwaSchema = z.object({
         domain: z.string(),
@@ -159,6 +163,7 @@ export default class LuteData {
         default:
           throw ERROR_INVALID_SCOPE;
       }
+      this.validated = true;
     } catch (err: any) {
       this.handleError(err);
     }
@@ -193,7 +198,8 @@ export default class LuteData {
 
   async sign(password?: string) {
     try {
-      if (!this.jsonString || !this.siwa) throw ERROR_INVALID;
+      if (!this.validated || !this.jsonString || !this.siwa)
+        throw ERROR_INVALID;
       const signer = this.stdSignData.signer;
       const isFalcon = this.siwa.type === "falcon1024";
       // A Falcon address is a hash of its public key, an ed25519 address is

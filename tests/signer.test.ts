@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   buildV3,
   type Fixture,
@@ -7,7 +7,7 @@ import {
   PASS,
   WATCH_ADDR,
 } from "./fixtures/v3db";
-import { type Env, fresh, loadCaches } from "./helpers";
+import { type Env, fakeBrowser, fresh, loadCaches } from "./helpers";
 
 async function upgraded(format: "current" | "none") {
   let fx!: Fixture;
@@ -78,5 +78,34 @@ describe("sign-in data", () => {
         new env.SignContext(PASS)
       )
     ).rejects.toThrow("Falcon accounts cannot");
+  });
+});
+
+describe("extension session unlock", () => {
+  afterEach(() => {
+    delete (globalThis as any).browser;
+  });
+
+  it("signs without the password while unlocked, and prompts once locked", async () => {
+    const env = await upgraded("current");
+    const { Signer, SignContext, Keystore, Unlock, store, fx } = env;
+    (globalThis as any).browser = fakeBrowser();
+    Object.assign(store, { isWeb: false, autoLockMinutes: 5 });
+    const msg = new Uint8Array(32).fill(3);
+
+    await Keystore.unlockWithPassword(PASS);
+    let row = await rows(env);
+    const acct = row(fx.hdA0.addr);
+    expect(await Signer.gate([acct])).toBe("unlocked");
+    const typed = await Signer.signBytes(acct, msg, new SignContext(PASS));
+    const cached = await Signer.signBytes(acct, msg, new SignContext());
+    expect(cached).toEqual(typed);
+
+    await Unlock.clear();
+    row = await rows(env);
+    expect(await Signer.gate([row(fx.hdA0.addr)])).toBe("password");
+    await expect(
+      Signer.signBytes(row(fx.hdA0.addr), msg, new SignContext())
+    ).rejects.toThrow();
   });
 });

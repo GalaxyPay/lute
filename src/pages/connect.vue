@@ -72,6 +72,7 @@ import {
   whenLoaded,
 } from "@/utils";
 import { emptySignatures } from "@/utils/emptySignature";
+import { findNetwork } from "@/utils/networks";
 import { useDisplay } from "vuetify";
 
 const store = useAppStore();
@@ -115,13 +116,7 @@ async function messageHandler(event: any) {
   try {
     if (store.isWeb && !isFromOpener(event)) return;
     if (event.data?.action === "network") {
-      const network = store.allNetworks.find(
-        (n) =>
-          n.genesisID ===
-          (event.data.genesisID === "sandnet-v1"
-            ? "dockernet-v1"
-            : event.data.genesisID)
-      );
+      const network = findNetwork(store.allNetworks, event.data.genesisID);
       if (store.debug) console.log("[Lute Debug]", network);
       if (!network) {
         throw Error(`Invalid Network ${event.data.genesisID}`);

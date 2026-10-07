@@ -75,6 +75,7 @@ import LuteTxns from "@/classes/LuteTxns";
 import Algo from "@/services/Algo";
 import Signer from "@/services/Signer";
 import type { AccountInfo } from "@/types";
+import { signingAddr } from "@/utils/signingAddr";
 import {
   isFromOpener,
   postReady,
@@ -182,19 +183,21 @@ async function beginHandler() {
     if (await luteTxns.value.validateNetwork()) await finishHandler();
     return;
   }
-  // wait for refresh to complete before proceeding
-  watch(
+  // wait for refresh to complete before proceeding, once
+  const stop = watch(
     () => store.loading,
     (val) => {
-      if (!val) finishHandler();
+      if (val) return;
+      stop();
+      finishHandler();
     }
   );
   await luteTxns.value.validateNetwork();
 }
 
 async function finishHandler() {
-  await luteTxns.value.validateGroup();
-  await luteTxns.value.msigCheck();
+  // A failed check has already answered the requester; show nothing to sign.
+  if (!(await luteTxns.value.prepare())) return;
   luteTxns.value.dtxns
     .filter((t) => t.assetTransfer)
     .map(async (t) => {
@@ -220,12 +223,12 @@ async function passwordCheck() {
     const accts: AccountInfo[] = [];
     for (const [idx, txn] of luteTxns.value.dtxns.entries()) {
       if (!toSign(idx)) continue;
-      const from = txn.sender.toString();
-      const addr =
-        luteTxns.value.msig?.signerAddr ||
-        authAddrs?.[idx] ||
-        store.info.find((i) => i.address === from)?.authAddr?.toString() ||
-        from;
+      const addr = signingAddr(
+        txn,
+        authAddrs[idx],
+        luteTxns.value.msig,
+        store.info
+      );
       const acct = store.acctInfo.find((a) => a.addr === addr);
       if (acct) accts.push(acct);
     }

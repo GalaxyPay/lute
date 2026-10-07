@@ -130,13 +130,12 @@
 </template>
 
 <script lang="ts" setup>
-import { Arc59Factory } from "@/clients/Arc59Client";
 import Algo from "@/services/Algo";
+import Inbox from "@/services/Inbox";
 import NameService from "@/services/NameService";
 import type { AccountInfo } from "@/types";
 import {
   bigintToString,
-  composerTxns,
   getAssetInfo,
   priceTxns,
   send,
@@ -144,7 +143,6 @@ import {
   whenLoaded,
 } from "@/utils";
 import { luteSigner } from "@/utils/signers";
-import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import { mdiInformation } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 
@@ -267,11 +265,7 @@ async function submit() {
         closeRemainderTo: closeRemainderTo.value,
         assetSender: assetSender.value,
       });
-      const toInfo = await Algo.algod.accountInformation(to.value).do();
-      const receiverOptedIn = toInfo.assets?.some(
-        (a) => a.assetId === asset.value!.index
-      );
-      if (!receiverOptedIn && store.network.inboxRouter) {
+      if (await Inbox.needed(to.value, asset.value.index)) {
         showInboxWarning.value = true;
         return;
       }
@@ -309,101 +303,16 @@ async function arc59SendAsset() {
   try {
     showInboxWarning.value = false;
     if (!asset.value.params) throw Error("Invalid Asset");
-    if (!store.network.inboxRouter) throw Error("Invalid Router");
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
-    const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
-    algorand.setDefaultSigner(luteSigner);
-    algorand.setDefaultValidityWindow(1000);
-    const factory = new Arc59Factory({
-      defaultSender: props.acct.addr,
-      algorand,
-    });
-    const appClient = factory.getAppClientById({
-      appId: BigInt(store.network.inboxRouter),
-    });
-    const simParams = {
-      allowEmptySignatures: true,
-      allowUnnamedResources: true,
-      fixSigners: true,
-    };
-    const sendAssetInfo = (
-      await appClient
-        .newGroup()
-        .arc59GetSendAssetInfo({
-          args: { asset: asset.value.index, receiver: to.value },
-          signer: algosdk.makeEmptyTransactionSigner(),
-        })
-        .simulate(simParams)
-    ).returns[0];
-    if (!sendAssetInfo) throw Error("Simulate Failed");
-    const [
-      itxns,
-      mbr,
-      routerOptedIn,
-      _receiverOptedIn,
-      receiverAlgoNeededForClaim,
-    ] = sendAssetInfo;
-    const receiverAlgoPQ = receiverAlgoNeededForClaim
-      ? receiverAlgoNeededForClaim + 2000n
-      : 0n;
-    const composer = appClient.newGroup();
-    const appAddr = appClient.appClient.appAddress;
-    const enc = new TextEncoder();
-    const note64 = note.value ? enc.encode(note.value) : undefined;
-    const axfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      assetIndex: asset.value.index,
-      receiver: appAddr,
+    const note64 = note.value ? new TextEncoder().encode(note.value) : undefined;
+    const txns = await Inbox.sendTxns({
       sender: props.acct.addr,
-      note: note64,
-      suggestedParams,
+      receiver: to.value,
+      assetId: asset.value.index,
       amount: stringToBigint(amount.value, asset.value.params.decimals),
+      note: note64,
       closeRemainderTo: closeRemainderTo.value,
       assetSender: assetSender.value,
     });
-    // If the MBR is non-zero, send the MBR to the router
-    if (mbr || receiverAlgoPQ) {
-      const mbrPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        receiver: appAddr,
-        sender: props.acct.addr,
-        suggestedParams,
-        amount: mbr + receiverAlgoPQ,
-      });
-      composer.addTransaction(mbrPayment, luteSigner);
-    }
-    // If the router is not opted in, add a call to arc59OptRouterIn to do so
-    if (!routerOptedIn)
-      composer.arc59OptRouterIn({ args: { asa: asset.value.index } });
-    // An extra itxn is if we are also sending ALGO for the receiver claim
-    const totalItxns = itxns + (receiverAlgoPQ === 0n ? 0n : 1n);
-    // starting point for the simulate that populates resources; priceTxns
-    // then sets the exact fee
-    const fee = Number(
-      suggestedParams.minFee + totalItxns * 1000n
-    ).microAlgos();
-    const boxReferences = [algosdk.Address.fromString(to.value).publicKey];
-    const inboxAddress = (
-      await appClient
-        .newGroup()
-        .arc59GetInbox({
-          args: { receiver: to.value },
-          signer: algosdk.makeEmptyTransactionSigner(),
-        })
-        .simulate(simParams)
-    ).returns[0];
-    const accountReferences = [to.value, inboxAddress];
-    const assetReferences = [asset.value.index];
-    composer.arc59SendAsset({
-      args: {
-        axfer,
-        receiver: to.value,
-        additionalReceiverFunds: receiverAlgoPQ,
-      },
-      staticFee: fee,
-      boxReferences,
-      accountReferences,
-      assetReferences,
-    });
-    const txns = await composerTxns(await composer.composer());
     const stxns = await luteSigner(await priceTxns(txns, props.acct));
     await send(stxns);
   } catch (err: any) {

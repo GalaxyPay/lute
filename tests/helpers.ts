@@ -99,3 +99,26 @@ export function pairedTransports(): [SyncTransport, SyncTransport] {
   const b: End = { buffered: [], closed: false };
   return [make(a, b), make(b, a)];
 }
+
+/** A stand-in for the extension's storage.session and alarms APIs. */
+export function fakeBrowser() {
+  const data: Record<string, any> = {};
+  return {
+    data,
+    storage: {
+      session: {
+        async get(key: string) {
+          return key in data ? { [key]: structuredClone(data[key]) } : {};
+        },
+        async set(obj: Record<string, any>) {
+          Object.assign(data, structuredClone(obj));
+        },
+        async remove(key: string) {
+          delete data[key];
+        },
+      },
+      onChanged: { addListener() {} },
+    },
+    alarms: { create: vi.fn(), clear: vi.fn() },
+  };
+}

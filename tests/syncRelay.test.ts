@@ -193,3 +193,129 @@ describe("sync relay", () => {
     expect(msgs).toEqual([]);
   });
 });
+
+describe("sync relay edges", () => {
+  function inbox(p: End) {
+    const got: any[] = [];
+    p.onMessage.addListener((m) => got.push(m));
+    return got;
+  }
+
+  /** Whether the relay will start a new session now. */
+  async function isFree(r: ReturnType<typeof relay>["relay"]) {
+    const probe = chromePorts("lute-sync-ext");
+    const got = inbox(probe.page);
+    r.internal(probe.bg);
+    await later(10);
+    probe.page.disconnect();
+    await later(10);
+    return got[0]?.t === "token";
+  }
+
+  it("falls back to the sender URL for the origin", async () => {
+    const { relay: r, openReceiver } = relay();
+    r.external(
+      chromePorts("lute-sync", { url: `${ORIGIN}/sync?x=1`, tab: { id: 4 } }).bg
+    );
+    expect(openReceiver).toHaveBeenCalledWith(4);
+
+    const { relay: r2, openReceiver: open2 } = relay();
+    const bad = chromePorts("lute-sync", { url: "not a url", tab: { id: 4 } });
+    r2.external(bad.bg);
+    const none = chromePorts("lute-sync", { tab: { id: 4 } });
+    r2.external(none.bg);
+    await later(10);
+    expect(open2).not.toHaveBeenCalled();
+    expect(bad.page.disconnected).toBe(true);
+    expect(none.page.disconnected).toBe(true);
+  });
+
+  it("drops a web port with no tab or an unknown name", async () => {
+    const { relay: r, openReceiver } = relay();
+    const noTab = chromePorts("lute-sync", { origin: ORIGIN });
+    const odd = chromePorts("lute-other", { origin: ORIGIN, tab: { id: 1 } });
+    r.external(noTab.bg);
+    r.external(odd.bg);
+    await later(10);
+    expect(noTab.page.disconnected).toBe(true);
+    expect(odd.page.disconnected).toBe(true);
+    expect(openReceiver).not.toHaveBeenCalled();
+    expect(await isFree(r)).toBe(true);
+  });
+
+  it("refuses a second web sync while one waits", async () => {
+    const { relay: r, openReceiver } = relay();
+    r.external(chromePorts("lute-sync", { origin: ORIGIN, tab: { id: 1 } }).bg);
+    const second = chromePorts("lute-sync", { origin: ORIGIN, tab: { id: 2 } });
+    const got = inbox(second.page);
+    r.external(second.bg);
+    await later(10);
+    expect(got[0]).toMatchObject({ t: "error", code: "busy" });
+    expect(openReceiver).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells the web app when the receiver window cannot open", async () => {
+    const { relay: r } = relay(vi.fn().mockRejectedValue(Error("no panel")));
+    const web = chromePorts("lute-sync", { origin: ORIGIN, tab: { id: 1 } });
+    const got = inbox(web.page);
+    r.external(web.bg);
+    await later(20);
+    expect(got[0]).toMatchObject({ t: "error", code: "failed" });
+    expect(web.page.disconnected).toBe(true);
+    expect(await isFree(r)).toBe(true);
+  });
+
+  it("refuses a receiver page with no sync waiting for its tab", async () => {
+    const { relay: r } = relay();
+    r.external(chromePorts("lute-sync", { origin: ORIGIN, tab: { id: 1 } }).bg);
+    const panel = chromePorts("lute-sync-receiver:2");
+    const got = inbox(panel.page);
+    expect(r.internal(panel.bg)).toBe(true);
+    await later(10);
+    expect(got[0]).toMatchObject({ t: "error", code: "invalid" });
+  });
+
+  it("is free again when a waiting port closes before pairing", async () => {
+    const { relay: r } = relay();
+    const ext = chromePorts("lute-sync-ext");
+    r.internal(ext.bg);
+    ext.page.disconnect();
+    await later(10);
+    const late = chromePorts("lute-sync:tok1", { origin: ORIGIN });
+    const got = inbox(late.page);
+    r.external(late.bg);
+    await later(10);
+    expect(got[0]).toMatchObject({ t: "error", code: "invalid" });
+    expect(await isFree(r)).toBe(true);
+  });
+
+  it("passes only sync messages, and ends both sides together", async () => {
+    const { relay: r } = relay();
+    const ext = chromePorts("lute-sync-ext");
+    r.internal(ext.bg);
+    await later(10);
+    // Sent before the web page connects: held, except what is not sync.
+    ext.page.postMessage({ t: "hello", pub: "a" });
+    ext.page.postMessage({ t: "token", token: "forged" });
+    await later(10);
+    const web = chromePorts("lute-sync:tok1", { origin: ORIGIN });
+    const toWeb = inbox(web.page);
+    r.external(web.bg);
+    const toExt = inbox(ext.page);
+    web.page.postMessage({ t: "hello", pub: "b" });
+    web.page.postMessage({ t: "anything" });
+    ext.page.postMessage({ t: "payload", data: "x" });
+    await later(20);
+    expect(toWeb).toEqual([
+      { t: "hello", pub: "a" },
+      { t: "payload", data: "x" },
+    ]);
+    expect(toExt).toEqual([{ t: "hello", pub: "b" }]);
+    expect(await isFree(r)).toBe(false);
+
+    web.page.disconnect();
+    await later(20);
+    expect(ext.page.disconnected).toBe(true);
+    expect(await isFree(r)).toBe(true);
+  });
+});

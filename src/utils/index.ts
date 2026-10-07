@@ -57,15 +57,19 @@ export function ipfs2http(url: string) {
   return url.replace("ipfs://", ipfsGateway);
 }
 
-export function stringToBigint(amt: string, dec: number) {
-  const [stringIntPart, paddedDecimalPart] = amt.split(".");
-  const intPart = BigInt(stringIntPart || "0") * 10n ** BigInt(dec);
-  const decimalPart = BigInt(
-    paddedDecimalPart
-      ? paddedDecimalPart.padEnd(dec, "0").substring(0, dec)
-      : "0"
+// Parses a non-negative decimal amount into base units. Number inputs come
+// from `type="number"` fields, so signs, exponents and digits past `dec` are
+// rejected rather than silently dropped.
+export function stringToBigint(amt: string | number, dec: number) {
+  if (dec < 0 || dec > 19) throw Error("Invalid Decimals");
+  const s = String(amt).trim();
+  const m = /^(\d*)(?:\.(\d*))?$/.exec(s);
+  if (!m || !/\d/.test(s)) throw Error("Invalid Amount");
+  const [, int = "", frac = ""] = m;
+  if (frac.length > dec) throw Error(`Amount has more than ${dec} decimals`);
+  return (
+    BigInt(int || "0") * 10n ** BigInt(dec) + BigInt(frac.padEnd(dec, "0") || 0)
   );
-  return intPart + decimalPart;
 }
 
 export function bigintToString(
@@ -75,17 +79,22 @@ export function bigintToString(
   round: number | undefined = undefined
 ): string {
   if (dec < 0 || dec > 19) throw Error("Invalid Decimals");
-  let intPart = amt / 10n ** BigInt(dec);
-  let decimalPart = amt % 10n ** BigInt(dec);
-  if (round && round < dec) {
-    const factor = 10 ** (dec - round);
-    decimalPart = BigInt(Math.round(Number(decimalPart) / factor) * factor);
-    if (decimalPart === 10n ** BigInt(dec)) {
+  const negative = amt < 0n;
+  const abs = negative ? -amt : amt;
+  const unit = 10n ** BigInt(dec);
+  let intPart = abs / unit;
+  let decimalPart = abs % unit;
+  if (round !== undefined && round < dec) {
+    const factor = 10n ** BigInt(dec - Math.max(round, 0));
+    decimalPart = ((decimalPart + factor / 2n) / factor) * factor;
+    if (decimalPart === unit) {
       intPart += 1n;
       decimalPart = 0n;
     }
   }
-  const stringIntPart = plain ? intPart.toString() : intPart.toLocaleString();
+  const stringIntPart =
+    (negative && (intPart || decimalPart) ? "-" : "") +
+    (plain ? intPart.toString() : intPart.toLocaleString());
   const paddedDecimalPart = decimalPart
     .toString()
     .padStart(dec, "0")

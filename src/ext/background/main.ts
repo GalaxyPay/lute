@@ -114,7 +114,11 @@ function buildUrl(action: string, name: string, tabId: number) {
 }
 
 function openSidePanel(path: string, tabId: number) {
-  sp.setOptions({ path }).then(sp.open({ tabId }));
+  // Both calls go out straight away: open() must run inside the dapp's user
+  // action, so it cannot wait for setOptions() to resolve. Chrome applies
+  // them in order.
+  sp.setOptions({ path });
+  sp.open({ tabId });
 }
 
 onMessage("connect-request", (message) => {

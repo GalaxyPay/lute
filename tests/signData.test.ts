@@ -65,7 +65,8 @@ async function request(
   LuteData: any,
   account_address: string,
   type: string,
-  signer: Uint8Array
+  signer: Uint8Array,
+  referrer = DOMAIN
 ) {
   const siwa = {
     domain: DOMAIN,
@@ -85,7 +86,7 @@ async function request(
       authenticatorData,
     },
     { scope: 1, encoding: "base64" },
-    DOMAIN
+    referrer
   );
   await ld.validate();
   const toSign = new Uint8Array([
@@ -174,3 +175,79 @@ describe("SIWA falcon1024", () => {
 function publicKeySize() {
   return falconKey().publicKey.length;
 }
+
+describe("SIWA validation gates signing", () => {
+  it("does not sign a request whose domain is not the referrer", async () => {
+    const { LuteData, fx } = await setup();
+    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    // validate() parses the SIWA message before it compares domains, so the
+    // request object looks complete even though validation failed.
+    const { ld } = await request(
+      LuteData,
+      fx.hotAddr,
+      "ed25519",
+      signer,
+      "evil.example"
+    );
+    expect(ld.siwa).toBeDefined();
+    expect(posted).toEqual([
+      expect.objectContaining({ action: "error", code: 4610 }),
+    ]);
+    posted.length = 0;
+    await ld.sign(PASS);
+    expect(posted).toEqual([
+      expect.objectContaining({ action: "error", code: 4300 }),
+    ]);
+  });
+
+  it("does not sign a request that was never validated", async () => {
+    const { LuteData, fx } = await setup();
+    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    const { ld } = await request(LuteData, fx.hotAddr, "ed25519", signer);
+    ld.validated = false;
+    await ld.sign(PASS);
+    expect(posted).toEqual([
+      expect.objectContaining({ action: "error", code: 4300 }),
+    ]);
+  });
+});
+
+describe("legacy SIWA requests (LuteDataOld)", () => {
+  async function legacy(data: string) {
+    const LuteDataOld = (await import("@/classes/LuteData.old")).default;
+    return new LuteDataOld(data, { scope: 1, encoding: "base64" }, DOMAIN);
+  }
+
+  it("signs a legacy request bound to the referrer", async () => {
+    const { fx } = await setup();
+    const siwa = {
+      domain: DOMAIN,
+      account_address: fx.hotAddr,
+      uri: `https://${DOMAIN}`,
+      version: "1",
+      chain_id: "283",
+      type: "ed25519",
+    };
+    const ld = await legacy(
+      new TextEncoder().encode(canonify(siwa)!).toBase64()
+    );
+    await ld.validate();
+    expect(await ld.sign(PASS)).toBe(true);
+    expect(posted[0].action).toBe("signed");
+  });
+
+  it.each([
+    ["not base64 JSON", "bm90IGpzb24="],
+    ["a bad address", btoa(JSON.stringify({ account_address: "nope" }))],
+  ])("reports Bad JSON for %s", async (_name, data) => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(legacy(data)).rejects.toMatchObject({ code: 4609 });
+    } finally {
+      err.mockRestore();
+    }
+    expect(posted).toEqual([
+      expect.objectContaining({ action: "error", code: 4609 }),
+    ]);
+  });
+});

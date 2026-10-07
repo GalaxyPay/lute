@@ -2,8 +2,9 @@
 // cache). Kept in its own module so neither has to import the other.
 
 // Current parameters. Bumping `iterations` (or later, `alg`) here is safe:
-// every record carries the values it was written with, and Seed re-encrypts
-// anything older on the next successful decrypt.
+// the keystore header and every 1.x seed record carry the values they were
+// written with. The header picks up new values the next time the password is
+// set or changed; 1.x records are only read, then moved into the keystore.
 export const KDF = {
   alg: "pbkdf2-sha256",
   iterations: 600_000,
@@ -12,11 +13,6 @@ export const KDF = {
 
 // Seeds written before versioning have no `iterations` field.
 export const KDF_LEGACY_ITERATIONS = 100_000;
-
-/** Whether a record is already at the current KDF parameters and format. */
-export function atCurrentKdf(rec: { iterations?: number; kdf?: string }) {
-  return rec.kdf === KDF.alg && (rec.iterations ?? 0) >= KDF.iterations;
-}
 
 /**
  * GCM parameters for a seed record. Current-format records (marked by `kdf`)

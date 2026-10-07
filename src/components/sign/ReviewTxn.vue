@@ -24,6 +24,13 @@
       <v-row v-show="!viewRaw" no-gutters>
         <v-col :cols> From: {{ ftxn.from }} </v-col>
         <v-col :cols v-if="ftxn.to"> To: {{ ftxn.to }} </v-col>
+        <v-col
+          :cols
+          v-if="ftxn.clawbackFrom"
+          :class="toSign ? 'text-error' : ''"
+        >
+          Clawback From: {{ ftxn.clawbackFrom }}
+        </v-col>
         <v-col :cols v-if="ftxn.appId"> App ID: {{ ftxn.appId }} </v-col>
         <v-col :cols v-if="ftxn.asset"> Asset: {{ ftxn.asset }} </v-col>
         <v-col :cols v-if="ftxn.amount"> Amount: {{ ftxn.amount }} </v-col>
@@ -63,7 +70,7 @@
 </template>
 
 <script lang="ts" setup>
-import { formatAddr, bigintToString } from "@/utils";
+import { formatTxn } from "@/utils/formatTxn";
 import algosdk, { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
@@ -79,14 +86,6 @@ const { width } = useDisplay();
 const cols = computed(() => (width.value < 500 ? "12" : "6"));
 const viewRaw = ref(false);
 
-const txnTypes = [
-  { title: "Payment", type: "pay" },
-  { title: "Asset Transfer", type: "axfer" },
-  { title: "Key Registration", type: "keyreg" },
-  { title: "Application", type: "appl" },
-  { title: "Asset Config", type: "acfg" },
-];
-
 const isFalcon25 = store.acctInfo.find(
   (ai) => ai.addr === props.txn.sender.toString()
 )?.isFalcon25;
@@ -96,40 +95,7 @@ const txnAsset = computed(() =>
   props.assets.find((a) => a.index === props.txn.assetTransfer?.assetIndex)
 );
 
-const ftxn = computed(() => ({
-  type: txnTypes.find((tt) => tt.type === props.txn.type)?.title,
-  from: formatAddr(props.txn.sender.toString()),
-  to: formatAddr(
-    props.txn.payment?.receiver.toString() ||
-      props.txn.assetTransfer?.receiver.toString()
-  ),
-  appId: props.txn.applicationCall?.appIndex,
-  asset: txnAsset.value?.params?.unitName,
-  amount:
-    props.txn.payment || props.txn.assetTransfer
-      ? bigintToString(
-          props.txn.payment?.amount || props.txn.assetTransfer?.amount || 0n,
-          txnAsset.value?.params?.decimals ?? 6
-        )
-      : undefined,
-  fee: Number(props.txn.fee || 0) / 10 ** 6 + (store.isVoi ? " Voi" : " Algo"),
-  voteFirst: props.txn.keyreg?.voteFirst,
-  voteLast: props.txn.keyreg?.voteLast,
-  voteKeyDilution: props.txn.keyreg?.voteKeyDilution,
-  selectionKey: props.txn.keyreg?.selectionKey
-    ? props.txn.keyreg.selectionKey.toBase64()
-    : undefined,
-  voteKey: props.txn.keyreg?.voteKey
-    ? props.txn.keyreg.voteKey.toBase64()
-    : undefined,
-  stateProofKey: props.txn.keyreg?.stateProofKey
-    ? props.txn.keyreg.stateProofKey.toBase64()
-    : undefined,
-  rekeyTo: props.txn.rekeyTo?.toString(),
-  closeRemainderTo: formatAddr(
-    props.txn.payment?.closeRemainderTo?.toString() ||
-      props.txn.assetTransfer?.closeRemainderTo?.toString()
-  ),
-  note: new TextDecoder().decode(props.txn.note),
-}));
+const ftxn = computed(() =>
+  formatTxn(props.txn, txnAsset.value, store.isVoi ? "Voi" : "Algo")
+);
 </script>
