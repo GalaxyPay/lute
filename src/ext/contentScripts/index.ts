@@ -111,8 +111,7 @@ import { signDataResponseUnsafe, signDataSafe } from "@/utils/signData";
           break;
         }
         case "sync": {
-          // Only asks the extension to open its side panel to receive a sync;
-          // the sync itself runs over its own encrypted connection.
+          // Only opens the side panel; the sync runs over its own encrypted connection.
           if (syncOrigins(import.meta.env.DEV).includes(location.origin))
             sendMessage("sync-panel-request", {}, "background");
           resolve();

@@ -22,7 +22,7 @@ export default class LuteTxns {
   // checks these rather than trusting the caller to stop.
   networkValid = false;
   groupValid = false;
-  // A reply (error or result) was sent: the request is over.
+  // A reply was sent; the dapp gets only one.
   finished = false;
   // The ATC calls its signer without a password, so the msig signer reads the
   // one handed to sign() from here.
@@ -137,10 +137,8 @@ export default class LuteTxns {
   }
 
   /**
-   * The checks after the request's network is selected and loaded: the group,
-   * then whether a multisig app should collect the signatures. Each failure
-   * has already been reported to the requester. True if the request may be
-   * shown for signing.
+   * Runs once the request's network is loaded. Failures are already reported
+   * to the requester; false means do not show the request.
    */
   async prepare() {
     if (!this.networkValid || this.finished) return false;

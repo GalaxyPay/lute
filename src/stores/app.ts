@@ -44,10 +44,10 @@ export const useAppStore = defineStore("app", {
     keys: [] as string[],
     seeds: [] as SeedData[],
     falcon25Seeds: [] as FalconSeedData[],
-    // Keystore record ids, kinds and forms; never the ciphertext.
+    // Metadata only; ciphertext never enters the store.
     keystore: [] as KeystoreMeta[],
     hasKeystore: false,
-    // The mode the wallet is in, or will be once its header is written.
+    // Also the mode the wallet will take once its header is written.
     keystoreMode: "device" as KeystoreMode,
     // A 1.x password verifier not yet replaced by a keystore header.
     legacyVerifier: false,

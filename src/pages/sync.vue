@@ -13,11 +13,8 @@
 </template>
 
 <script lang="ts" setup>
-// The receiving side of a sync:
-// - extension: the background opens this with the lute.app tab id that is
-//   sending, in the side panel (`panel`) or, failing that, a popup window;
-// - web app: the extension opens this with a one-time token, in a window of
-//   its own.
+// Receiving side of a sync. The extension gets the sending tab's id (side
+// panel, or a popup fallback); the web app gets a one-time token.
 import { resetSidePanel } from "@/utils";
 import { useRoute, useRouter } from "vue-router";
 

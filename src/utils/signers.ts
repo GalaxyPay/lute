@@ -23,9 +23,8 @@ class SignTxnsError extends Error {
 }
 
 /**
- * An in-app request from a multisig account: the group went into the ARC-55
- * app for the members to sign in the Multi-Sig tab, so there is nothing signed
- * to hand back. Not a failure.
+ * Not a failure: an in-app msig group went into the ARC-55 app for members to
+ * sign in the Multi-Sig tab, so there is nothing signed to hand back.
  */
 export class MsigStored extends Error {
   constructor(nonce: bigint) {
@@ -40,7 +39,7 @@ export function isMsigStored(err: any) {
   return err?.name === "MsigStored";
 }
 
-/** The snackbar for a failed in-app signing flow; a stored msig group is not one. */
+/** A stored msig group is reported as success, not as an error. */
 export function reportSignError(err: any, message: string = err?.message) {
   const store = useAppStore();
   if (isMsigStored(err)) {
@@ -60,8 +59,7 @@ export async function signer(
 ) {
   let transport;
   let algoApp;
-  // One context per request: each secret is decrypted once for the whole
-  // group, and everything decrypted is zeroed in the finally.
+  // One per request so each secret is decrypted once per group; zeroed in finally.
   const ctx = new SignContext(password);
   try {
     const store = useAppStore();

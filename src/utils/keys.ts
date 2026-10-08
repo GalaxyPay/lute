@@ -1,6 +1,5 @@
-// Small key and error helpers. Kept out of utils/index.ts, which re-exports
-// modules that reach the network and the store, so the keystore can import
-// these without dragging that in.
+// Kept out of utils/index.ts, whose re-exports reach the network and store,
+// so the keystore can import these without dragging that in.
 import algosdk from "algosdk";
 import { generateKey } from "falcon-1024";
 
@@ -12,7 +11,7 @@ export function needsPassword(err: any) {
   return err?.message === "Password Required";
 }
 
-/** The user closed a prompt. Not an error worth reporting. */
+/** The user closed a prompt; not an error worth reporting. */
 export class UserCancelled extends Error {
   constructor() {
     super("Cancelled");
@@ -24,12 +23,12 @@ export function isCancelled(err: any) {
   return err?.name === "UserCancelled";
 }
 
-/** An error that `isBadPassword` recognises, for a failed password check. */
+/** Shaped like a WebCrypto decrypt failure so `isBadPassword` matches it. */
 export function badPassword() {
   return new DOMException("Incorrect Password", "OperationError");
 }
 
-/** Address and public key of a Falcon25 mnemonic, from one keygen. */
+/** Returns both from one keygen, which is costly. */
 export function getFalconKey(mn: string) {
   const seed = algosdk.pq25WordMnemonicToSeed(mn, algosdk.FALCON_1024_SCHEME);
   try {
@@ -43,10 +42,7 @@ export function getFalconAddress(mn: string) {
   return getFalconKey(mn).address;
 }
 
-/**
- * Address and public key of a falcon key seed (the hashed form of a 25-word
- * seed). The public key is what an account records as `falconPk`.
- */
+/** A key seed is the hashed form of a 25-word seed. */
 export function falconKeyFromKeySeed(keySeed: Uint8Array) {
   const { publicKey } = generateKey(keySeed);
   const { address } = algosdk.addressFromPQKey(
@@ -56,7 +52,6 @@ export function falconKeyFromKeySeed(keySeed: Uint8Array) {
   return { address, publicKey };
 }
 
-/** The address of a falcon key seed (the hashed form of a 25-word seed). */
 export function falconAddressFromKeySeed(keySeed: Uint8Array) {
   return falconKeyFromKeySeed(keySeed).address;
 }
@@ -64,10 +59,7 @@ export function falconAddressFromKeySeed(keySeed: Uint8Array) {
 // PKCS#8 header for a raw Ed25519 private key; the 32-byte seed follows it.
 const ED25519_PKCS8_PREFIX = Uint8Array.fromBase64("MC4CAQAwBQYDK2VwBCIEIA==");
 
-/**
- * Sign with a 32-byte ed25519 seed through a short-lived, non-extractable
- * WebCrypto key. The pkcs8 buffer holding the seed is zeroed afterwards.
- */
+/** Zeroes its pkcs8 copy of the seed; `seed32` itself is left to the caller. */
 export async function ed25519Sign(seed32: Uint8Array, bytes: Uint8Array) {
   const pkcs8 = new Uint8Array(ED25519_PKCS8_PREFIX.length + 32);
   pkcs8.set(ED25519_PKCS8_PREFIX);

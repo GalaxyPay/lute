@@ -44,15 +44,10 @@ function asPasskeyError(err: any) {
 
 const Seed = {
   /**
-   * @legacy-read Decrypt a 1.x password-encrypted seed record. The keystore
-   * migration and the legacy signing fallback are the only callers. Remove once
-   * no `seeds` record has `data` and `falcon25-seeds` is empty.
-   *
-   * Records come in three formats, told apart by the fields present: no
-   * `iterations` (100k, no additional data), `iterations` without `kdf` (no
-   * additional data), and `kdf` (record id bound as additional data). Nothing
-   * is rewritten here any more: the keystore migration is the upgrade, and an
-   * in-place rewrite could resurrect a record the migration just moved.
+   * @legacy-read Remove once no `seeds` record has `data` and
+   * `falcon25-seeds` is empty. Never rewrites the record: the keystore
+   * migration is the upgrade, and an in-place rewrite could resurrect a record
+   * the migration just moved.
    */
   async decryptSeed(pass: string, sd: AnySeedData) {
     if (!sd.salt || !sd.iv || !sd.data) throw Error("Bad Seed Data");
@@ -63,9 +58,8 @@ const Seed = {
   },
 
   /**
-   * @legacy-read Check a password against the 1.x verifier at app/"password".
-   * Used once, to confirm the password before the keystore is created from it.
-   * The keystore header replaces the verifier, which is deleted at that point.
+   * @legacy-read Only confirms the password before the keystore is created
+   * from it, which deletes the verifier.
    */
   async verifyPassword(pass: string) {
     const rec: PasswordVerifier | undefined = await get("app", "password");
@@ -129,9 +123,8 @@ const Seed = {
   },
 
   /**
-   * Record a passkey credential as a seed. Its id comes from the same
-   * app/"nextSeedId" counter as keystore bip39 seeds, so the two can never
-   * hand out the same LuteAccount.seedId.
+   * Shares app/"nextSeedId" with keystore bip39 seeds so the two never hand
+   * out the same seedId.
    */
   async storePasskeyCred(credentialId: string): Promise<number> {
     const seeds = await getAll("seeds");

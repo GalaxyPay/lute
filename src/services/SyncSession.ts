@@ -1,22 +1,16 @@
 /**
  * One-way sync of accounts and keys between the web app and the extension.
  *
- * The wallet the user started from (the sender) hands its accounts and keys to
- * the other (the receiver), which confirms, then adds what it lacks. Nothing
- * travels back except the result.
+ * Ephemeral ECDH so the payload is never plaintext on the channel, including
+ * the background relay. The AAD names the direction so a payload can't be
+ * reflected back to its sender.
  *
- * Both sides generate an ephemeral ECDH key pair and derive a session key, so
- * the payload is never in plaintext on the channel, including in the
- * background relay. The payload is sealed with additional data naming its
- * direction, so it cannot be reflected back to its sender.
+ * Ordering is the security property: the sender unlocks up front while the
+ * user is watching, but sends keys only after the receiver has confirmed and
+ * unlocked. The receiver writes nothing until the payload opens and verifies.
  *
- * Ordering is the security property that matters here. The sender unlocks
- * before the session starts, while the user is looking at it, but sends its
- * keys only after the receiver has confirmed (and unlocked). The receiver
- * writes nothing until the payload has opened and verified.
- *
- * This module has no browser APIs. It talks through a SyncTransport, so the
- * channel (Chrome externally_connectable today) can be swapped.
+ * No browser APIs here, so the transport (externally_connectable today) can
+ * be swapped.
  */
 import Keystore from "@/services/Keystore";
 import Transfer, {
@@ -93,10 +87,7 @@ export async function createKeys() {
   return { privateKey: pair.privateKey, pub };
 }
 
-/**
- * The session key: ECDH, then HKDF-SHA-256 salted with both public keys in a
- * fixed order (web first), so both sides derive the same key.
- */
+/** Salted web key first so both sides derive the same key. */
 export async function deriveSessionKey(
   privateKey: CryptoKey,
   peerPub: Uint8Array,
@@ -202,10 +193,7 @@ class Inbox {
     });
   }
 
-  /**
-   * `p`, a wait on this side (the user, an unlock), unless the other side
-   * sends an error or closes first.
-   */
+  /** Races a local wait (the user, an unlock) against the peer giving up. */
   async during<T>(p: Promise<T>): Promise<T> {
     if (this.closed) throw this.closed;
     const err = this.queue.find((m) => m.t === "error");
@@ -242,7 +230,6 @@ class Inbox {
     });
   }
 
-  /** The next message, which must be of type `t`. */
   async expect<T extends SyncMessage["t"]>(
     t: T,
     timeoutMs: number
@@ -295,8 +282,8 @@ export type ReceiverState = "connecting" | "confirm" | "unlocking" | "adding";
 
 export interface SenderHooks {
   /**
-   * The master key, unlocked by typed password before the session starts (the
-   * payload carries every key). Used only after the receiver confirms.
+   * Unlocked by typed password before the session starts, since the payload
+   * carries every key. Used only after the receiver confirms.
    */
   mk: MasterKey;
   onState?: (s: SenderState) => void;
@@ -309,17 +296,13 @@ export interface ReceiverHooks {
   /** Ask the user. False declines the sync. */
   confirm: () => Promise<boolean>;
   getMk: () => Promise<MasterKey>;
-  /**
-   * The other side gave up while `confirm` or `getMk` was waiting on the
-   * user: take down whatever they are showing.
-   */
+  /** The peer gave up mid-`confirm`/`getMk`: take down whatever they show. */
   abandon?: () => void;
   onState?: (s: ReceiverState) => void;
   timeoutMs?: number;
   restore?: typeof Transfer.addPayload;
 }
 
-/** Send this wallet's accounts to the other side. */
 export async function runSender(
   side: WalletSide,
   transport: SyncTransport,
@@ -352,7 +335,6 @@ export async function runSender(
   }
 }
 
-/** Receive the other side's accounts into this wallet. */
 export async function runReceiver(
   side: WalletSide,
   transport: SyncTransport,
@@ -376,8 +358,8 @@ export async function runReceiver(
     if (!(await local(hooks.confirm())))
       throw new SyncError("declined", "The sync was declined.");
     hooks.onState?.("unlocking");
-    // Unlocked before confirming to the sender, so its keys only leave once
-    // this side is ready to take them.
+    // Unlock before confirming so the sender's keys only leave once this side
+    // can take them.
     const mk = await local(hooks.getMk());
     // Read after unlocking: a password set while confirming counts.
     const passwordProtected = (await Keystore.mode()) === "password";

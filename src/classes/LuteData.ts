@@ -53,7 +53,6 @@ export const ERROR_FAILED_DOMAIN_AUTH = new SignDataError(
   4610
 );
 
-/** Public key size of each SIWA signature type. */
 const SIGNER_SIZE: Record<Siwa["type"], number> = {
   ed25519: 32,
   falcon1024: FALCON_DET1024_PUBKEY_SIZE,
@@ -67,8 +66,7 @@ export default class LuteData {
   store = useAppStore();
   jsonString?: string;
   siwa?: Siwa;
-  // Set only once validate() passes every check; sign() refuses otherwise.
-  // A failed check parses siwa first, so siwa alone does not mean valid.
+  // siwa is parsed before checks that can fail, so siwa alone does not mean valid.
   validated = false;
 
   constructor(
@@ -150,7 +148,7 @@ export default class LuteData {
           if (!canonifiedJson || canonifiedJson !== this.jsonString) {
             throw ERROR_BAD_JSON;
           }
-          // the signer must be a public key of the scheme the request names
+          // the signer must be a public key of the requested scheme
           if (this.stdSignData.signer.length !== SIGNER_SIZE[this.siwa.type])
             throw ERROR_INVALID_SIGNER;
           // check that siwa.domain, signData.domain, and referrer all match

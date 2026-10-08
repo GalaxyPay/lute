@@ -107,8 +107,7 @@ async function pick(row: SeedRow) {
       await handleSeed(picked.id, seed);
       return;
     }
-    // The first password entry migrates 1.x seeds into the keystore, so a
-    // legacy row is tried there first.
+    // Try the keystore first: the first password entry migrates 1.x seeds into it.
     const mk = await unlocker.value!.ensureMk();
     const id = `bip39:${picked.id}`;
     if (await get("keystore", id)) {

@@ -12,10 +12,7 @@ const TXN_TYPES: Record<string, string> = {
   hb: "Heartbeat",
 };
 
-/**
- * What the review screen shows for a txn. Everything that moves funds or
- * control away from the signer (rekey, close, clawback) must appear here.
- */
+/** Anything moving funds or control away from the signer (rekey, close, clawback) must appear here. */
 export function formatTxn(
   txn: Transaction,
   asset: modelsv2.Asset | undefined,

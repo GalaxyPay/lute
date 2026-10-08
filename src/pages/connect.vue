@@ -149,9 +149,7 @@ const connecting = ref(false);
 async function connect() {
   connecting.value = true;
   const addrs: string[] = [...selected.value];
-  // How each account signs, for dapps that simulate fees. Best effort: an
-  // account Lute cannot describe is left out, and a failure never blocks the
-  // connection.
+  // For dapps that simulate fees. Best effort: never blocks connecting.
   let sigs: Record<string, string> = {};
   try {
     sigs = await emptySignatures(addrs, store.acctInfo, (appId) =>

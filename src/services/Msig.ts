@@ -8,10 +8,7 @@ import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import algosdk, { Transaction } from "algosdk";
 
 const Msig = {
-  /**
-   * An ARC-55 app's multisig parameters from its global state alone, without
-   * the boxes loadApp reads. Undefined if the app is missing or incomplete.
-   */
+  /** Global state only, skipping the box reads loadApp does. */
   async loadParams(appId: bigint): Promise<MultisigMetadata | undefined> {
     const appInfo = await Algo.algod.getApplicationByID(appId).do();
     const addrs: string[] = [];

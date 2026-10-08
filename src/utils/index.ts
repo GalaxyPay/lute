@@ -57,9 +57,8 @@ export function ipfs2http(url: string) {
   return url.replace("ipfs://", ipfsGateway);
 }
 
-// Parses a non-negative decimal amount into base units. Number inputs come
-// from `type="number"` fields, so signs, exponents and digits past `dec` are
-// rejected rather than silently dropped.
+// Inputs come from `type="number"` fields, so signs, exponents and digits past
+// `dec` are rejected rather than silently dropped.
 export function stringToBigint(amt: string | number, dec: number) {
   if (dec < 0 || dec > 19) throw Error("Invalid Decimals");
   const s = String(amt).trim();

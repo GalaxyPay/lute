@@ -79,9 +79,7 @@ export async function getManifest() {
     host_permissions: ["*://ipfs.algonode.dev/*", "*://*.4160.nodely.io/*"],
   };
 
-  // Lets lute.app open a port to the extension for wallet sync, with Chrome
-  // enforcing the origin. Chromium only; a Firefox build would need another
-  // channel (see src/services/syncTransports.ts).
+  // Lets lute.app open a sync port to the extension, with Chrome enforcing the origin.
   if (!isFirefox)
     (manifest as any).externally_connectable = {
       matches: syncOrigins(isDev).map((o) => `${o}/*`),

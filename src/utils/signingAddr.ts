@@ -1,9 +1,4 @@
-/**
- * The account whose key signs `txn`, in order: the multisig member signing for
- * the whole request, the auth address the dapp names, the sender's on-chain
- * auth address, or else the sender. Choosing wrongly cannot forge anything,
- * only produce a signature the network rejects.
- */
+/** A wrong pick cannot forge anything, only yield a signature the network rejects. */
 export function signingAddr(
   txn: { sender: { toString(): string } },
   authAddr: string | undefined,

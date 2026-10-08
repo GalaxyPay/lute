@@ -33,8 +33,7 @@
 </template>
 
 <script lang="ts" setup>
-// Collects a password and hands it to the caller, which checks it by using it
-// (unwrapping the keystore, or decrypting a 1.x seed). See KeystoreUnlock.
+// Doesn't verify the password: the caller does, by using it (see KeystoreUnlock).
 import { mdiClose } from "@mdi/js";
 
 const required = (v: string) => !!v || "Required";

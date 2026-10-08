@@ -1,18 +1,16 @@
 /**
- * The accounts and keys one wallet hands to another during a sync between the
- * web app and the extension (separate origins, separate databases).
+ * The sync payload between the web app and the extension (separate origins,
+ * separate databases).
  *
- * This module only builds and applies the payload. It never encrypts it: the
- * sync session seals it under an ephemeral key for the one transfer, so keys
- * are never stored outside a wallet or sealed under a user-chosen password.
+ * Not encrypted here: SyncSession seals it under an ephemeral key, so keys are
+ * never stored outside a wallet or sealed under a user-chosen password.
  *
- * Accounts whose secret cannot travel are listed as skipped instead: 1.x
- * records that are not in the keystore yet, and passkey seeds (a passkey is
- * bound to the origin that registered it).
+ * Passkey seeds can't travel (a passkey is bound to its origin), nor can 1.x
+ * records not yet in the keystore; both are listed as skipped.
  *
  * An account the receiver already has is left alone, except that an
- * exportable secret upgrades the receiver's one-way or 1.x copy of it, the
- * same as re-entering the mnemonic there.
+ * exportable secret upgrades its one-way or 1.x copy, as re-entering the
+ * mnemonic would.
  */
 import { get, getAll, keys } from "@/dbLute";
 import {
@@ -50,8 +48,8 @@ export type WalletSide = "web" | "ext";
 const PROBE = new TextEncoder().encode("lute-sync:key-check");
 
 /**
- * Whether a single-key secret signs for `addr`. An ed25519 key is checked by
- * signing, so its public key never has to be derived outside WebCrypto.
+ * Ed25519 is checked by signing so its public key is never derived outside
+ * WebCrypto.
  */
 async function signsFor(s: TransferSecret, addr: string) {
   const pt = Uint8Array.fromBase64(s.data);
@@ -89,7 +87,6 @@ function bip39Seed(s: TransferSecret) {
   }
 }
 
-/** The keystore ids an account's secret may be stored under. */
 function secretIds(a: LuteAccount) {
   if (a.appId) return [];
   if (isHd(a)) return [keystoreId("bip39", a)];
@@ -145,10 +142,8 @@ async function secretContext() {
 }
 
 /**
- * The plaintext to store when an incoming secret upgrades `mine` (the
- * receiver's accounts on it), else undefined. It must be exportable, every
- * account must be upgradeable and derive from it, and what is stored is
- * rebuilt from its mnemonic so the signing half cannot disagree with it.
+ * Plaintext to store if `s` upgrades `mine`, else undefined. Rebuilt from the
+ * mnemonic so the signing half can't disagree with it.
  */
 async function upgradeFor(
   s: TransferSecret,
@@ -173,11 +168,7 @@ async function upgradeFor(
 }
 
 const Transfer = {
-  /**
-   * Every account this wallet can hand over, with its decrypted secret. Only
-   * secrets those accounts use travel: a seed whose accounts were all removed
-   * stays here.
-   */
+  /** Only secrets in use travel; an orphaned seed stays here. */
   async buildPayload(
     mk: MasterKey,
     meta: { from: WalletSide; appVersion: string }
@@ -226,12 +217,8 @@ const Transfer = {
   },
 
   /**
-   * Add a payload's accounts and their secrets to this wallet. Accounts already
-   * here are left alone unless an exportable secret upgrades them. HD seeds
-   * new to this wallet get new seed ids; accounts on a seed it already holds
-   * join that seed, found by a shared account or, failing that, by comparing
-   * seeds. An account that does not derive from (or sign with) the secret
-   * sent for it is skipped. Everything lands in one transaction.
+   * Accounts on a seed this wallet already holds join it rather than duplicate
+   * it. Everything lands in one transaction.
    */
   async addPayload(mk: MasterKey, payload: TransferPayload) {
     const current: LuteAccount[] = (await get("app", "accounts")) ?? [];
@@ -256,7 +243,6 @@ const Transfer = {
       for (const s of payload.secrets) {
         if (s.kind === "bip39") {
           const oldId = Number(s.id.split(":")[1]);
-          // The accounts sent on this seed that really derive from it.
           const sent: LuteAccount[] = [];
           const seed = bip39Seed(s);
           try {
@@ -268,8 +254,7 @@ const Transfer = {
           } finally {
             seed?.fill(0);
           }
-          // Join this wallet's seed `target`, upgrading its accounts if the
-          // secret sent is exportable and theirs is not.
+          // Upgrades `target`'s accounts if the sent secret is exportable.
           const join = async (target: number) => {
             const mine = current.filter((c) => isHd(c) && c.seedId === target);
             const up = await upgradeFor(s, mine, ctx);
@@ -286,7 +271,6 @@ const Transfer = {
             }
             return { mine, up };
           };
-          // This wallet's own copies of the seed, found by shared addresses.
           const targets = new Set<number>();
           for (const a of sent) {
             const c = byAddr.get(a.addr);

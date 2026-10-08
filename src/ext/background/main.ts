@@ -29,12 +29,10 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 /*
- * Where the extension receives a sync the web app sends. The side panel sits
- * beside the web app, so it is preferred, but Chrome only opens it in
- * response to a user action. The web app asks for it through the content
- * script straight after its password is submitted ("sync-panel-request"),
- * the same route dApp sign requests take. The relay's own connection carries
- * no user action, so when the panel did not open it falls back to a popup.
+ * The side panel is the preferred receiver (it sits beside the web app), but
+ * Chrome opens it only within a user action, which the relay's connection
+ * lacks. So the web app requests it via the content script right after its
+ * password is submitted, and the relay falls back to a popup.
  */
 const panelAttempts = new Map<number, Promise<boolean>>();
 
@@ -57,10 +55,7 @@ onMessage("sync-panel-request", (message) => {
   }, 10_000);
 });
 
-/**
- * Whether the side panel opened for this tab's sync. The panel request and
- * the sync connection can arrive in either order, so wait briefly for it.
- */
+/** The panel request and the sync connection can arrive in either order. */
 async function panelOpened(tabId: number, waitMs = 1500) {
   const deadline = Date.now() + waitMs;
   while (!panelAttempts.has(tabId) && Date.now() < deadline)
@@ -76,7 +71,7 @@ const syncRelay = createSyncRelay({
   async openReceiver(tabId) {
     // The panel page connects as the receiver by itself.
     if (await panelOpened(tabId)) return;
-    // Otherwise a popup over the web app's window, so both stay in view.
+    // Over the web app's window so both stay in view.
     const url = browser.runtime.getURL(buildUrl("sync", "Lute", tabId));
     let over;
     try {
@@ -101,7 +96,6 @@ const syncRelay = createSyncRelay({
   },
 });
 
-/** The web tab a sync panel page was opened for, if `url` is one. */
 function syncPanelTab(url?: string) {
   try {
     const params = new URL(url ?? "").searchParams;
@@ -136,9 +130,8 @@ function buildUrl(action: string, name: string, tabId: number) {
 }
 
 function openSidePanel(path: string, tabId: number) {
-  // Both calls go out straight away: open() must run inside the dapp's user
-  // action, so it cannot wait for setOptions() to resolve. Chrome applies
-  // them in order.
+  // Not chained: open() must run inside the dapp's user action, so it can't
+  // await setOptions(). Chrome applies them in order.
   sp.setOptions({ path });
   sp.open({ tabId });
 }

@@ -1,28 +1,20 @@
 /**
- * The wallet keystore (Lute 2.0).
+ * One master key (MK) encrypts every local secret, in one of two modes:
  *
- * One master key (MK) encrypts every local secret. The MK lives in the
- * app/"keystore" header in one of two modes:
+ * - password: a random key wrapped under PBKDF2(password). Unwrapping it is
+ *   the password check.
+ * - device: a non-extractable CryptoKey stored as is. No prompts, the same
+ *   protection 1.x gave Algo25 keys, and export still works.
  *
- * - password: a random 32-byte key wrapped with AES-GCM under
- *   PBKDF2(password). Unwrapping it is the password check.
- * - device: a non-extractable AES-GCM CryptoKey stored as is. No prompts, the
- *   same protection 1.x gave Algo25 keys, and export still works.
+ * Exportable forms keep the mnemonic material next to the signing material, so
+ * signing never rebuilds a phrase.
  *
- * Each secret is one record in the `keystore` store, AES-GCM under the MK with
- * its kind, form and id bound as additional data (see KeystoreForm for what the
- * plaintext holds). Exportable forms keep the material the mnemonic is made
- * from next to the material signing uses, so signing never rebuilds a phrase.
+ * Writes spanning records, the header or the account list go through
+ * keystoreTx and re-check the header inside it: the side panel and the options
+ * page share this database but not their caches.
  *
- * Every write that spans records, the header, or the account list goes through
- * dbLute.keystoreTx with all crypto done beforehand, and re-checks the header
- * inside the transaction: the side panel and the options page share this
- * database but not their caches.
- *
- * 1.x data is read through the @legacy-read paths here and in Seed until it has
- * been moved: migrateLegacy carries every seed the wallet password decrypts
- * into the keystore at the first password entry, and upgradeSecret replaces
- * any one-way record when the user re-enters its mnemonic.
+ * 1.x data stays readable via @legacy-read paths until migrateLegacy (first
+ * password entry) or upgradeSecret (mnemonic re-entry) moves it.
  */
 import {
   get,
@@ -92,7 +84,6 @@ function sameKeys<T>(current: T[], expected: T[]) {
   return a.length === b.length && a.every((k, ix) => k === b[ix]);
 }
 
-/** Whether a plaintext has the length its kind and form promise. */
 export function validLength(kind: KeystoreKind, form: KeystoreForm, n: number) {
   switch (`${kind}/${form}`) {
     case "bip39/entropy":
@@ -118,10 +109,7 @@ export function isExportable(kind: KeystoreKind, form: KeystoreForm) {
   );
 }
 
-/**
- * The part of a plaintext signing uses, as a copy the caller must zero: the
- * 64-byte bip39 seed, the 32-byte ed25519 seed, or the falcon key seed.
- */
+/** Returns a copy. The caller zeroes it. */
 export function signingMaterial(
   kind: KeystoreKind,
   form: KeystoreForm,
@@ -167,7 +155,6 @@ export function plaintextFromMnemonic(kind: KeystoreKind, mn: string) {
   }
 }
 
-/** The mnemonic behind an exportable plaintext (see plaintextFromMnemonic). */
 export function mnemonicFromPlaintext(kind: KeystoreKind, pt: Uint8Array) {
   switch (kind) {
     case "bip39":
@@ -209,7 +196,7 @@ async function buildPasswordHeader(
   };
 }
 
-/** Raw master key bytes. Throws OperationError on a wrong password. */
+/** Throws OperationError on a wrong password. The caller zeroes the result. */
 async function unwrapRaw(pass: string, h: PasswordKeystoreHeader) {
   const kek = await deriveKeyFromPassSalt(pass, h.salt, h.iterations);
   const raw = await crypto.subtle.decrypt(
@@ -257,10 +244,7 @@ async function decryptRecord(mk: MasterKey, rec: KeystoreRecord) {
   return pt;
 }
 
-/**
- * Replace the master key: re-encrypt every record under `to` and write the new
- * header, in one transaction that aborts if the header or the record set moved.
- */
+/** Aborts if the header or the record set moved since they were read. */
 async function switchMasterKey(
   from: MasterKey,
   expect: KeystoreHeader,
@@ -301,15 +285,11 @@ export interface SecretItem {
 export interface PutOptions {
   // 1.x records this write supersedes, deleted in the same transaction.
   deleteLegacy?: { keys?: string[]; seeds?: number[]; falcon25?: string[] };
-  // Rewrite the account list in the same transaction. Receives the list as it
-  // is in the database (not a cache) and the id given to each item.
+  // Rewrite the account list in the same transaction, from the database copy
+  // rather than a cache.
   accounts?: (current: LuteAccount[], ids: string[]) => LuteAccount[];
 }
 
-/**
- * Set falconPk (base64, keyed by address) on accounts that lack it. An account
- * that already has one keeps it, and addresses not in the list are ignored.
- */
 export function withFalconPks(
   accounts: LuteAccount[],
   pks: Map<string, string>
@@ -332,27 +312,19 @@ const Keystore = {
     return await get("app", "keystore");
   },
 
-  /** A 1.x password verifier that has not been replaced by a header yet. */
+  /** A 1.x verifier not yet replaced by a header. */
   async hasLegacyVerifier() {
     return !!(await get("app", "password"));
   },
 
-  /**
-   * The mode the wallet is in, or will be once the header is written: a 1.x
-   * wallet with a password becomes password mode at the first password entry,
-   * any other wallet without a header becomes device mode on first use.
-   */
+  /** Without a header, the mode the wallet will get on first use. */
   async mode(): Promise<KeystoreMode> {
     const h = await this.header();
     if (h) return h.mode;
     return (await this.hasLegacyVerifier()) ? "password" : "device";
   },
 
-  /**
-   * The master key for signing or adding a secret. Device mode needs nothing,
-   * password mode uses the session unlock when there is one, and otherwise
-   * throws "Password Required" unless `pass` is given.
-   */
+  /** Throws "Password Required" when locked and no `pass` is given. */
   async getMk(pass?: string): Promise<MasterKey> {
     const h = await this.header();
     if (h?.mode === "device") return { key: h.mk, id: h.id };
@@ -369,9 +341,8 @@ const Keystore = {
   },
 
   /**
-   * The master key from the password alone, bypassing the session unlock and
-   * without migrating anything. For mnemonic export and backup, where an
-   * unlocked session must not stand in for the password.
+   * Bypasses the session unlock, for export and backup, where an unlocked
+   * session must not stand in for the password.
    */
   async unwrap(pass: string): Promise<MasterKey> {
     const h = await this.header();
@@ -384,7 +355,7 @@ const Keystore = {
     }
   },
 
-  /** Create a device-mode keystore. Only for a wallet with no password. */
+  /** Only for a wallet with no password. */
   async createDevice(): Promise<MasterKey> {
     const key = await generateDeviceMk();
     const h: DeviceKeystoreHeader = {
@@ -412,17 +383,14 @@ const Keystore = {
   },
 
   /**
-   * The single entry point for a typed wallet password. Verifies it, creates
-   * the password-mode header on the first entry after upgrading from 1.x, moves
-   * every 1.x seed the password decrypts into the keystore, and starts the
-   * session unlock. Throws OperationError on a wrong password.
+   * The single entry point for a typed wallet password, so header creation and
+   * 1.x migration always happen. Throws OperationError on a wrong password.
    */
   async unlockWithPassword(pass: string): Promise<MasterKey> {
     try {
       return await this.unlockOnce(pass);
     } catch (err) {
-      // Another context created the header or migrated concurrently. Its
-      // header is now the one to unlock, with the same password.
+      // Another context created the header or migrated first; retry on its header.
       if (!(err instanceof KeystoreConflict)) throw err;
       return await this.unlockOnce(pass);
     }
@@ -456,18 +424,16 @@ const Keystore = {
   },
 
   /**
-   * @legacy-read Move every 1.x seed record `pass` decrypts into the keystore.
-   * Their plaintext is one-way, so they land as bip39/seed and falcon25/hash:
-   * signable, not exportable until the mnemonic is re-entered. Records under a
-   * different password are left in place.
+   * @legacy-read Move every 1.x seed `pass` decrypts into the keystore. 1.x
+   * plaintext is one-way, so they land as bip39/seed and falcon25/hash:
+   * signable, not exportable until the mnemonic is re-entered. Records under
+   * another password stay put.
    *
-   * Each moved Falcon account also gets its public key recorded (falconPk),
-   * which 1.x never stored, so it can be described to dapps without unlocking.
+   * Falcon accounts also get falconPk, which 1.x never stored, so dapps can be
+   * given the key without unlocking.
    *
-   * With `create`, the new header is written in the same transaction and the
-   * 1.x verifier is deleted; a conflict propagates so the caller can retry.
-   * With `expect` (an existing header) this is opportunistic: a conflict means
-   * another context is doing the same work, and is ignored.
+   * With `create` a conflict propagates so the caller can retry; with `expect`
+   * it means another context is doing the same work, and is ignored.
    */
   async migrateLegacy(
     pass: string,
@@ -525,8 +491,7 @@ const Keystore = {
       const cur: KeystoreHeader | undefined = await app.get("keystore");
       if (opts.create ? cur : cur?.id !== opts.expect?.id)
         throw new KeystoreConflict();
-      // A record that vanished was moved by another context; do not put back
-      // a copy of it.
+      // A vanished record was moved by another context; don't put a copy back.
       for (const id of movedSeeds)
         if (!(await tx.objectStore("seeds").get(id)))
           throw new KeystoreConflict();
@@ -558,19 +523,14 @@ const Keystore = {
     return { migrated: recs.length, skipped };
   },
 
-  /** Decrypt one record. Reads the database, never a cache. */
+  /** Reads the database, never a cache. */
   async getSecret(mk: MasterKey, id: string) {
     const rec: KeystoreRecord | undefined = await get("keystore", id);
     if (!rec) throw Error("Secret Not Found");
     return { rec, plaintext: await decryptRecord(mk, rec) };
   },
 
-  /**
-   * Encrypt and store secrets, allocating seed ids for new bip39 seeds, with
-   * optional legacy deletes and an account list rewrite in the same
-   * transaction. Returns the id of each item. Retries once if another context
-   * allocated a seed id in between.
-   */
+  /** Retries once if another context allocated a seed id in between. */
   async putSecrets(
     mk: MasterKey,
     items: SecretItem[],
@@ -630,9 +590,8 @@ const Keystore = {
   },
 
   /**
-   * Store the exportable form of a mnemonic. Returns its keystore id. A bip39
-   * mnemonic already in the keystore keeps its id, so re-importing a seed does
-   * not create a second one; a one-way copy is upgraded in place.
+   * A bip39 mnemonic already in the keystore keeps its id, so re-importing
+   * doesn't create a second seed; a one-way copy is upgraded in place.
    */
   async storeMnemonic(
     mk: MasterKey,
@@ -656,7 +615,7 @@ const Keystore = {
     }
   },
 
-  /** The id of the keystore bip39 seed with this plaintext's seed, if any. */
+  /** Compares seeds, not entropy, so one-way records match too. */
   async findBip39(mk: MasterKey, plaintext: Uint8Array) {
     const seed = signingMaterial("bip39", "entropy", plaintext);
     try {
@@ -677,9 +636,8 @@ const Keystore = {
   },
 
   /**
-   * Delete an HD seed that no account uses: its keystore record, or the 1.x
-   * or passkey record in `seeds`. Refuses, writing nothing, if any account in
-   * the database still has this seed id.
+   * Also removes a 1.x or passkey record. Refuses, writing nothing, if any
+   * account in the database still uses the seed.
    */
   async removeSeed(seedId: number) {
     await keystoreTx(async (tx) => {
@@ -693,9 +651,8 @@ const Keystore = {
   },
 
   /**
-   * Whether a mnemonic is the one behind these accounts, checked against
-   * public data only, so no 1.x password is needed. For bip39, every account
-   * on the seed must match its stored xpub (or its address when there is none).
+   * Checked against public data only (xpub, else address), so no 1.x password
+   * is needed.
    */
   async mnemonicMatches(
     kind: KeystoreKind,
@@ -727,10 +684,6 @@ const Keystore = {
     }
   },
 
-  /**
-   * Whether every account derives from this 64-byte bip39 seed: its stored
-   * xpub, or its address when there is none.
-   */
   async seedMatches(seed: Uint8Array, accts: LuteAccount[]) {
     if (!accts.length) return false;
     const copy = Buffer.from(seed);
@@ -759,10 +712,7 @@ const Keystore = {
     }
   },
 
-  /**
-   * Replace an account's 1.x or one-way secret with the exportable form of its
-   * re-entered mnemonic. The caller has already checked mnemonicMatches.
-   */
+  /** The caller must check mnemonicMatches first. */
   async upgradeSecret(
     mk: MasterKey,
     kind: KeystoreKind,
@@ -777,8 +727,8 @@ const Keystore = {
         : kind === "falcon25"
           ? { falcon25: [target.addr] }
           : { keys: [target.addr] };
-    // A 1.x Falcon seed under a different password is skipped by the
-    // migration, so its account may still lack falconPk. Record it here.
+    // Migration skips a 1.x Falcon seed under another password, so its account
+    // may still lack falconPk.
     let accounts: PutOptions["accounts"];
     if (kind === "falcon25") {
       const { address, publicKey } = getFalconKey(mn);
@@ -808,10 +758,8 @@ const Keystore = {
   },
 
   /**
-   * Set a wallet password where there is none. From device mode this replaces
-   * the master key and re-encrypts every record. Without any keystore it
-   * creates one; if a 1.x password exists that the user can no longer recall,
-   * the seeds under it stay where they are, readable only with that password.
+   * Without a header, any forgotten 1.x password's seeds stay where they are,
+   * readable only with that password.
    */
   async newPassword(pass: string): Promise<MasterKey> {
     const h = await this.header();
@@ -842,13 +790,13 @@ const Keystore = {
   },
 
   /**
-   * Change the wallet password. The master key stays the same, so this is a
-   * single header write. Returns false on a wrong current password.
+   * The master key is unchanged, so this is a single header write. Returns
+   * false on a wrong current password.
    */
   async rotate(oldPass: string, newPass: string) {
     let h = await this.header();
     try {
-      // A 1.x wallet: create its keystore from the current password first.
+      // A 1.x wallet needs its keystore created from the current password.
       if (!h) await this.unlockWithPassword(oldPass);
       h = await this.header();
       if (h?.mode !== "password") throw Error("The wallet has no password");
@@ -874,10 +822,7 @@ const Keystore = {
     return true;
   },
 
-  /**
-   * Switch to device mode: a new non-extractable master key, every record
-   * re-encrypted under it. Returns false on a wrong password.
-   */
+  /** Switch to device mode. Returns false on a wrong password. */
   async removePassword(pass: string) {
     const h = await this.header();
     if (h?.mode !== "password") throw Error("The wallet has no password");

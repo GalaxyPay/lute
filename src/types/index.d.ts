@@ -225,8 +225,7 @@ export interface AccountHD extends modelsv2.Account {
 }
 
 export interface LuteAccount {
-  // Record format version. 2 from Lute 2.0; absent on records written by 1.x
-  // and stamped by the IndexedDB v4 upgrade.
+  // 2 from Lute 2.0; absent on 1.x records until the IndexedDB v4 upgrade stamps them.
   v?: number;
   addr: Address;
   name?: string;
@@ -237,26 +236,19 @@ export interface LuteAccount {
   xpub?: string;
   idxs?: number[];
   /**
-   * Base64 Falcon-1024 public key of a Falcon25 account. Public, like xpub, so
-   * dapps can be given the account's empty signature without unlocking the
-   * seed. Missing on accounts created before it was recorded until the seed is
-   * next used to sign.
+   * Base64. Stored like xpub so dapps get the empty signature without an unlock.
+   * Missing on older accounts until the seed next signs.
    */
   falconPk?: string;
 }
 
 /**
- * Where an account's signing secret lives. Derived from the stores on every
- * cache load, never persisted, so it cannot drift from what is really there.
- *
- * - none: watch, multisig, or a seed record that has gone missing
- * - ledger / passkey: no local secret
- * - keystore: in the keystore in a form the mnemonic can be exported from
- * - keystore-opaque: in the keystore, but only as one-way material carried over
- *   from 1.x; the mnemonic must be re-entered before it can be exported
- * - legacy-seed: a 1.x encrypted seed that did not decrypt under the wallet
- *   password, so it was left where it was
- * - legacy-key: a 1.x non-extractable Algo25 CryptoKey
+ * Where an account's signing secret lives. Derived on every cache load, never
+ * persisted, so it cannot drift from the stores.
+ * - none: watch, multisig, or a missing seed record
+ * - keystore-opaque: one-way 1.x material; mnemonic must be re-entered to export
+ * - legacy-seed: 1.x seed that did not decrypt under the wallet password
+ * - legacy-key: 1.x non-extractable Algo25 CryptoKey
  */
 export type SecretStatus =
   | "none"
@@ -386,7 +378,6 @@ export interface FalconSeedData extends Omit<SeedData, "id" | "credentialId"> {
 
 export type AnySeedData = SeedData | FalconSeedData;
 
-/** An HD seed as offered when adding accounts. */
 export interface SeedRow {
   id: number;
   credentialId?: string;
@@ -398,12 +389,12 @@ export interface SeedRow {
 export type KeystoreKind = "bip39" | "algo25" | "falcon25";
 
 /**
- * What the plaintext of a keystore record is:
+ * Keystore record plaintext:
  * - entropy (bip39): mnemonic entropy ‖ 64-byte seed
- * - seed (bip39): the 64-byte bip39 seed alone, carried over from 1.x
- * - seed (algo25): the 32-byte ed25519 seed
- * - seed (falcon25): the 32-byte 25-word seed ‖ the 32-byte falcon key seed
- * - hash (falcon25): the 32-byte falcon key seed alone, carried over from 1.x
+ * - seed (bip39): 64-byte seed only, from 1.x
+ * - seed (algo25): 32-byte ed25519 seed
+ * - seed (falcon25): 32-byte 25-word seed ‖ 32-byte falcon key seed
+ * - hash (falcon25): 32-byte falcon key seed only, from 1.x
  */
 export type KeystoreForm = "entropy" | "seed" | "hash";
 
@@ -419,10 +410,9 @@ export type KeystoreMeta = Pick<KeystoreRecord, "id" | "kind" | "form">;
 
 interface KeystoreHeaderBase {
   v: 2;
-  // Identity of the master key. Kept across a password change, replaced when
-  // the master key itself is replaced (switching between modes).
+  // Master key identity: survives a password change, replaced on a mode switch.
   id: string;
-  // Bumped on every header write, so a stale writer can be detected.
+  // Bumped on every header write so a stale writer can be detected.
   gen: number;
 }
 
@@ -444,7 +434,7 @@ export type KeystoreHeader = PasswordKeystoreHeader | DeviceKeystoreHeader;
 
 export type KeystoreMode = KeystoreHeader["mode"];
 
-/** An unwrapped master key and the header id it belongs to. */
+/** `id` is the keystore header id the key belongs to. */
 export interface MasterKey {
   key: CryptoKey;
   id: string;
@@ -485,14 +475,13 @@ export interface SignDataResponseSafe extends StdSignDataResponse {
   signature: string;
 }
 
-/** What the KeystoreUnlock component exposes through its template ref. */
+/** Exposed by KeystoreUnlock through its template ref. */
 export interface Unlocker {
   /**
-   * The master key, prompting for the wallet password when needed. `fresh`
-   * always requires the typed password and ignores the session unlock.
-   * Rejects with UserCancelled when the prompt is closed.
+   * `fresh` ignores the session unlock and always prompts. Rejects with
+   * UserCancelled when the prompt is closed.
    */
   ensureMk(opts?: { fresh?: boolean }): Promise<MasterKey>;
-  /** Close an open prompt, as if the user had. */
+  /** Close an open prompt as if the user had. */
   cancel(): void;
 }

@@ -1,7 +1,6 @@
 /**
- * Local signing for every account kind that holds a secret in this browser.
- * Ledger stays in utils/signers.ts; everything else resolves here, in order:
- * passkey, keystore, then the @legacy-read 1.x stores.
+ * Signing for accounts whose secret lives in this browser (Ledger is in
+ * utils/signers.ts). Lookup order: passkey, keystore, then @legacy-read 1.x stores.
  */
 import { get } from "@/dbLute";
 import { isLocalSecret } from "@/services/accountSecret";
@@ -24,11 +23,7 @@ import algosdk, {
 } from "algosdk";
 import { generateKey, signCompressed } from "falcon-1024";
 
-/**
- * State for one signing request: the password if one was typed, the master key
- * once obtained, and decrypted signing material so a group signs with each
- * secret decrypted once. dispose() zeroes all of it.
- */
+/** Per-request cache so a group decrypts each secret once; dispose() zeroes it. */
 export class SignContext {
   pass?: string;
   private mk?: MasterKey;
@@ -103,10 +98,8 @@ async function fromKeystore(ctx: SignContext, rec: KeystoreRecord) {
 }
 
 /**
- * @legacy-read A 1.x seed record still in its old store. With a password in
- * hand, first try it as the wallet password: that runs the migration, after
- * which the seed reads from the keystore. A record that stayed behind is under
- * a different password, so decrypt it directly with what was typed.
+ * @legacy-read Trying the typed password as the wallet password runs the
+ * migration first; a record still left behind is under a different password.
  */
 async function fromLegacy(
   ctx: SignContext,
@@ -152,7 +145,6 @@ async function falconKeySeed(acct: AccountInfo, ctx: SignContext) {
 }
 
 const Signer = {
-  /** Ed25519 signature over `bytes` for an HD or Algo25 account. */
   async signBytes(acct: AccountInfo, bytes: Uint8Array, ctx: SignContext) {
     if (acct.seedId && acct.slot != null) {
       const seed = await hdSeed(acct, ctx);
@@ -178,10 +170,6 @@ const Signer = {
     return await hotSign(acct.addr, bytes);
   },
 
-  /**
-   * Falcon-1024 (compressed) signature over raw `bytes` for a Falcon account,
-   * with the public key it verifies under.
-   */
   async signFalconBytes(acct: AccountInfo, bytes: Uint8Array, ctx: SignContext) {
     if (!acct.isFalcon25) throw Error("Not a Falcon account");
     const keySeed = await falconKeySeed(acct, ctx);
@@ -193,7 +181,6 @@ const Signer = {
     }
   },
 
-  /** A transaction signer for a Falcon-1024 account. */
   async falconSigner(acct: AccountInfo, ctx: SignContext) {
     const existing = ctx.falconSigner(acct.addr);
     if (existing) return existing;
@@ -210,12 +197,7 @@ const Signer = {
     return signer;
   },
 
-  /**
-   * Whether signing as these accounts needs a password prompt first.
-   * - none: no local secret involved, or the wallet is in device mode
-   * - unlocked: password mode with a live session unlock
-   * - password: prompt, then sign with what was typed
-   */
+  /** Whether signing these accounts needs a password prompt first. */
   async gate(accts: AccountInfo[]): Promise<"none" | "unlocked" | "password"> {
     const local = accts.filter((a) => isLocalSecret(a.secret));
     if (!local.length) return "none";

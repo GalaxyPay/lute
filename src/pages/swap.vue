@@ -70,7 +70,6 @@ onMounted(async () => {
     const parsed = parseSwap(tx1, tx2);
     stxn1 = parsed.stxn1;
     const { txn1, txn2 } = parsed;
-    // switch to the swap's network
     const network = findNetwork(
       store.allNetworks,
       txn1.genesisID,

@@ -2,9 +2,8 @@ import { bytesEqual } from "@/utils/keys";
 import algosdk, { type Transaction } from "algosdk";
 
 /**
- * A peer-to-peer swap link: `tx1` is the offer, signed by its maker; `tx2` is
- * what the taker is asked to sign. The link comes from another person, so
- * everything the taker signs is checked here before it is shown.
+ * `tx1` is the maker's signed offer, `tx2` is for the taker. The link comes
+ * from another person, so what the taker signs is checked before it is shown.
  */
 export function parseSwap(tx1: string, tx2: string) {
   const stxn1 = Uint8Array.fromBase64(tx1, { alphabet: "base64url" });

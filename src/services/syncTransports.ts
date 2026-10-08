@@ -1,17 +1,9 @@
 /**
- * Channels for SyncSession. Today every channel is a Chrome runtime Port,
- * relayed by the background (src/ext/background/main.ts):
+ * SyncSession channels are runtime Ports relayed by the background. The
+ * lute.app page connects via externally_connectable, which enforces its origin.
  *
- * - the lute.app page connects to the extension through externally_connectable,
- *   which only Chromium supports and which enforces the page's origin;
- * - extension pages (side panel, options) connect to the background.
- *
- * A Firefox build would need a different page-side channel (the content-script
- * relay in src/ext/contentScripts carries dApp requests the same way). It only
- * has to produce a SyncTransport; SyncSession does not change.
- *
- * Every browser.* reference lives inside a function only extension pages call,
- * because `browser` is only auto-imported in extension builds.
+ * browser.* is referenced only inside functions extension pages call, because
+ * `browser` is only auto-imported in extension builds.
  */
 import { SYNC_BROWSER_WINDOW, syncWindowBounds } from "@/ext/syncWindow";
 import {
@@ -30,10 +22,7 @@ interface PortLike {
   disconnect(): void;
 }
 
-/**
- * A SyncTransport over a Port. Messages that arrive before a handler is
- * attached are kept, so nothing sent early is lost.
- */
+/** Buffers messages that arrive before a handler is attached. */
 export function portTransport(port: PortLike): SyncTransport {
   let handler: ((m: SyncMessage) => void) | undefined;
   let onClosed: (() => void) | undefined;
@@ -76,9 +65,8 @@ export function extensionId() {
 }
 
 /**
- * The web app's side. Without a token the web app is sending and the
- * extension opens its side panel to receive. With one, the extension started
- * the sync and this page receives.
+ * Without a token the web app sends and the extension opens its side panel to
+ * receive; with one, the extension started the sync and this page receives.
  */
 export function webTransport(token?: string) {
   const id = extensionId();
@@ -99,14 +87,9 @@ export function receiverTransport(tabId: number) {
 }
 
 /**
- * An extension page starting a sync: get a one-time token from the background,
- * open the web app with it over this window, and wait for the page to connect
- * back. Returns `close` so the sender can close that window when done.
- *
- * The window is opened with window.open, as a popup: Chrome gives those a
- * read-only address bar, which shows the user this is the web app.
- * chrome.windows.create popups have none. If the popup is blocked, a small
- * normal window (with full browser controls) is used instead.
+ * Uses a window.open popup because Chrome gives those a read-only address bar
+ * showing the user this is the web app; chrome.windows.create popups have
+ * none. A blocked popup falls back to a small normal window.
  */
 export async function extensionSenderTransport(webOrigin: string) {
   const port = browser.runtime.connect({ name: "lute-sync-ext" }) as PortLike;

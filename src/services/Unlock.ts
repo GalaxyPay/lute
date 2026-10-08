@@ -32,8 +32,7 @@ interface UnlockState {
   // and in a memory-only area readable solely by trusted extension contexts the
   // distinction buys nothing.
   mk: string;
-  // Header id the key belongs to, so a key from before a mode switch in
-  // another context is never used against the new keystore.
+  // So a key from before a mode switch in another context is never used.
   id: string;
   expiresAt: number;
   hardExpiresAt: number;
@@ -100,7 +99,6 @@ const Unlock = {
     return true;
   },
 
-  /** The cached master key, if the wallet is unlocked for this header id. */
   async get(id: string): Promise<MasterKey | undefined> {
     if (!(await this.isUnlocked())) return undefined;
     const state = await read();
@@ -113,7 +111,7 @@ const Unlock = {
     }
   },
 
-  /** Start (or restart) an unlock window for a freshly unwrapped master key. */
+  /** Replaces any live window. The caller zeroes `raw`. */
   async unlock(raw: Uint8Array, id: string) {
     const store = useAppStore();
     if (!this.enabled()) return;

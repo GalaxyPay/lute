@@ -1,9 +1,8 @@
 import type { Network } from "@/types";
 
 /**
- * The network a request names by genesis id and, when it carries one, genesis
- * hash. A network with no recorded hash matches any. "sandnet-v1" is the
- * legacy name of the dockernet genesis.
+ * A network with no recorded hash matches any. "sandnet-v1" is the legacy
+ * name of the dockernet genesis.
  */
 export function findNetwork(
   networks: Network[],
@@ -30,10 +29,8 @@ function validClient(c: any) {
 }
 
 /**
- * Why a network a dapp asks to add cannot be added, or undefined if it can.
- * `existing` is every network the wallet already knows. A dapp may only add
- * new networks: overriding a known genesisID's node is for the user alone, in
- * Settings > Custom Networks.
+ * A dapp may only add new networks: overriding a known genesisID's node is for
+ * the user alone, in Settings > Custom Networks.
  */
 export function networkError(
   network: unknown,

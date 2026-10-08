@@ -1,13 +1,7 @@
-// Empty signatures for the connect reply: how each connected account signs,
-// with placeholder bytes, so a dapp can simulate fees with correctly shaped
-// signatures (use-wallet `WalletAccount.emptySignature`).
-//
-// Wire format: base64 of the canonical msgpack encoding of a SignedTransaction
-// with the `txn` field removed. A single ed25519 key encodes as an empty map
-// ("gA=="), a rekeyed account adds `sgnr`, a multisig carries `msig` with the
-// member keys and no signatures, and a Falcon account carries `pqsig` with its
-// public key and an empty signature. An account left out is of unknown type.
-//
+// Empty signatures (use-wallet `WalletAccount.emptySignature`) let a dapp
+// simulate fees with correctly shaped signatures before any are made.
+// Wire format: base64 canonical msgpack of a SignedTransaction minus `txn`;
+// plain ed25519 is "gA==". An account left out is of unknown type.
 // Kept free of the store and network so it can be tested on its own.
 import type { AccountInfo, MultisigMetadata } from "@/types";
 import algosdk, { SignedTransaction, type EncodedMultisig } from "algosdk";
@@ -20,7 +14,7 @@ export type EmptySignatureFields = {
 
 let placeholderTxn: algosdk.Transaction | undefined;
 
-/** A throwaway txn to carry the signature fields through algosdk's codec. */
+/** Only exists so algosdk's codec will encode the signature fields. */
 function getPlaceholderTxn() {
   placeholderTxn ??= algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     sender: algosdk.ALGORAND_ZERO_ADDRESS_STRING,
@@ -38,7 +32,6 @@ function getPlaceholderTxn() {
   return placeholderTxn;
 }
 
-/** Encode signature fields as an empty signature (see the format above). */
 export function encodeEmptySignature(fields: EmptySignatureFields) {
   const stxn = new SignedTransaction({ ...fields, txn: getPlaceholderTxn() });
   const map = algosdk.msgpackRawDecodeAsMap(algosdk.encodeMsgpack(stxn)) as Map<
@@ -49,18 +42,11 @@ export function encodeEmptySignature(fields: EmptySignatureFields) {
   return algosdk.msgpackRawEncode(map).toBase64();
 }
 
-/** Loads an ARC-55 app's multisig parameters, or undefined if it cannot. */
 export type MsigLoader = (
   appId: bigint
 ) => Promise<MultisigMetadata | undefined>;
 
-/**
- * The signature fields of the account that authorizes `addr`'s transactions,
- * found among Lute's own account entries. Undefined when Lute cannot say how
- * it signs: a watch account, an authorizer Lute does not hold, a Falcon
- * account whose public key is not recorded yet, or a multisig whose
- * parameters cannot be loaded or do not match its address.
- */
+/** Undefined when Lute cannot say how the authorizer signs. */
 async function authorizerFields(
   authAddr: string,
   accts: AccountInfo[],
@@ -107,13 +93,7 @@ async function authorizerFields(
   return undefined;
 }
 
-/**
- * Empty signatures for the connecting accounts, keyed by address. `accts` is
- * Lute's account list as shown on the connect page; each address is described
- * by the account that authorizes it on chain. An account Lute cannot describe
- * is left out (unknown type), and a failure for one account never affects the
- * others.
- */
+/** Accounts Lute cannot describe are left out; one failure never affects the others. */
 export async function emptySignatures(
   addrs: string[],
   accts: AccountInfo[],

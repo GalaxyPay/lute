@@ -1,6 +1,5 @@
-// Pure classification of where an account's signing secret lives. No store or
-// database access, so the Pinia getter, the sign gate, backup and the tests all
-// share one definition.
+// No store or database access, so the Pinia getter, the sign gate, backup and
+// the tests share one definition.
 import type {
   FalconSeedData,
   KeystoreKind,
@@ -23,12 +22,12 @@ export function isHd(acct: AccountRef) {
   return !!acct.seedId && acct.slot != null;
 }
 
-/** The keystore id an account's secret is (or would be) stored under. */
+/** The id is valid whether or not the secret is stored yet. */
 export function keystoreId(kind: KeystoreKind, acct: AccountRef) {
   return kind === "bip39" ? `bip39:${acct.seedId}` : `${kind}:${acct.addr}`;
 }
 
-/** The secret kind of an account that holds one locally, else undefined. */
+/** Undefined unless the secret is held locally. */
 export function secretKind(
   acct: AccountRef,
   c: SecretContext

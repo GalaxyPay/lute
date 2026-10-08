@@ -77,8 +77,8 @@ import { mdiClose } from "@mdi/js";
 const props = defineProps<{
   side: WalletSide;
   role: "send" | "receive";
-  // Sending: the master key, unlocked by the caller before this opens, so
-  // its password prompt is not competing with this dialog for focus.
+  // Sending: unlocked by the caller first so its password prompt doesn't
+  // compete with this dialog for focus.
   mk?: MasterKey;
   // Receiving on web: the one-time token from the extension's link.
   token?: string;
@@ -96,7 +96,6 @@ const result = ref<{ summary: string; skipped: Skipped[]; warning?: string }>();
 const error = ref<string>();
 const finished = computed(() => !!result.value || !!error.value);
 let transport: SyncTransport | undefined;
-// Closes the window the extension opened for the web app, when it sends.
 let closeWebWindow: (() => void) | undefined;
 let answerConfirm: ((ok: boolean) => void) | undefined;
 
@@ -151,8 +150,6 @@ function upgradedNote(n: number) {
 }
 
 async function send(onState: (s: SenderState) => void) {
-  // Unlocked by the caller while its window was in front; the keys only
-  // leave after the other side confirms.
   const mk = props.mk;
   if (!mk) throw Error("The wallet is locked.");
   if (props.side === "web") transport = webTransport();
@@ -198,7 +195,7 @@ async function receive(onState: (s: ReceiverState) => void) {
     summary: `${added} account${added === 1 ? "" : "s"} added.${upgradedNote(upgraded)}`,
     skipped,
   };
-  // The sender shows the full result; this window has done its job.
+  // The sender shows the full result.
   emit("done");
 }
 

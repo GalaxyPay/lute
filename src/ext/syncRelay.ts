@@ -1,23 +1,15 @@
 /**
- * Sync relay, run by the background. One wallet (web or extension) sends its
- * accounts to the other; this only pairs the two ports and passes their
- * messages through. The payload is encrypted end to end
- * (src/services/SyncSession.ts), so nothing here can read it.
+ * Sync relay in the background: pairs two ports and passes messages through.
+ * The payload is end-to-end encrypted (SyncSession), so nothing here can read
+ * it.
  *
- * - The web app sends: lute.app connects "lute-sync" through
- *   externally_connectable, and the extension opens a receiver page that
- *   connects back as "lute-sync-receiver:<tabId>".
- * - The extension sends: its page connects "lute-sync-ext" and gets a one-time
- *   token, then opens lute.app with it. That page connects "lute-sync:<token>".
+ * A Port drops messages sent while no listener is attached, and the first port
+ * talks before its other half exists, so a waiting port's messages are held
+ * until it is paired.
  *
- * The first port starts talking before its other half exists, and a Port drops
- * messages that arrive while no listener is attached, so a waiting port's
- * messages are held here and delivered once it is paired.
- *
- * Origins are checked here as well as by Chrome. A token is single use and
- * expires, so a link from another site cannot start a session. Only one
- * session runs at a time. State lives in memory: if the worker restarts, its
- * ports close and both sides see the sync end.
+ * Origins are checked here as well as by Chrome. Tokens are single use and
+ * expire so a link from another site can't start a session. State is in
+ * memory: a worker restart closes the ports and both sides see the sync end.
  *
  * No browser APIs: the background passes its Ports in, so this is testable.
  */
@@ -36,7 +28,6 @@ export interface RelayPort {
 
 export interface RelayOptions {
   origins: string[];
-  /** Open the extension page that receives a sync from web tab `tabId`. */
   openReceiver: (tabId: number) => void | Promise<void>;
   ttlMs?: number;
   newToken?: () => string;
@@ -119,7 +110,6 @@ export function createSyncRelay(opts: RelayOptions) {
     return entry;
   }
 
-  /** Join a port that waited with one that just connected. */
   function pair(waited: Waiting, b: RelayPort) {
     const a = waited.port;
     const ports = [a, b];
@@ -174,9 +164,8 @@ export function createSyncRelay(opts: RelayOptions) {
     },
 
     /**
-     * A receiver window for web tab `tabId`, opened at `openedAt`, closed. If
-     * it never connected, release the web app's wait instead of holding it to
-     * the TTL. A wait that began after it opened belongs to a later window.
+     * Releases the web app's wait now rather than at the TTL if the receiver
+     * never connected. A wait newer than `openedAt` belongs to a later window.
      */
     receiverClosed(tabId: number, openedAt: number) {
       const web = waitingWeb.get(tabId);
@@ -185,7 +174,7 @@ export function createSyncRelay(opts: RelayOptions) {
       refuse(web.port, "closed", "The extension window was closed.");
     },
 
-    /** A port from an extension page. Returns false if it is not a sync port. */
+    /** Returns false for a non-sync port. */
     internal(port: RelayPort) {
       if (port.name === "lute-sync-ext") {
         if (busy())

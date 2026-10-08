@@ -183,7 +183,7 @@ async function beginHandler() {
     if (await luteTxns.value.validateNetwork()) await finishHandler();
     return;
   }
-  // wait for refresh to complete before proceeding, once
+  // validateNetwork may trigger a refresh; finish only after it settles.
   const stop = watch(
     () => store.loading,
     (val) => {

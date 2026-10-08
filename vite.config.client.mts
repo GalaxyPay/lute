@@ -3,9 +3,8 @@ import { sharedConfig } from "./vite.config.ext.mjs";
 import { isDev, r } from "./scripts/utils.js";
 import packageJson from "./package.json" with { type: "json" };
 
-// Bundles the MAIN-world client script (window.lute) for `pnpm devx`. The
-// manifest requires dist/assets/client.js, which the dev server never writes;
-// production builds produce it from the `client` entry in vite.config.ext.mts.
+// For `pnpm devx`: the manifest needs dist/assets/client.js, which the dev
+// server never writes (production builds get it from vite.config.ext.mts).
 export default defineConfig({
   ...sharedConfig,
   define: {

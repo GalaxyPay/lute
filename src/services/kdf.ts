@@ -2,9 +2,9 @@
 // cache). Kept in its own module so neither has to import the other.
 
 // Current parameters. Bumping `iterations` (or later, `alg`) here is safe:
-// the keystore header and every 1.x seed record carry the values they were
-// written with. The header picks up new values the next time the password is
-// set or changed; 1.x records are only read, then moved into the keystore.
+// the keystore header and every 1.x record carry the values they were written
+// with. The header picks up new values when the password is next set or
+// changed; 1.x records are only read.
 export const KDF = {
   alg: "pbkdf2-sha256",
   iterations: 600_000,
@@ -131,9 +131,8 @@ export async function legacyVerifierHash(pass: string, salt: Uint8Array) {
 }
 
 /**
- * Lower the PBKDF2 cost for unit tests only; 600k iterations per derivation
- * would make the suite take minutes. Records carry their own iteration count,
- * so a lowered value can never be mistaken for the real one at read time.
+ * Tests only: 600k iterations per derivation makes the suite take minutes.
+ * Records carry their own count, so a lowered value is never misread.
  */
 export function setKdfIterationsForTests(iterations: number) {
   KDF.iterations = iterations;
@@ -146,22 +145,19 @@ export function randomBytes(n: number) {
 const enc = new TextEncoder();
 
 /**
- * Additional data for a keystore record. Binding kind and form as well as the
- * id means a record relabelled from one-way material to exportable material
- * fails its tag check instead of exporting a phrase that restores nothing.
+ * Binding kind and form, not just id, makes a one-way record relabelled as
+ * exportable fail its tag check instead of exporting a useless phrase.
  */
 export function keystoreAad(kind: string, form: string, id: string) {
   return enc.encode(`lute-keystore:${kind}:${form}:${id}`);
 }
 
-/** Additional data for the wrapped master key, bound to its header id. */
 export function mkAad(id: string) {
   return enc.encode(`lute-keystore:mk:${id}`);
 }
 
 /**
- * Import raw master key bytes. Non-extractable unless the session unlock cache
- * needs the bytes, in which case the caller already holds them anyway.
+ * Extractable only for the unlock cache, whose caller holds the bytes anyway.
  */
 export async function importMk(raw: Uint8Array, extractable = false) {
   return await crypto.subtle.importKey(
@@ -173,7 +169,7 @@ export async function importMk(raw: Uint8Array, extractable = false) {
   );
 }
 
-/** A fresh master key that can never leave WebCrypto, for device mode. */
+/** Non-extractable: a device-mode key never leaves WebCrypto. */
 export async function generateDeviceMk() {
   return await crypto.subtle.generateKey(
     { name: "AES-GCM", length: 256 },

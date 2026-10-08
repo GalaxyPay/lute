@@ -1,10 +1,6 @@
 /**
- * ARC-59 asset inbox: send an asset to an account that has not opted in to
- * it, by way of the network's inbox router, and claim or reject one waiting
- * in this account's inbox.
- *
- * These build the unsigned, unpriced txns only. Callers price them for the
- * signing account (priceTxns), sign and send, as for any other group.
+ * ARC-59 asset inbox. Builds unsigned, unpriced txns only; callers price them
+ * for the signing account (priceTxns), sign and send as for any other group.
  */
 import { Arc59Factory } from "@/clients/Arc59Client";
 import Algo from "@/services/Algo";
@@ -42,14 +38,13 @@ export interface InboxSend {
   assetSender?: string;
 }
 
-/** What a claim must cover: the inbox account's balance and minimum. */
 export interface InboxBalance {
   amount: bigint;
   minBalance: bigint;
 }
 
 const Inbox = {
-  /** Whether sending this asset to `receiver` has to go through the inbox. */
+  /** Whether a send to `receiver` must go through the inbox. */
   async needed(receiver: string, assetId: bigint) {
     const store = useAppStore();
     if (!store.network.inboxRouter) return false;
@@ -57,7 +52,6 @@ const Inbox = {
     return !info.assets?.some((a) => a.assetId === assetId);
   },
 
-  /** The group that delivers an asset to `receiver`'s inbox. */
   async sendTxns(s: InboxSend) {
     const appClient = router(s.sender);
     const suggestedParams = await Algo.algod.getTransactionParams().do();
@@ -71,7 +65,7 @@ const Inbox = {
     ).returns[0];
     if (!info) throw Error("Simulate Failed");
     const [itxns, mbr, routerOptedIn, , receiverAlgoNeededForClaim] = info;
-    // Algo for the receiver to claim with, plus the fee of that claim.
+    // Plus the fee of the claim itself.
     const receiverAlgo = receiverAlgoNeededForClaim
       ? receiverAlgoNeededForClaim + 2000n
       : 0n;
@@ -87,7 +81,6 @@ const Inbox = {
       closeRemainderTo: s.closeRemainderTo,
       assetSender: s.assetSender,
     });
-    // The router's minimum balance increase and the receiver's claim funds.
     if (mbr || receiverAlgo)
       composer.addTransaction(
         algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -101,8 +94,7 @@ const Inbox = {
     if (!routerOptedIn) composer.arc59OptRouterIn({ args: { asa: s.assetId } });
     // Sending claim funds is one more inner txn.
     const totalItxns = itxns + (receiverAlgo === 0n ? 0n : 1n);
-    // A starting point for the simulate that populates resources; priceTxns
-    // then sets the exact fee.
+    // Only a starting point for the resource simulate; priceTxns sets the real fee.
     const fee = Number(
       suggestedParams.minFee + totalItxns * 1000n
     ).microAlgos();
@@ -127,10 +119,8 @@ const Inbox = {
   },
 
   /**
-   * The group that moves an asset from the claimer's inbox to the claimer.
-   * Price it with `feeIndexes`: a new account holds no Algo until the claim
-   * pays out its inbox's Algo, so only the claim itself, after that payout,
-   * may carry added fees (pricing raises the others in its simulate too).
+   * Price with `feeIndexes`: a new account holds no Algo until the claim pays
+   * out its inbox's Algo, so only the final claim txn may carry added fees.
    */
   async claimTxns(
     claimer: string,
@@ -169,7 +159,7 @@ const Inbox = {
     return { txns, feeIndexes: [txns.length - 1] };
   },
 
-  /** The group that sends an asset in the claimer's inbox back to its creator. */
+  /** ARC-59 reject returns the asset to its creator. */
   async rejectTxns(claimer: string, assetId: bigint) {
     const suggestedParams = await Algo.algod.getTransactionParams().do();
     const fee = (Number(suggestedParams.minFee) + 2000).microAlgos();

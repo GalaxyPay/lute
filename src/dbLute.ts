@@ -14,7 +14,6 @@ import {
   openDB,
 } from "idb";
 
-/** Format version stamped on every LuteAccount record. */
 export const ACCOUNT_VERSION = 2;
 
 interface LuteDB extends DBSchema {
@@ -63,7 +62,6 @@ interface LuteDB extends DBSchema {
   };
 }
 
-/** Stamp the current format version onto account records that lack one. */
 export function stampAccounts(accounts: LuteAccount[]) {
   return accounts.map((a) => (a.v ? a : { ...a, v: ACCOUNT_VERSION }));
 }
@@ -89,22 +87,20 @@ const dbLute = openDB<LuteDB>("lute", 4, {
       db.createObjectStore("falcon25-seeds");
     }
     if (oldVersion < 4) {
-      // Only IndexedDB requests may be awaited in here: the versionchange
-      // transaction commits as soon as the event loop yields without one, so
-      // anything needing crypto (creating the keystore header) happens later.
+      // Only IndexedDB requests may be awaited here: the versionchange
+      // transaction commits once the event loop yields without one, so the
+      // keystore header (which needs crypto) is created later.
       db.createObjectStore("keystore");
       const app = tx.objectStore("app");
       const accounts: LuteAccount[] | undefined = await app.get("accounts");
       if (accounts) await app.put(stampAccounts(accounts), "accounts");
-      // bip39 keystore ids continue the numbering of the seeds store, so every
-      // LuteAccount.seedId that exists today keeps pointing at its seed.
+      // Continue the seeds store's numbering so existing seedIds stay valid.
       const seedIds = await tx.objectStore("seeds").getAllKeys();
       await app.put(Math.max(0, ...seedIds) + 1, "nextSeedId");
     }
   },
   blocked() {
-    // An older build in another tab still holds the v3 connection open, and
-    // this one cannot load until it lets go.
+    // An older build in another tab holds the v3 connection open.
     const message = "Close other Lute tabs to finish updating.";
     console.warn(`[Lute] ${message}`);
     try {
@@ -114,8 +110,7 @@ const dbLute = openDB<LuteDB>("lute", 4, {
     }
   },
   blocking() {
-    // A newer build wants to upgrade. Release the connection and reload into it
-    // rather than keep running against a schema that is about to change.
+    // Reload into the newer build rather than run against a changing schema.
     dbLute.then((db) => db.close());
     globalThis.location?.reload();
   },
@@ -153,8 +148,7 @@ export async function set(
   key: StoreKey<LuteDB, StoreNames<LuteDB>> | undefined,
   val: any
 ) {
-  // Every writer of the account list goes through here, so this is the one
-  // place new records get their format version.
+  // Every account list writer goes through here, so new records are stamped.
   if (storeName === "app" && key === "accounts") val = stampAccounts(val);
   const res = await (await dbLute).put(storeName, val, key);
   if (cached(storeName)) await Sync.bump();
@@ -173,10 +167,7 @@ export async function keys(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAllKeys(storeName);
 }
 
-/**
- * Raised inside a keystoreTx when what the caller prepared against no longer
- * matches the database. Nothing has been written when it surfaces.
- */
+/** Thrown from a keystoreTx body on drift. Nothing has been written. */
 export class KeystoreConflict extends Error {
   constructor(message = "The wallet changed in another window. Try again.") {
     super(message);
@@ -199,14 +190,12 @@ export type KeystoreTx = IDBPTransaction<
 >;
 
 /**
- * Run `body` in one readwrite transaction over every store that holds secrets
- * or the account list, so a change that spans them lands whole or not at all.
+ * Spans every store holding secrets or the account list, so a change lands
+ * whole or not at all.
  *
- * All crypto must be finished BEFORE calling this. An IndexedDB transaction
- * auto-commits as soon as the event loop yields with no pending request, so
- * `body` may await IndexedDB requests on `tx` and nothing else. It should
- * re-read whatever it prepared against and throw KeystoreConflict on drift:
- * that aborts the transaction and nothing is written.
+ * Finish all crypto first: IndexedDB auto-commits once the event loop yields
+ * with no pending request, so `body` may await only requests on `tx`. It
+ * should re-read what it prepared against and throw KeystoreConflict on drift.
  */
 export async function keystoreTx<T>(
   body: (tx: KeystoreTx) => Promise<T>
@@ -215,7 +204,7 @@ export async function keystoreTx<T>(
     [...KEYSTORE_TX_STORES],
     "readwrite"
   ) as KeystoreTx;
-  // Observed here so an abort is not also reported as an unhandled rejection.
+  // Observed now so an abort isn't also an unhandled rejection.
   const done = tx.done.then(
     () => undefined,
     (err) => err ?? Error("Transaction aborted")
