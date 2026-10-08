@@ -62,6 +62,9 @@ const accts = ref<Account[]>();
 const accounts = ref<modelsv2.Account[]>([]);
 const emit = defineEmits(["close"]);
 
+// The exported keys are secrets: zero them once this is done with them.
+onBeforeUnmount(() => accts.value?.forEach((a) => a.sk.fill(0)));
+
 onMounted(async () => {
   try {
     loading.value = true;
@@ -95,6 +98,7 @@ onMounted(async () => {
 });
 
 async function addAccounts() {
+  const plaintexts: Uint8Array[] = [];
   try {
     const add = (selected.value as string[])
       .filter((a) => !store.accounts.some((acct) => acct.addr === a))
@@ -106,12 +110,16 @@ async function addAccounts() {
     const mk = await unlocker.value!.ensureMk();
     await Keystore.putSecrets(
       mk,
-      add.map((acct) => ({
-        kind: "algo25" as const,
-        form: "seed" as const,
-        id: `algo25:${acct.addr}`,
-        plaintext: acct.sk.slice(0, 32),
-      })),
+      add.map((acct) => {
+        const plaintext = acct.sk.slice(0, 32);
+        plaintexts.push(plaintext);
+        return {
+          kind: "algo25" as const,
+          form: "seed" as const,
+          id: `algo25:${acct.addr}`,
+          plaintext,
+        };
+      }),
       {
         accounts: (current: LuteAccount[]) =>
           current.concat(
@@ -129,6 +137,8 @@ async function addAccounts() {
     if (isCancelled(err)) return;
     console.error(err);
     store.setSnackbar(err.message, "error");
+  } finally {
+    plaintexts.forEach((p) => p.fill(0));
   }
 }
 </script>

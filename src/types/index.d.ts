@@ -493,4 +493,6 @@ export interface Unlocker {
    * Rejects with UserCancelled when the prompt is closed.
    */
   ensureMk(opts?: { fresh?: boolean }): Promise<MasterKey>;
+  /** Close an open prompt, as if the user had. */
+  cancel(): void;
 }

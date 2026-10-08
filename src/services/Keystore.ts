@@ -59,6 +59,9 @@ import type {
 } from "@/types";
 import {
   badPassword,
+  bs,
+  bytesEqual,
+  concatBytes as concat,
   falconKeyFromKeySeed,
   getFalconAddress,
   getFalconKey,
@@ -76,22 +79,8 @@ import { wordlist } from "@scure/bip39/wordlists/english.js";
 import algosdk, { FALCON_1024_SCHEME } from "algosdk";
 
 const BIP39_SEED_BYTES = 64;
+const BIP39_ENTROPY_BYTES = 32;
 const SEED_ID_DRIFT = "Seed id moved";
-
-// WebCrypto's BufferSource typing rejects Uint8Array<ArrayBufferLike>; every
-// array passed through here is backed by a plain ArrayBuffer.
-const bs = (u: Uint8Array) => u as Uint8Array<ArrayBuffer>;
-
-function concat(a: Uint8Array, b: Uint8Array) {
-  const out = new Uint8Array(a.length + b.length);
-  out.set(a);
-  out.set(b, a.length);
-  return out;
-}
-
-function sameBytes(a: Uint8Array, b: Uint8Array) {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
-}
 
 function newId() {
   return randomBytes(16).toHex();
@@ -107,7 +96,8 @@ function sameKeys<T>(current: T[], expected: T[]) {
 export function validLength(kind: KeystoreKind, form: KeystoreForm, n: number) {
   switch (`${kind}/${form}`) {
     case "bip39/entropy":
-      return [16, 20, 24, 28, 32].includes(n - BIP39_SEED_BYTES);
+      // 24 words only.
+      return n - BIP39_SEED_BYTES === BIP39_ENTROPY_BYTES;
     case "bip39/seed":
       return n === BIP39_SEED_BYTES;
     case "algo25/seed":
@@ -153,6 +143,10 @@ export function plaintextFromMnemonic(kind: KeystoreKind, mn: string) {
     case "bip39": {
       if (!bip39.validateMnemonic(mn, wordlist)) throw Error("Invalid Mnemonic");
       const entropy = bip39.mnemonicToEntropy(mn, wordlist);
+      if (entropy.length !== BIP39_ENTROPY_BYTES) {
+        entropy.fill(0);
+        throw Error("Invalid Mnemonic");
+      }
       const seed = bip39.mnemonicToSeedSync(mn);
       const plaintext = concat(entropy, seed);
       entropy.fill(0);
@@ -673,7 +667,7 @@ const Keystore = {
         const pt = await decryptRecord(mk, rec);
         const other = signingMaterial("bip39", rec.form, pt);
         pt.fill(0);
-        const same = sameBytes(seed, other);
+        const same = bytesEqual(seed, other);
         other.fill(0);
         if (same) return rec.id;
       }
@@ -719,35 +713,49 @@ const Keystore = {
           return accts.every((a) => getFalconAddress(mn).toString() === a.addr);
         case "bip39": {
           if (!bip39.validateMnemonic(mn, wordlist)) return false;
-          const seed = Buffer.from(bip39.mnemonicToSeedSync(mn));
-          const root = fromSeed(seed);
-          seed.fill(0);
-          const api = new XHDWalletAPI();
+          const seed = bip39.mnemonicToSeedSync(mn);
           try {
-            for (const a of accts) {
-              if (a.slot == null) return false;
-              if (a.xpub) {
-                const xpub = await api.deriveKey(
-                  root,
-                  [harden(44), harden(283), harden(a.slot), 0],
-                  false,
-                  BIP32DerivationType.Peikert
-                );
-                if (xpub.toBase64() !== a.xpub) return false;
-              } else {
-                const pk = await api.keyGen(root, KeyContext.Address, a.slot, 0);
-                if (new algosdk.Address(pk).toString() !== a.addr) return false;
-              }
-            }
-            return true;
+            return await this.seedMatches(seed, accts);
           } finally {
-            root.fill(0);
+            seed.fill(0);
           }
         }
       }
     } catch {
       // A bad checksum or an unknown word: not a match.
       return false;
+    }
+  },
+
+  /**
+   * Whether every account derives from this 64-byte bip39 seed: its stored
+   * xpub, or its address when there is none.
+   */
+  async seedMatches(seed: Uint8Array, accts: LuteAccount[]) {
+    if (!accts.length) return false;
+    const copy = Buffer.from(seed);
+    const root = fromSeed(copy);
+    copy.fill(0);
+    const api = new XHDWalletAPI();
+    try {
+      for (const a of accts) {
+        if (a.slot == null) return false;
+        if (a.xpub) {
+          const xpub = await api.deriveKey(
+            root,
+            [harden(44), harden(283), harden(a.slot), 0],
+            false,
+            BIP32DerivationType.Peikert
+          );
+          if (xpub.toBase64() !== a.xpub) return false;
+        } else {
+          const pk = await api.keyGen(root, KeyContext.Address, a.slot, 0);
+          if (new algosdk.Address(pk).toString() !== a.addr) return false;
+        }
+      }
+      return true;
+    } finally {
+      root.fill(0);
     }
   },
 

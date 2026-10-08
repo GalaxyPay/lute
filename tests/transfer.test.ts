@@ -2,7 +2,14 @@
 import algosdk from "algosdk";
 import { describe, expect, it } from "vitest";
 import type { TransferPayload } from "@/services/Transfer";
-import { FALCON_MN, falconAddress } from "./fixtures/v3db";
+import {
+  FALCON_MN,
+  falconAddress,
+  HD_MN,
+  HD_OTHER_MN,
+  HD2_MN,
+  hdAccount,
+} from "./fixtures/v3db";
 import { fresh } from "./helpers";
 
 const HOT = algosdk.mnemonicFromSeed(new Uint8Array(32).fill(31));
@@ -96,5 +103,88 @@ describe("fresh secrets must sign for their account", () => {
 
     expect(addrs).toEqual([FALCON_ADDR]);
     expect(result.skipped.map((x) => x.addr)).toContain(HOT_ADDR);
+  });
+});
+
+describe("HD seeds", () => {
+  /** A wallet holding `mn` with accounts at `slots`. Returns its seed id. */
+  async function hdWallet(
+    env: Awaited<ReturnType<typeof fresh>>,
+    mn: string,
+    slots: number[]
+  ) {
+    const accts = await Promise.all(slots.map((s) => hdAccount(mn, s)));
+    const mk = await env.Keystore.getMk();
+    const id = await env.Keystore.storeMnemonic(mk, "bip39", mn, {
+      accounts: (cur, ids) => {
+        const seedId = Number(ids[0]!.split(":")[1]);
+        return [...cur, ...accts.map((a, ix) => ({ ...a, slot: slots[ix]!, seedId }))];
+      },
+    });
+    return Number(id.split(":")[1]);
+  }
+
+  async function hdSent(mn: string, slots: number[]) {
+    const env = await fresh();
+    await hdWallet(env, mn, slots);
+    return await env.Transfer.buildPayload(await env.Keystore.getMk(), {
+      from: "web",
+      appVersion: "t",
+    });
+  }
+
+  it("sends only the secrets its accounts use", async () => {
+    const env = await fresh();
+    await hdWallet(env, HD_MN, [0]);
+    const mk = await env.Keystore.getMk();
+    // A seed whose accounts were all removed stays in the keystore.
+    await env.Keystore.storeMnemonic(mk, "bip39", HD2_MN);
+    const payload = await env.Transfer.buildPayload(mk, {
+      from: "web",
+      appVersion: "t",
+    });
+    expect(payload.secrets.map((s) => s.id)).toEqual(["bip39:1"]);
+  });
+
+  it("joins a seed the receiver already holds with no account in common", async () => {
+    const payload = await hdSent(HD_MN, [1]);
+    const env = await fresh();
+    const mine = await hdWallet(env, HD_MN, [0]);
+    const result = await env.Transfer.addPayload(
+      await env.Keystore.getMk(),
+      payload
+    );
+    expect(result.added).toBe(1);
+    const recs = ((await env.db.getAll("keystore")) as any[]).filter(
+      (r) => r.kind === "bip39"
+    );
+    expect(recs.map((r) => r.id)).toEqual([`bip39:${mine}`]);
+    const accounts: any[] = await env.db.get("app", "accounts");
+    expect(accounts.map((a) => a.seedId)).toEqual([mine, mine]);
+  });
+
+  it("skips an HD account that does not derive from the seed sent", async () => {
+    const payload = await hdSent(HD_MN, [0]);
+    const stray = await hdAccount(HD_OTHER_MN, 2);
+    payload.accounts.push({ ...stray, slot: 2, seedId: 1 });
+    const { result, addrs } = await receive(payload);
+    expect(result.added).toBe(1);
+    expect(addrs).not.toContain(stray.addr);
+    expect(result.skipped).toContainEqual({
+      addr: stray.addr,
+      reason: "Its key does not match its address",
+    });
+  });
+
+  it("reports an HD account whose seed was not sent", async () => {
+    const payload = await hdSent(HD_MN, [0]);
+    payload.secrets = [];
+    const { result, addrs } = await receive(payload);
+    expect(result.added).toBe(0);
+    expect(addrs).toEqual([]);
+    expect(result.skipped).toContainEqual({
+      addr: payload.accounts[0]!.addr,
+      reason: "Its seed was not sent",
+    });
   });
 });

@@ -107,6 +107,7 @@ async function run(
   opts: {
     confirm?: () => Promise<boolean>;
     receiverGetMk?: () => Promise<any>;
+    abandon?: () => void;
   } = {}
 ) {
   const [toB, toA] = pairedTransports();
@@ -122,6 +123,7 @@ async function run(
   const received = b.SyncSession.runReceiver("ext", toA, {
     confirm: opts.confirm ?? (async () => true),
     getMk: receiverGetMk,
+    abandon: opts.abandon,
   });
   return { sent, received, payloadSent, receiverGetMk, toA, toB };
 }
@@ -256,6 +258,43 @@ describe("one-way sync", () => {
     expect(out.sent).toMatchObject({ name: "SyncError" });
     expect(out.received).toMatchObject({ code: "closed" });
     expect(await snapshot(b)).toEqual(beforeB);
+  });
+
+  it("stops waiting on the user when the sender cancels during confirm", async () => {
+    const a = await senderWallet();
+    const b = await receiverWallet();
+    const beforeB = await snapshot(b);
+    const abandon = vi.fn();
+    const session: Awaited<ReturnType<typeof run>> = await run(a, b, {
+      abandon,
+      // The user never answers.
+      confirm: () => {
+        session.toB.send({ t: "error", code: "cancelled", message: "Bye." });
+        session.toB.close();
+        return new Promise(() => {});
+      },
+    });
+    const out = await settle(session);
+    expect(out.received).toMatchObject({ code: "cancelled", message: "Bye." });
+    expect(abandon).toHaveBeenCalledOnce();
+    expect(session.receiverGetMk).not.toHaveBeenCalled();
+    expect(await snapshot(b)).toEqual(beforeB);
+  });
+
+  it("stops waiting on the unlock when the sender's window closes", async () => {
+    const a = await senderWallet();
+    const b = await receiverWallet();
+    const abandon = vi.fn();
+    const session: Awaited<ReturnType<typeof run>> = await run(a, b, {
+      abandon,
+      receiverGetMk: () => {
+        session.toB.close();
+        return new Promise(() => {});
+      },
+    });
+    const out = await settle(session);
+    expect(out.received).toMatchObject({ code: "closed" });
+    expect(abandon).toHaveBeenCalledOnce();
   });
 
   it("counts a password the receiver sets while confirming", async () => {

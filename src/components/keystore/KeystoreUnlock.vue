@@ -66,5 +66,10 @@ async function onClose(success: boolean, pass?: string) {
   }
 }
 
-defineExpose({ ensureMk });
+/** Close the prompt if it is open; its ensureMk rejects with UserCancelled. */
+function cancel() {
+  if (pending) onClose(false);
+}
+
+defineExpose({ ensureMk, cancel });
 </script>

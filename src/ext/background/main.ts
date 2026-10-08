@@ -85,19 +85,41 @@ const syncRelay = createSyncRelay({
     } catch {
       // Position is a nicety; open it anyway.
     }
-    await browser.windows.create({
+    const openedAt = Date.now();
+    const win = await browser.windows.create({
       url,
       type: "popup",
       focused: true,
       ...syncWindowBounds(over),
     });
+    const onRemoved = (id: number) => {
+      if (id !== win.id) return;
+      browser.windows.onRemoved.removeListener(onRemoved);
+      syncRelay.receiverClosed(tabId, openedAt);
+    };
+    browser.windows.onRemoved.addListener(onRemoved);
   },
 });
 
+/** The web tab a sync panel page was opened for, if `url` is one. */
+function syncPanelTab(url?: string) {
+  try {
+    const params = new URL(url ?? "").searchParams;
+    if (params.get("action") !== "sync") return undefined;
+    const tabId = Number(params.get("tabId"));
+    return Number.isInteger(tabId) ? tabId : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 browser.runtime.onConnect.addListener(function (port) {
   if (port.name === "luteSidepanel") {
+    const openedAt = Date.now();
     port.onDisconnect.addListener(async () => {
       sp.setOptions({ path: BASE_PATH });
+      const tabId = syncPanelTab(port.sender?.url);
+      if (tabId != null) syncRelay.receiverClosed(tabId, openedAt);
     });
   } else {
     syncRelay.internal(port as RelayPort);

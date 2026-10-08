@@ -275,6 +275,30 @@ describe("sync relay edges", () => {
     expect(got[0]).toMatchObject({ t: "error", code: "invalid" });
   });
 
+  it("releases the web app when its receiver window closes unconnected", async () => {
+    const { relay: r } = relay();
+    const web = chromePorts("lute-sync", { origin: ORIGIN, tab: { id: 1 } });
+    const got = inbox(web.page);
+    r.external(web.bg);
+    r.receiverClosed(1, Date.now());
+    await later(10);
+    expect(got[0]).toMatchObject({ t: "error", code: "closed" });
+    expect(web.page.disconnected).toBe(true);
+    expect(await isFree(r)).toBe(true);
+  });
+
+  it("leaves a later sync alone when an earlier receiver window closes", async () => {
+    const { relay: r } = relay();
+    const openedAt = Date.now() - 1_000;
+    const web = chromePorts("lute-sync", { origin: ORIGIN, tab: { id: 1 } });
+    const got = inbox(web.page);
+    r.external(web.bg);
+    r.receiverClosed(1, openedAt);
+    await later(10);
+    expect(got).toEqual([]);
+    expect(web.page.disconnected).toBe(false);
+  });
+
   it("is free again when a waiting port closes before pairing", async () => {
     const { relay: r } = relay();
     const ext = chromePorts("lute-sync-ext");

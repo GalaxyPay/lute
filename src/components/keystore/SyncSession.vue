@@ -5,7 +5,7 @@
       <v-spacer />
       <v-icon v-if="finished" :icon="mdiClose" size="small" @click="close()" />
     </v-card-title>
-    <template v-if="state === 'confirm'">
+    <template v-if="state === 'confirm' && !finished">
       <v-card-text>
         {{ otherName }} wants to send its accounts and keys to this wallet.
         Accounts already here are left as they are, and nothing is removed.
@@ -187,6 +187,10 @@ async function receive(onState: (s: ReceiverState) => void) {
     onState,
     confirm: () => new Promise((resolve) => (answerConfirm = resolve)),
     getMk: () => unlocker.value!.ensureMk(),
+    abandon: () => {
+      answerConfirm = undefined;
+      unlocker.value?.cancel();
+    },
   });
   await store.getCache();
   store.refresh++;

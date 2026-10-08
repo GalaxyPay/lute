@@ -49,6 +49,7 @@ interface Waiting {
   timer: ReturnType<typeof setTimeout>;
   held: unknown[];
   hold: (m: any) => void;
+  since: number;
 }
 
 function randomToken() {
@@ -101,7 +102,7 @@ export function createSyncRelay(opts: RelayOptions) {
       map.delete(key);
       refuse(port, "timeout", "The other window did not open in time.");
     }, ttlMs);
-    map.set(key, { port, timer, held, hold });
+    map.set(key, { port, timer, held, hold, since: Date.now() });
     port.onDisconnect.addListener(() => {
       if (map.get(key)?.port !== port) return;
       clearTimeout(timer);
@@ -170,6 +171,18 @@ export function createSyncRelay(opts: RelayOptions) {
       } else {
         port.disconnect();
       }
+    },
+
+    /**
+     * A receiver window for web tab `tabId`, opened at `openedAt`, closed. If
+     * it never connected, release the web app's wait instead of holding it to
+     * the TTL. A wait that began after it opened belongs to a later window.
+     */
+    receiverClosed(tabId: number, openedAt: number) {
+      const web = waitingWeb.get(tabId);
+      if (!web || web.since > openedAt) return;
+      take(waitingWeb, tabId);
+      refuse(web.port, "closed", "The extension window was closed.");
     },
 
     /** A port from an extension page. Returns false if it is not a sync port. */

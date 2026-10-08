@@ -35,7 +35,10 @@ export class SignContext {
   private material = new Map<string, Uint8Array>();
   private falcon = new Map<
     string,
-    { address: Address; txnSigner: TransactionSigner }
+    {
+      signer: { address: Address; txnSigner: TransactionSigner };
+      privateKey: Uint8Array;
+    }
   >();
 
   constructor(pass?: string) {
@@ -57,19 +60,22 @@ export class SignContext {
   }
 
   falconSigner(addr: string) {
-    return this.falcon.get(addr);
+    return this.falcon.get(addr)?.signer;
   }
 
+  /** Keep a Falcon signer for the request; dispose() zeroes its private key. */
   setFalconSigner(
     addr: string,
-    signer: { address: Address; txnSigner: TransactionSigner }
+    signer: { address: Address; txnSigner: TransactionSigner },
+    privateKey: Uint8Array
   ) {
-    this.falcon.set(addr, signer);
+    this.falcon.set(addr, { signer, privateKey });
   }
 
   dispose() {
     for (const m of this.material.values()) m.fill(0);
     this.material.clear();
+    for (const f of this.falcon.values()) f.privateKey.fill(0);
     this.falcon.clear();
     this.mk = undefined;
   }
@@ -200,7 +206,7 @@ const Signer = {
     };
     const signer =
       algosdk.addressWithSignersFromRawFalcon1024Signer(signingKey);
-    ctx.setFalconSigner(acct.addr, signer);
+    ctx.setFalconSigner(acct.addr, signer, privateKey);
     return signer;
   },
 

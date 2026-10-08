@@ -94,3 +94,14 @@ export async function ed25519Sign(seed32: Uint8Array, bytes: Uint8Array) {
 export function bytesEqual(a: Uint8Array, b: Uint8Array) {
   return a.length === b.length && a.every((x, i) => x === b[i]);
 }
+
+export function concatBytes(a: Uint8Array, b: Uint8Array) {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a);
+  out.set(b, a.length);
+  return out;
+}
+
+// WebCrypto's BufferSource typing rejects Uint8Array<ArrayBufferLike>; every
+// array passed through here is backed by a plain ArrayBuffer.
+export const bs = (u: Uint8Array) => u as Uint8Array<ArrayBuffer>;

@@ -25,6 +25,7 @@ import Transfer, {
   type WalletSide,
 } from "@/services/Transfer";
 import type { MasterKey } from "@/types";
+import { bs, concatBytes as concat } from "@/utils/keys";
 
 export type SyncErrorCode =
   | "declined"
@@ -78,16 +79,6 @@ const enc = new TextEncoder();
 const INFO = enc.encode("lute-sync:v1");
 const aad = (from: WalletSide) => enc.encode(`lute-sync:v1:from-${from}`);
 const other = (side: WalletSide): WalletSide => (side === "web" ? "ext" : "web");
-
-// WebCrypto's BufferSource typing rejects Uint8Array<ArrayBufferLike>.
-const bs = (u: Uint8Array) => u as Uint8Array<ArrayBuffer>;
-
-function concat(a: Uint8Array, b: Uint8Array) {
-  const out = new Uint8Array(a.length + b.length);
-  out.set(a);
-  out.set(b, a.length);
-  return out;
-}
 
 /** An ephemeral ECDH key pair. The private key never leaves WebCrypto. */
 export async function createKeys() {
@@ -175,6 +166,10 @@ export async function open(
   return Transfer.deserialize(new TextDecoder().decode(pt));
 }
 
+function peerError(m: Extract<SyncMessage, { t: "error" }>) {
+  return new SyncError(m.code ?? "failed", m.message ?? "Sync failed.", true);
+}
+
 /** Messages in arrival order, with a deadline on each wait. */
 class Inbox {
   private queue: SyncMessage[] = [];
@@ -182,6 +177,8 @@ class Inbox {
     resolve: (m: SyncMessage) => void;
     reject: (e: SyncError) => void;
   };
+  // Stops a local wait (see `during`) when the other side gives up.
+  private interrupt?: (e: SyncError) => void;
   private closed?: SyncError;
 
   isClosed() {
@@ -190,7 +187,8 @@ class Inbox {
 
   constructor(transport: SyncTransport) {
     transport.onMessage((m) => {
-      if (this.waiter) {
+      if (m?.t === "error" && this.interrupt) this.interrupt(peerError(m));
+      else if (this.waiter) {
         const w = this.waiter;
         this.waiter = undefined;
         w.resolve(m);
@@ -200,7 +198,26 @@ class Inbox {
       this.closed = new SyncError("closed", "The other window closed.", true);
       this.waiter?.reject(this.closed);
       this.waiter = undefined;
+      this.interrupt?.(this.closed);
     });
+  }
+
+  /**
+   * `p`, a wait on this side (the user, an unlock), unless the other side
+   * sends an error or closes first.
+   */
+  async during<T>(p: Promise<T>): Promise<T> {
+    if (this.closed) throw this.closed;
+    const err = this.queue.find((m) => m.t === "error");
+    if (err?.t === "error") throw peerError(err);
+    let stop!: (e: SyncError) => void;
+    const stopped = new Promise<never>((_, reject) => (stop = reject));
+    this.interrupt = stop;
+    try {
+      return await Promise.race([p, stopped]);
+    } finally {
+      this.interrupt = undefined;
+    }
   }
 
   private next(timeoutMs: number) {
@@ -231,8 +248,7 @@ class Inbox {
     timeoutMs: number
   ): Promise<Extract<SyncMessage, { t: T }>> {
     const m = await this.next(timeoutMs);
-    if (m?.t === "error")
-      throw new SyncError(m.code ?? "failed", m.message ?? "Sync failed.", true);
+    if (m?.t === "error") throw peerError(m);
     if (m?.t !== t) throw new SyncError("invalid", "Unexpected sync message.");
     return m as Extract<SyncMessage, { t: T }>;
   }
@@ -293,6 +309,11 @@ export interface ReceiverHooks {
   /** Ask the user. False declines the sync. */
   confirm: () => Promise<boolean>;
   getMk: () => Promise<MasterKey>;
+  /**
+   * The other side gave up while `confirm` or `getMk` was waiting on the
+   * user: take down whatever they are showing.
+   */
+  abandon?: () => void;
   onState?: (s: ReceiverState) => void;
   timeoutMs?: number;
   restore?: typeof Transfer.addPayload;
@@ -343,12 +364,21 @@ export async function runReceiver(
     hooks.onState?.("connecting");
     const key = await handshake(side, transport, inbox, timeoutMs);
     hooks.onState?.("confirm");
-    if (!(await hooks.confirm()))
+    // The sender's own wait for "confirmed" times out, so these need none.
+    const local = async <T>(p: Promise<T>) => {
+      try {
+        return await inbox.during(p);
+      } catch (err) {
+        if (err instanceof SyncError && err.fromPeer) hooks.abandon?.();
+        throw err;
+      }
+    };
+    if (!(await local(hooks.confirm())))
       throw new SyncError("declined", "The sync was declined.");
     hooks.onState?.("unlocking");
     // Unlocked before confirming to the sender, so its keys only leave once
     // this side is ready to take them.
-    const mk = await hooks.getMk();
+    const mk = await local(hooks.getMk());
     // Read after unlocking: a password set while confirming counts.
     const passwordProtected = (await Keystore.mode()) === "password";
     transport.send({ t: "confirmed", passwordProtected });

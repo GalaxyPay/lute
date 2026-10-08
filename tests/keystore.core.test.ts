@@ -99,7 +99,16 @@ describe("records", () => {
       ])
     ).rejects.toThrow("Invalid algo25 seed length");
     expect(Keystore.validLength("bip39", "entropy", 33 + 64)).toBe(false);
-    expect(Keystore.validLength("bip39", "entropy", 16 + 64)).toBe(true);
+    expect(Keystore.validLength("bip39", "entropy", 32 + 64)).toBe(true);
+  });
+
+  it("takes 24-word bip39 seeds only", async () => {
+    const { Keystore } = await fresh();
+    expect(Keystore.validLength("bip39", "entropy", 16 + 64)).toBe(false);
+    const twelve = `${"abandon ".repeat(11)}about`;
+    expect(() => Keystore.plaintextFromMnemonic("bip39", twelve)).toThrow(
+      "Invalid Mnemonic"
+    );
   });
 
   it("allocates seed ids from one counter, shared with passkeys", async () => {

@@ -78,6 +78,25 @@ async function signsFor(s: TransferSecret, addr: string) {
   }
 }
 
+/** The 64-byte seed of a bip39 secret, as a copy the caller must zero. */
+function bip39Seed(s: TransferSecret) {
+  const pt = Uint8Array.fromBase64(s.data);
+  try {
+    if (!validLength(s.kind, s.form, pt.length)) return;
+    return signingMaterial(s.kind, s.form, pt);
+  } finally {
+    pt.fill(0);
+  }
+}
+
+/** The keystore ids an account's secret may be stored under. */
+function secretIds(a: LuteAccount) {
+  if (a.appId) return [];
+  if (isHd(a)) return [keystoreId("bip39", a)];
+  if (a.slot != null) return [];
+  return [keystoreId("algo25", a), keystoreId("falcon25", a)];
+}
+
 export interface TransferSecret {
   kind: KeystoreKind;
   form: KeystoreForm;
@@ -154,7 +173,11 @@ async function upgradeFor(
 }
 
 const Transfer = {
-  /** Every account this wallet can hand over, with its decrypted secret. */
+  /**
+   * Every account this wallet can hand over, with its decrypted secret. Only
+   * secrets those accounts use travel: a seed whose accounts were all removed
+   * stays here.
+   */
   async buildPayload(
     mk: MasterKey,
     meta: { from: WalletSide; appVersion: string }
@@ -169,8 +192,10 @@ const Transfer = {
       if (reason) skipped.push({ addr: acct.addr, reason });
       else included.push(acct);
     }
+    const used = new Set(included.flatMap(secretIds));
     const secrets: TransferSecret[] = [];
     for (const rec of records) {
+      if (!used.has(rec.id)) continue;
       const pt = await Keystore.decryptRecord(mk, rec);
       try {
         secrets.push({
@@ -204,7 +229,9 @@ const Transfer = {
    * Add a payload's accounts and their secrets to this wallet. Accounts already
    * here are left alone unless an exportable secret upgrades them. HD seeds
    * new to this wallet get new seed ids; accounts on a seed it already holds
-   * join that seed. Everything lands in one transaction.
+   * join that seed, found by a shared account or, failing that, by comparing
+   * seeds. An account that does not derive from (or sign with) the secret
+   * sent for it is skipped. Everything lands in one transaction.
    */
   async addPayload(mk: MasterKey, payload: TransferPayload) {
     const current: LuteAccount[] = (await get("app", "accounts")) ?? [];
@@ -223,22 +250,27 @@ const Transfer = {
     };
     const falconPks = new Map<string, string>();
     const upgraded = new Set<string>();
-    // Fresh accounts whose key does not sign for their address.
+    // Fresh accounts whose key does not sign for (or derive) their address.
     const mismatched = new Set<string>();
     try {
       for (const s of payload.secrets) {
         if (s.kind === "bip39") {
           const oldId = Number(s.id.split(":")[1]);
-          const sent = payload.accounts.filter(
-            (a) => a.seedId === oldId && a.slot != null
-          );
-          // This wallet's own copies of the seed, found by shared addresses.
-          const targets = new Set<number>();
-          for (const a of sent) {
-            const c = byAddr.get(a.addr);
-            if (c && isHd(c)) targets.add(c.seedId!);
+          // The accounts sent on this seed that really derive from it.
+          const sent: LuteAccount[] = [];
+          const seed = bip39Seed(s);
+          try {
+            for (const a of payload.accounts) {
+              if (a.seedId !== oldId || a.slot == null) continue;
+              if (seed && (await Keystore.seedMatches(seed, [a]))) sent.push(a);
+              else if (!byAddr.has(a.addr)) mismatched.add(a.addr);
+            }
+          } finally {
+            seed?.fill(0);
           }
-          for (const target of targets) {
+          // Join this wallet's seed `target`, upgrading its accounts if the
+          // secret sent is exportable and theirs is not.
+          const join = async (target: number) => {
             const mine = current.filter((c) => isHd(c) && c.seedId === target);
             const up = await upgradeFor(s, mine, ctx);
             if (up) {
@@ -252,6 +284,16 @@ const Transfer = {
               deleteLegacy.seeds.push(target);
               mine.forEach((c) => upgraded.add(c.addr));
             }
+            return { mine, up };
+          };
+          // This wallet's own copies of the seed, found by shared addresses.
+          const targets = new Set<number>();
+          for (const a of sent) {
+            const c = byAddr.get(a.addr);
+            if (c && isHd(c)) targets.add(c.seedId!);
+          }
+          for (const target of targets) {
+            const { mine, up } = await join(target);
             const status = secretStatus(mine[0]!, ctx);
             if (
               !remap.has(oldId) &&
@@ -260,14 +302,19 @@ const Transfer = {
               remap.set(oldId, target);
           }
           if (remap.has(oldId)) continue;
-          if (!fresh.some((a) => a.seedId === oldId && a.slot != null))
+          if (!sent.some((a) => !byAddr.has(a.addr))) continue;
+          const plaintext = Uint8Array.fromBase64(s.data);
+          // The same seed may be here with no account in common.
+          const existing = await Keystore.findBip39(mk, plaintext);
+          if (existing) {
+            plaintext.fill(0);
+            const target = Number(existing.split(":")[1]);
+            await join(target);
+            remap.set(oldId, target);
             continue;
+          }
           // No id: a new one is allocated in this wallet.
-          items.push({
-            kind: s.kind,
-            form: s.form,
-            plaintext: Uint8Array.fromBase64(s.data),
-          });
+          items.push({ kind: s.kind, form: s.form, plaintext });
           seedOf.push(oldId);
         } else if (fresh.some((a) => keystoreId(s.kind, a) === s.id)) {
           const owner = fresh.find((a) => keystoreId(s.kind, a) === s.id)!;
@@ -311,6 +358,8 @@ const Transfer = {
       for (const addr of mismatched)
         skipped.push({ addr, reason: "Its key does not match its address" });
       let added = 0;
+      // Set by the account rewrite, which runs again if putSecrets retries.
+      let dropped: Skipped[] = [];
       await Keystore.putSecrets(mk, items, {
         deleteLegacy,
         accounts: (now, ids) => {
@@ -320,13 +369,20 @@ const Transfer = {
               seedIds.set(seedOf[ix]!, Number(id.split(":")[1]));
           });
           const add: LuteAccount[] = [];
+          dropped = [];
           for (const a of fresh) {
-            if (now.some((c) => c.addr === a.addr)) continue;
             if (mismatched.has(a.addr)) continue;
+            if (now.some((c) => c.addr === a.addr)) {
+              dropped.push({ addr: a.addr, reason: "Already in this wallet" });
+              continue;
+            }
             if (a.seedId != null && a.slot != null) {
               const seedId = seedIds.get(a.seedId);
               // Its seed did not travel; the account would be unusable.
-              if (seedId == null) continue;
+              if (seedId == null) {
+                dropped.push({ addr: a.addr, reason: "Its seed was not sent" });
+                continue;
+              }
               add.push({ ...a, seedId });
             } else add.push(a);
           }
@@ -334,7 +390,11 @@ const Transfer = {
           return withFalconPks(now, falconPks).concat(add);
         },
       });
-      return { added, upgraded: upgraded.size, skipped };
+      return {
+        added,
+        upgraded: upgraded.size,
+        skipped: skipped.concat(dropped),
+      };
     } finally {
       items.forEach((it) => it.plaintext.fill(0));
     }

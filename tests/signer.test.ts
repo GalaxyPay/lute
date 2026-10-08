@@ -67,6 +67,27 @@ describe("sign gate", () => {
   });
 });
 
+describe("sign context", () => {
+  it("zeroes a Falcon signer's private key on dispose", async () => {
+    const env = await fresh();
+    const { FALCON_MN, falconAddress } = await import("./fixtures/v3db");
+    const addr = falconAddress(FALCON_MN).addr;
+    await env.Keystore.storeMnemonic(
+      await env.Keystore.getMk(),
+      "falcon25",
+      FALCON_MN,
+      { id: `falcon25:${addr}`, accounts: (cur) => [...cur, { addr }] }
+    );
+    const { SignContext } = await import("@/services/Signer");
+    const ctx = new SignContext();
+    await env.Signer.falconSigner({ addr, isFalcon25: true } as any, ctx);
+    const sk: Uint8Array = (ctx as any).falcon.get(addr).privateKey;
+    expect(sk.some((b) => b !== 0)).toBe(true);
+    ctx.dispose();
+    expect(sk.every((b) => b === 0)).toBe(true);
+  });
+});
+
 describe("sign-in data", () => {
   it("refuses an ed25519 signature from a Falcon account", async () => {
     const env = await upgraded("current");
