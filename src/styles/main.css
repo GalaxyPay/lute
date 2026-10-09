@@ -53,6 +53,37 @@ a:not(.v-list-item, .v-btn, .v-chip) {
     padding: 16px;
   }
 }
+/* Extension modal pages (connect, sign, sync) */
+.ext-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(
+    100dvh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px)
+  );
+}
+.v-dialog .ext-page {
+  flex: 1;
+  min-height: 0;
+}
+.ext-header {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgb(var(--v-theme-border));
+}
+.ext-body {
+  padding: 18px;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.ext-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding: 14px 16px;
+  border-top: 1px solid rgb(var(--v-theme-border));
+  background: rgb(var(--v-theme-background));
+}
 .title-panel {
   font-size: 18px;
   font-weight: 500;
@@ -65,12 +96,6 @@ a:not(.v-list-item, .v-btn, .v-chip) {
 }
 .no-select {
   user-select: none;
-}
-.truncate {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 80px;
 }
 .ellipsis {
   min-width: 0;

@@ -10,8 +10,10 @@
         {{ otherName }} wants to send its accounts and keys to this wallet.
         Accounts already here are left as they are, and nothing is removed.
       </v-card-text>
-      <v-card-text class="pt-0 text-warning">
-        Only continue if you started this sync yourself.
+      <v-card-text class="pt-0">
+        <v-alert type="warning">
+          Only continue if you started this sync yourself.
+        </v-alert>
       </v-card-text>
       <v-card-text v-if="store.keystoreMode === 'device'" class="pt-0">
         <no-password-notice class="mb-3" />

@@ -1,5 +1,5 @@
 <template>
-  <v-container class="pt-0">
+  <v-container class="page">
     <v-card :loading="loading">
       <v-card-title>Atomic Swap</v-card-title>
       <v-card-subtitle>
@@ -20,8 +20,13 @@
           </div>
         </v-container>
         <v-container class="text-center">
-          <v-btn text="Copy Link" @click="copyLink()" />
-          <v-btn text="Review & Sign" @click="accept()" />
+          <v-btn variant="outlined" text="Copy Link" @click="copyLink()" />
+          <v-btn
+            variant="flat"
+            class="ml-2"
+            text="Review & Sign"
+            @click="accept()"
+          />
           <v-row v-if="extensionDetected">
             <v-col class="pb-0">
               <v-btn text="Open in Extension" @click="openExtension()" />

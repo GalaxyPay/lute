@@ -1,8 +1,8 @@
 <template>
-  <v-container class="pt-0">
+  <v-container class="page">
     <v-card>
-      <v-card-title class="text-h5">Privacy Policy </v-card-title>
-      <v-card-subtitle class="text-h6">Web Application</v-card-subtitle>
+      <v-card-title class="title-page pt-6">Privacy Policy </v-card-title>
+      <v-card-subtitle class="text-h6 pt-2">Web Application</v-card-subtitle>
       <v-card-text>
         Lute's web application (lute.app) uses Google Analytics to collect
         minimal page view and referral data in order to track what sites are

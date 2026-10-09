@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="show" max-width="500" height="750" persistent>
-    <v-card color="background">
+    <v-card color="background" class="d-flex flex-column">
       <div class="d-flex align-center ga-3 px-4 pt-4 pb-2">
         <lute-logo
           :color="store.theme === 'gold' ? 'url(#gradient)' : 'currentColor'"
