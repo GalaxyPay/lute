@@ -1,29 +1,38 @@
 <template>
-  <v-container v-show="page === 0" class="pt-0 px-0">
-    <v-card-text>
-      Write this mnemonic down and keep it somewhere secure. It is the only way
-      to recover your {{ isBip39 ? "wallet" : "account" }} if this browser's
-      data is lost.
-    </v-card-text>
-    <v-card-text v-if="!isBip39">
-      <div class="text-h6 pb-2 d-flex">
-        Address: <v-spacer />
-        <v-btn text="Copy" @click="copyToClipboard(addr.toString())" />
+  <div v-show="page === 0">
+    <div class="dialog-body d-flex flex-column ga-4">
+      <p class="text-text-body">
+        Write this mnemonic down and keep it somewhere secure. It is the only
+        way to recover your {{ isBip39 ? "wallet" : "account" }} if this
+        browser's data is lost.
+      </p>
+      <div v-if="!isBip39">
+        <div class="d-flex align-center justify-space-between">
+          <span class="field-label">Address:</span>
+          <v-btn
+            size="small"
+            class="mr-n3"
+            :prepend-icon="mdiContentCopy"
+            text="Copy"
+            @click="copyToClipboard(addr.toString())"
+          />
+        </div>
+        <div class="font-mono word-break">{{ addr }}</div>
       </div>
-      <div class="font-mono">{{ addr }}</div>
-    </v-card-text>
-    <v-card-text>
       <mnemonic-display :words="mnemonicArray" />
-    </v-card-text>
-    <v-card-text>
-      Make sure you have the entire
-      <b>{{ props.numberOfWords }}-word mnemonic</b>, or you will
-      <b>lose access to this {{ isBip39 ? "wallet" : "account" }} forever</b>
-      if this browser's data is lost.
-    </v-card-text>
+      <p class="text-muted text-body-2">
+        Make sure you have the entire
+        <b class="text-high-emphasis">{{ props.numberOfWords }}-word mnemonic</b
+        >, or you will
+        <b class="text-high-emphasis"
+          >lose access to this {{ isBip39 ? "wallet" : "account" }} forever</b
+        >
+        if this browser's data is lost.
+      </p>
+    </div>
     <v-card-actions>
-      <v-spacer />
       <v-btn
+        variant="flat"
         text="Next"
         @click="
           page = 1;
@@ -31,21 +40,28 @@
         "
       />
     </v-card-actions>
-  </v-container>
-  <v-container v-show="page === 1" class="pt-0">
-    <v-form ref="form" @submit.prevent="submit()" validate-on="submit">
-      <v-row justify="center">
-        <v-col cols="6">
-          <v-card-text>What is word number {{ challenge }}?</v-card-text>
-          <v-text-field density="compact" :rules="[match]" />
-        </v-col>
-      </v-row>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Create" type="submit" :loading="saving" />
-      </v-card-actions>
-    </v-form>
-  </v-container>
+  </div>
+  <v-form
+    v-show="page === 1"
+    ref="form"
+    @submit.prevent="submit()"
+    validate-on="submit"
+  >
+    <div class="word-check">
+      <p class="text-text-body">
+        What is word number <b class="text-high-emphasis">{{ challenge }}</b
+        >?
+      </p>
+      <v-text-field
+        density="compact"
+        class="word-check-field"
+        :rules="[match]"
+      />
+    </div>
+    <v-card-actions>
+      <v-btn variant="flat" text="Create" type="submit" :loading="saving" />
+    </v-card-actions>
+  </v-form>
   <keystore-unlock ref="unlocker" />
 </template>
 
@@ -53,6 +69,7 @@
 import Keystore from "@/services/Keystore";
 import type { LuteAccount, Unlocker } from "@/types";
 import { copyToClipboard, getFalconKey, isCancelled } from "@/utils";
+import { mdiContentCopy } from "@mdi/js";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import algosdk from "algosdk";
@@ -119,3 +136,27 @@ async function submit() {
   }
 }
 </script>
+
+<style scoped>
+.field-label {
+  font-size: 12px;
+  color: rgb(var(--v-theme-text-muted));
+}
+.word-break {
+  word-break: break-all;
+}
+.word-check {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 24px 30px;
+}
+.word-check-field {
+  width: 220px;
+  flex: none;
+}
+.word-check-field :deep(input) {
+  font-family: var(--font-mono);
+}
+</style>

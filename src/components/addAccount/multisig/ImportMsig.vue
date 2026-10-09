@@ -1,23 +1,19 @@
 <template>
-  <v-container class="pt-6">
-    <v-form ref="form" validate-on="submit" @submit.prevent="importApp()">
-      <v-row justify="center">
-        <v-col cols="10">
-          <v-text-field
-            v-model.number="appId"
-            label="App ID"
-            density="comfortable"
-            autofocus
-            :rules="[required, validApp, isArc55, isMember]"
-          />
-        </v-col>
-      </v-row>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Import" type="submit" />
-      </v-card-actions>
-    </v-form>
-  </v-container>
+  <v-form ref="form" validate-on="submit" @submit.prevent="importApp()">
+    <div class="dialog-body">
+      <v-text-field
+        v-model.number="appId"
+        class="font-mono"
+        label="App ID"
+        density="comfortable"
+        autofocus
+        :rules="[required, validApp, isArc55, isMember]"
+      />
+    </div>
+    <v-card-actions>
+      <v-btn variant="flat" text="Import" type="submit" />
+    </v-card-actions>
+  </v-form>
 </template>
 
 <script lang="ts" setup>

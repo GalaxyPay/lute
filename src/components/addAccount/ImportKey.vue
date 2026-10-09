@@ -1,7 +1,7 @@
 <template>
   <v-form ref="form" validate-on="blur" @submit.prevent="importKey()">
-    <v-container class="pt-6 px-1 ml-1">
-      <v-row>
+    <div class="dialog-body">
+      <v-row dense>
         <v-col v-for="m in [0, 1]" :key="m" cols="6">
           <div
             v-for="n in wordIdxArray.filter((n) =>
@@ -12,6 +12,7 @@
           >
             <v-text-field
               :id="`mn-${n}`"
+              class="word-field"
               hide-details="auto"
               density="compact"
               :type="visible.includes(n) ? 'text' : 'password'"
@@ -30,13 +31,13 @@
               aria-autocomplete="list"
               :aria-expanded="focused === n && suggestions.length > 0"
             >
-              <template #prepend>
-                {{ n < 9 ? "&nbsp;&nbsp;" + (n + 1) : n + 1 }}.
+              <template #prepend-inner>
+                <span class="word-num">{{ n + 1 }}</span>
               </template>
               <template #append-inner>
                 <v-icon
                   :icon="visible.includes(n) ? mdiEye : mdiEyeOff"
-                  size="x-small"
+                  size="14"
                   @click="toggleVisible(n)"
                 />
               </template>
@@ -44,8 +45,6 @@
             <v-sheet
               v-if="focused === n && suggestions.length"
               :class="['suggestions', { 'suggestions--up': opensUp(n) }]"
-              elevation="4"
-              rounded
               role="listbox"
             >
               <v-list density="compact" class="py-0">
@@ -65,22 +64,24 @@
           </div>
         </v-col>
       </v-row>
-    </v-container>
-    <v-card-actions>
-      <v-btn
-        color="grey"
-        text="Show All"
-        :append-icon="mdiEye"
-        @click="showAll()"
-      />
-      <v-btn
-        color="grey"
-        text="Hide All"
-        :append-icon="mdiEyeOff"
-        @click="visible = []"
-      />
-      <v-spacer />
-      <v-btn :text="buttonText" type="submit" />
+      <div v-if="$slots.default" class="pt-4"><slot /></div>
+    </div>
+    <v-card-actions class="justify-space-between">
+      <div class="d-flex ml-n3">
+        <v-btn
+          color="text-body"
+          text="Show All"
+          :append-icon="mdiEye"
+          @click="showAll()"
+        />
+        <v-btn
+          color="text-body"
+          text="Hide All"
+          :append-icon="mdiEyeOff"
+          @click="visible = []"
+        />
+      </div>
+      <v-btn variant="flat" :text="buttonText" type="submit" />
     </v-card-actions>
   </v-form>
 </template>
@@ -303,6 +304,26 @@ async function importKey() {
   right: 0;
   z-index: 10;
   overflow: hidden;
+  margin-top: 4px;
+  background: rgb(var(--v-theme-surface-bright));
+  border: 1px solid rgb(var(--v-theme-border-strong));
+  border-radius: 10px;
+  box-shadow: var(--shadow-menu);
+  padding: 4px;
+}
+.word-field :deep(.v-field__input) {
+  min-height: 32px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  font: 12.5px var(--font-mono);
+}
+.word-field :deep(.v-field) {
+  border-radius: 7px;
+}
+.word-num {
+  width: 18px;
+  font: 11px var(--font-mono);
+  color: rgb(var(--v-theme-text-dim));
 }
 .suggestions--up {
   top: auto;

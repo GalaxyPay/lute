@@ -1,22 +1,17 @@
 <template>
-  <template v-if="seed">
-    <account-table
-      :accounts="accounts"
-      :added="added"
-      :preselect="preselect"
-      :loading="loading"
-      @get-addrs="getAddrs"
-      @add-accounts="addAccounts"
-    />
-    <v-container class="text-center pt-0">
-      <v-btn
-        variant="text"
-        size="small"
-        text="Use a different seed"
-        @click="reset"
-      />
-    </v-container>
-  </template>
+  <account-table
+    v-if="seed"
+    :accounts="accounts"
+    :added="added"
+    :preselect="preselect"
+    :loading="loading"
+    @get-addrs="getAddrs"
+    @add-accounts="addAccounts"
+  >
+    <template #links>
+      <v-btn size="small" text="Use a different seed" @click="reset" />
+    </template>
+  </account-table>
   <pick-seed
     v-else-if="!pending && rows.length"
     :rows="rows"
@@ -25,9 +20,9 @@
     @removed="reloadRows"
   />
   <local-seed v-else-if="!pending" @seed="handleSeed" />
-  <v-container v-else class="text-center">
+  <div v-else class="dialog-body text-center">
     <v-progress-circular indeterminate />
-  </v-container>
+  </div>
   <keystore-unlock ref="unlocker" />
   <password-confirm :visible="showPass" @close="handlePass" />
 </template>
@@ -92,9 +87,7 @@ async function loadRows(): Promise<SeedRow[]> {
       exportable: Keystore.isExportable(r.kind, r.form),
     })),
     ...legacyAndPasskey
-      .filter(
-        (s) => s.data && !keystore.some((r) => r.id === `bip39:${s.id}`)
-      )
+      .filter((s) => s.data && !keystore.some((r) => r.id === `bip39:${s.id}`))
       .map((s) => ({ id: s.id, legacy: s })),
   ].sort((a, b) => a.id - b.id);
 }

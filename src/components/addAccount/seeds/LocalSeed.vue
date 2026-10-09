@@ -1,32 +1,32 @@
 <template>
-  <v-container class="pt-0">
+  <div v-if="store.keystoreMode === 'device'" class="flow-notice">
     <no-password-notice />
-    <v-tabs v-if="!hideTabs" v-model="tab" color="primary">
-      <v-tab text="NEW" />
-      <v-tab text="IMPORT" />
-    </v-tabs>
-    <v-window v-model="tab">
-      <v-window-item :value="0">
-        <new-key
-          :number-of-words="24"
-          @hide-tabs="hideTabs = true"
-          @seed="(id, seed) => $emit('seed', id, seed)"
-        />
-      </v-window-item>
-      <v-window-item :value="1">
-        <input-bip39 @seed="(id, seed) => $emit('seed', id, seed)" />
+  </div>
+  <v-tabs v-if="!hideTabs" v-model="tab" class="flow-tabs">
+    <v-tab text="NEW" />
+    <v-tab text="IMPORT" />
+  </v-tabs>
+  <v-window v-model="tab">
+    <v-window-item :value="0">
+      <new-key
+        :number-of-words="24"
+        @hide-tabs="hideTabs = true"
+        @seed="(id, seed) => $emit('seed', id, seed)"
+      />
+    </v-window-item>
+    <v-window-item :value="1">
+      <input-bip39 @seed="(id, seed) => $emit('seed', id, seed)">
         <div class="text-center">
           <v-btn
-            variant="text"
             size="small"
             :prepend-icon="mdiFingerprint"
             text="Recover from a passkey"
             @click="recoverPasskey"
           />
         </div>
-      </v-window-item>
-    </v-window>
-  </v-container>
+      </input-bip39>
+    </v-window-item>
+  </v-window>
 </template>
 
 <script lang="ts" setup>

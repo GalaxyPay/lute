@@ -1,10 +1,10 @@
 <template>
-  <v-dialog :model-value="!!row" max-width="600" persistent>
+  <v-dialog :model-value="!!row" max-width="520" persistent>
     <v-card v-if="row">
       <v-card-title class="d-flex">
         Remove Seed
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="close()" />
+        <v-icon :icon="mdiClose" @click="close()" />
       </v-card-title>
       <template v-if="row.credentialId">
         <v-card-text>
@@ -26,28 +26,13 @@
       </template>
       <template v-else>
         <v-card-text>
-          <v-alert
-            v-if="scanning"
-            type="info"
-            variant="tonal"
-            density="compact"
-          >
+          <v-alert v-if="scanning" type="info">
             Checking the first {{ SCAN }} accounts on this seed…
           </v-alert>
-          <v-alert
-            v-else-if="scanFailed"
-            type="warning"
-            variant="tonal"
-            density="compact"
-          >
+          <v-alert v-else-if="scanFailed" type="warning">
             Could not check this seed's accounts on the network.
           </v-alert>
-          <v-alert
-            v-else-if="inUse.length"
-            type="error"
-            variant="tonal"
-            density="compact"
-          >
+          <v-alert v-else-if="inUse.length" type="error">
             These accounts on this seed hold funds or control other accounts.
             Add them to your wallet instead, or be certain you have the
             mnemonic.
@@ -61,37 +46,32 @@
               }}{{ a.subs?.length ? `, controls ${a.subs.length}` : "" }})
             </div>
           </v-alert>
-          <v-alert v-else type="success" variant="tonal" density="compact">
+          <v-alert v-else type="success">
             None of the first {{ SCAN }} accounts on this seed are in use.
           </v-alert>
         </v-card-text>
         <template v-if="words.length">
           <v-card-text class="pt-0">
             To confirm you have the mnemonic, what is word number
-            {{ challenge }}?
-          </v-card-text>
-          <v-row justify="center" class="mx-0">
-            <v-col cols="6">
-              <v-text-field
-                v-model="answer"
-                density="compact"
-                autocomplete="off"
-                autocapitalize="none"
-                spellcheck="false"
-              />
-            </v-col>
-          </v-row>
-          <v-card-text v-if="reveal" class="pt-0">
-            <mnemonic-display :words="words" />
-          </v-card-text>
-          <div v-else class="text-center">
+            <b class="text-high-emphasis">{{ challenge }}</b
+            >?
+            <v-text-field
+              v-model="answer"
+              class="challenge-field"
+              density="compact"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+            />
+            <mnemonic-display v-if="reveal" :words="words" class="mt-4" />
             <v-btn
-              variant="text"
+              v-else
               size="small"
+              class="mt-2 ml-n3"
               text="I don't have it, show the mnemonic"
               @click="reveal = true"
             />
-          </div>
+          </v-card-text>
         </template>
         <template v-else>
           <v-card-text class="pt-0">
@@ -110,18 +90,19 @@
         </template>
       </template>
       <v-card-actions>
-        <v-spacer />
-        <v-btn text="Cancel" @click="close()" />
+        <v-btn text="Cancel" color="text-body" @click="close()" />
         <v-btn
           v-if="!row.credentialId && !seed"
+          variant="flat"
           text="Continue"
           :loading="busy"
           @click="unlock()"
         />
         <v-btn
           v-else
+          variant="flat"
           text="Remove"
-          color="error"
+          color="danger-fill"
           :disabled="!canRemove"
           :loading="busy"
           @click="remove()"
@@ -252,3 +233,13 @@ function close() {
   emit("close");
 }
 </script>
+
+<style scoped>
+.challenge-field {
+  max-width: 220px;
+  margin-top: 12px !important;
+}
+.challenge-field :deep(input) {
+  font-family: var(--font-mono);
+}
+</style>

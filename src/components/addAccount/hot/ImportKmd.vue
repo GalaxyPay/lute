@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <div class="dialog-body">
     <v-data-table
       v-model="selected"
       item-value="address"
@@ -12,8 +12,8 @@
       <template v-if="loading && !accounts.length" #headers />
       <template #bottom />
       <template #[`item.address`]="{ item }">
-        {{ formatAddr(item.address) }}
-        <div class="text-grey">
+        <span class="font-mono">{{ formatAddr(item.address) }}</span>
+        <div class="text-dim text-caption">
           {{
             `${item.assets?.length} asset${
               item.assets?.length === 1 ? "" : "s"
@@ -22,23 +22,20 @@
         </div>
       </template>
       <template #[`item.amount`]="{ value }">
-        <span v-if="store.isVoi" class="font-weight-bold">V</span>
-        <algo-icon v-else color="currentColor" :width="10" />
-        {{ bigintToString(value, 6) }}
+        <span class="amount">
+          <span v-if="store.isVoi">V </span>{{ bigintToString(value, 6) }}
+        </span>
       </template>
     </v-data-table>
-  </v-container>
-  <v-container class="text-center">
-    <v-row>
-      <v-col>
-        <v-btn
-          text="Add to Wallet"
-          :disabled="!selected.length || loading"
-          @click="addAccounts()"
-        />
-      </v-col>
-    </v-row>
-  </v-container>
+  </div>
+  <v-card-actions>
+    <v-btn
+      variant="flat"
+      text="Add to Wallet"
+      :disabled="!selected.length || loading"
+      @click="addAccounts()"
+    />
+  </v-card-actions>
   <keystore-unlock ref="unlocker" />
 </template>
 

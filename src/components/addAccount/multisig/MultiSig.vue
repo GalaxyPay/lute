@@ -1,18 +1,16 @@
 <template>
-  <v-container class="pt-0">
-    <v-tabs v-model="tab" color="primary">
-      <v-tab text="NEW" />
-      <v-tab text="IMPORT" />
-    </v-tabs>
-    <v-window v-model="tab">
-      <v-window-item :value="0">
-        <create-msig @add="addMsigAccount" />
-      </v-window-item>
-      <v-window-item :value="1">
-        <import-msig @add="addMsigAccount" />
-      </v-window-item>
-    </v-window>
-  </v-container>
+  <v-tabs v-model="tab" class="flow-tabs">
+    <v-tab text="NEW" />
+    <v-tab text="IMPORT" />
+  </v-tabs>
+  <v-window v-model="tab">
+    <v-window-item :value="0">
+      <create-msig @add="addMsigAccount" />
+    </v-window-item>
+    <v-window-item :value="1">
+      <import-msig @add="addMsigAccount" />
+    </v-window-item>
+  </v-window>
 </template>
 
 <script lang="ts" setup>

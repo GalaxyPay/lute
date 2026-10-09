@@ -1,31 +1,31 @@
 <template>
-  <v-container class="pt-0">
+  <div v-if="store.keystoreMode === 'device'" class="flow-notice">
     <no-password-notice />
-    <v-tabs v-if="!hideTabs" v-model="tab" color="primary">
-      <v-tab text="NEW" />
-      <v-tab text="IMPORT" />
-      <v-tab v-if="store.networkName === 'LocalNet'" text="KMD" />
-    </v-tabs>
-    <v-window v-model="tab">
-      <v-window-item :value="0">
-        <new-key
-          :number-of-words="25"
-          @hide-tabs="hideTabs = true"
-          @close="$emit('close')"
-        />
-      </v-window-item>
-      <v-window-item :value="1">
-        <import-key
-          :number-of-words="25"
-          button-text="Import"
-          @mn="handleMnemonic"
-        />
-      </v-window-item>
-      <v-window-item v-if="store.networkName === 'LocalNet'" :value="2">
-        <import-kmd @close="$emit('close')" />
-      </v-window-item>
-    </v-window>
-  </v-container>
+  </div>
+  <v-tabs v-if="!hideTabs" v-model="tab" class="flow-tabs">
+    <v-tab text="NEW" />
+    <v-tab text="IMPORT" />
+    <v-tab v-if="store.networkName === 'LocalNet'" text="KMD" />
+  </v-tabs>
+  <v-window v-model="tab">
+    <v-window-item :value="0">
+      <new-key
+        :number-of-words="25"
+        @hide-tabs="hideTabs = true"
+        @close="$emit('close')"
+      />
+    </v-window-item>
+    <v-window-item :value="1">
+      <import-key
+        :number-of-words="25"
+        button-text="Import"
+        @mn="handleMnemonic"
+      />
+    </v-window-item>
+    <v-window-item v-if="store.networkName === 'LocalNet'" :value="2">
+      <import-kmd @close="$emit('close')" />
+    </v-window-item>
+  </v-window>
   <keystore-unlock ref="unlocker" />
 </template>
 

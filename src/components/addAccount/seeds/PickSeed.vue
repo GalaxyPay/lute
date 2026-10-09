@@ -1,47 +1,51 @@
 <template>
-  <v-container v-if="!newSeed">
-    <div class="pl-6">Your Seeds</div>
-    <v-container class="pt-0">
+  <template v-if="!newSeed">
+    <div class="seed-body">
+      <div class="seed-label">Your Seeds</div>
       <v-data-table
         :items="rows"
         :headers="headers"
-        class="no-select"
+        class="no-select seed-table"
         items-per-page="-1"
-        @click:row="(_e: any, row: { item: SeedRow }) => $emit('pick', row.item)"
+        @click:row="
+          (_e: any, row: { item: SeedRow }) => $emit('pick', row.item)
+        "
         hover
       >
         <template #[`item.label`]="{ item }">
-          {{ label(item).title }}
-          <div class="text-grey text-caption">{{ label(item).caption }}</div>
+          <div class="seed-title">{{ label(item).title }}</div>
+          <div v-if="label(item).caption" class="text-dim text-caption">
+            {{ label(item).caption }}
+          </div>
         </template>
         <template #[`item.chip`]="{ item }">
-          <v-chip v-if="item.credentialId" text="Passkey" size="x-small" />
-          <v-chip
-            v-else-if="!item.exportable"
-            text="Legacy"
-            size="x-small"
-          />
-          <v-btn
-            v-if="removable(item)"
-            :icon="mdiDelete"
-            variant="text"
-            size="small"
-            title="Remove seed"
-            @click.stop="removing = item"
-          />
+          <div class="d-flex align-center justify-end ga-2">
+            <v-chip v-if="item.credentialId" text="Passkey" size="x-small" />
+            <v-chip v-else-if="!item.exportable" text="Legacy" size="x-small" />
+            <v-btn
+              v-if="removable(item)"
+              :icon="mdiDelete"
+              variant="text"
+              size="small"
+              title="Remove seed"
+              @click.stop="removing = item"
+            />
+            <v-icon :icon="mdiChevronRight" size="18" class="text-icon" />
+          </div>
         </template>
         <template #headers />
         <template #bottom />
       </v-data-table>
-    </v-container>
-    <v-container class="text-center">
+    </div>
+    <v-card-actions>
       <v-btn
-        :prepend-icon="mdiPlusCircle"
+        variant="outlined"
+        :prepend-icon="mdiPlus"
         text="Add Seed"
         @click="newSeed = true"
       />
-    </v-container>
-  </v-container>
+    </v-card-actions>
+  </template>
   <local-seed v-else @seed="(id, seed) => $emit('seed', id, seed)" />
   <remove-seed
     :row="removing"
@@ -53,7 +57,7 @@
 <script setup lang="ts">
 import type { SeedRow } from "@/types";
 import { formatAddr } from "@/utils";
-import { mdiDelete, mdiPlusCircle } from "@mdi/js";
+import { mdiChevronRight, mdiDelete, mdiPlus } from "@mdi/js";
 
 defineProps({
   rows: { type: Array as PropType<SeedRow[]>, required: true },
@@ -90,3 +94,33 @@ function label(row: SeedRow) {
   };
 }
 </script>
+
+<style scoped>
+.seed-body {
+  padding: 16px 12px 8px;
+}
+.seed-label {
+  padding: 0 14px 8px;
+  font-size: 13px;
+  color: rgb(var(--v-theme-text-muted));
+}
+.seed-table :deep(tbody tr) {
+  height: 56px;
+}
+.seed-table :deep(td) {
+  padding: 0 10px 0 14px !important;
+  border-bottom: none !important;
+}
+.seed-table :deep(tbody tr:hover td) {
+  background: rgb(var(--v-theme-surface-variant)) !important;
+}
+.seed-table :deep(tbody tr td:first-child) {
+  border-radius: 9px 0 0 9px;
+}
+.seed-table :deep(tbody tr td:last-child) {
+  border-radius: 0 9px 9px 0;
+}
+.seed-title {
+  font: 500 13.5px var(--font-mono);
+}
+</style>

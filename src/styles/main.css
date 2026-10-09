@@ -81,6 +81,9 @@ a:not(.v-list-item, .v-btn, .v-chip) {
 .font-mono {
   font-family: var(--font-mono) !important;
 }
+.v-input.font-mono :is(.v-field-label, .v-messages, .v-label) {
+  font-family: var(--font-sans);
+}
 .text-muted {
   color: rgb(var(--v-theme-text-muted)) !important;
 }
@@ -186,6 +189,9 @@ pre {
 .v-btn.v-btn--size-large {
   --v-btn-height: 40px;
   --v-btn-size: 14px;
+}
+.v-btn :is(.v-btn__prepend, .v-btn__append) > .v-icon {
+  font-size: 16px;
 }
 .v-btn:not(.v-btn--icon).v-btn--variant-text,
 .v-btn:not(.v-btn--icon).v-btn--variant-plain,
@@ -317,6 +323,43 @@ pre {
   border-top: 1px solid rgb(var(--v-theme-border));
   padding: 16px 24px;
   justify-content: flex-end;
+}
+.v-dialog .v-card-actions.no-divider {
+  border-top: none;
+}
+
+/* Flow dialogs (Add an Account): breadcrumb, divider, body */
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 6px 24px;
+}
+.dialog-header--divider {
+  padding-block: 18px;
+  border-bottom: 1px solid rgb(var(--v-theme-border));
+}
+.dialog-breadcrumb {
+  font-size: 12px;
+  color: rgb(var(--v-theme-text-dim));
+}
+.dialog-heading {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.dialog-breadcrumb + .dialog-heading {
+  margin-top: 4px;
+}
+.dialog-body {
+  padding: 18px 24px;
+}
+.flow-tabs {
+  padding: 6px 16px 0;
+}
+.flow-notice {
+  padding: 16px 24px 0;
 }
 
 /* Menus and tooltips */
