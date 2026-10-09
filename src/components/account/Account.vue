@@ -48,11 +48,17 @@
       <v-card class="stat-card">
         <div class="stat-label">Balance</div>
         <div class="stat-value">
+          <span v-if="store.isVoi" class="font-weight-bold">V </span>
+          <algo-icon
+            v-else
+            color="currentColor"
+            :width="xs ? 13 : 18"
+            class="algo-glyph"
+          />
           {{
             acct.info.amount != null ? bigintToString(acct.info.amount, 6) : "-"
           }}
         </div>
-        <div class="address">{{ unit }}</div>
       </v-card>
       <v-card class="stat-card">
         <div class="stat-label">
@@ -63,13 +69,19 @@
           </span>
         </div>
         <div class="stat-value text-text-body">
+          <span v-if="store.isVoi" class="font-weight-bold">V </span>
+          <algo-icon
+            v-else
+            color="currentColor"
+            :width="xs ? 13 : 18"
+            class="algo-glyph"
+          />
           {{
             acct.info.minBalance != null
               ? bigintToString(acct.info.minBalance, 6)
               : "-"
           }}
         </div>
-        <div class="address">{{ unit }}</div>
       </v-card>
     </div>
     <v-card class="tabs-card">
@@ -132,7 +144,6 @@ You can decrease your MBR by closing out of assets and applications.`;
 
 const store = useAppStore();
 const { xs } = useDisplay();
-const unit = computed(() => store.nativeAsset.params?.name?.toUpperCase());
 const props = defineProps({ addr: { type: String, required: true } });
 const acct = computed(() => store.acctInfo.find((i) => i.addr === props.addr));
 const showRekeyTip = ref(false);
@@ -207,6 +218,9 @@ watch(
   word-break: break-all;
 }
 .stat-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
   font: 500 26px/1.2 var(--font-mono);
   letter-spacing: -0.02em;
 }

@@ -23,8 +23,16 @@
         {{ new Date(Number(item.roundTime) * 1000).toLocaleString() }}
       </div>
       <div class="amount txn-amount">
+        <template v-if="item.paymentTransaction">
+          <span v-if="store.isVoi" class="font-weight-bold">V </span>
+          <algo-icon
+            v-else
+            color="currentColor"
+            :width="10"
+            class="algo-glyph"
+          />
+        </template>
         {{ formatAmount(item) }}
-        <template v-if="item.paymentTransaction">{{ unit }}</template>
       </div>
     </template>
   </v-data-table>
@@ -38,7 +46,6 @@ import { indexerModels, modelsv2 } from "algosdk";
 import type { PropType } from "vue";
 
 const store = useAppStore();
-const unit = computed(() => store.nativeAsset.params?.name?.toUpperCase());
 const props = defineProps({
   acct: { type: Object as PropType<AccountInfo>, required: true },
 });

@@ -58,7 +58,13 @@
         </template>
         <template #[`item.info.amount`]="{ value }">
           <span class="amount">
-            <span v-if="store.isVoi">V </span>
+            <span v-if="store.isVoi" class="font-weight-bold">V </span>
+            <algo-icon
+              v-else
+              color="currentColor"
+              :width="9"
+              class="algo-glyph"
+            />
             {{ value != null ? bigintToString(value, 6, false, 2) : "-" }}
           </span>
         </template>

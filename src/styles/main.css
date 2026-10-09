@@ -124,7 +124,12 @@ a:not(.v-list-item, .v-btn, .v-chip) {
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
+/* inline-flex drops the whitespace between the Algo glyph and the number,
+   which the mono font would render a full character wide. */
 .amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45em;
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 500;
@@ -140,6 +145,10 @@ pre {
   font-size: 12px;
   line-height: 1.5;
   overflow: auto;
+}
+/* Algo glyph before ALGO amounts */
+.algo-glyph {
+  flex: none;
 }
 /* Type tag: account and seed kinds (HD, Algo25, Ledger, Passkey, ...) */
 .tag {

@@ -32,7 +32,14 @@
       </template>
       <template #[`item.amount`]="{ item }">
         <div class="amount">
-          <span v-if="store.isVoi">V </span>{{ bigintToString(item.amount, 6) }}
+          <span v-if="store.isVoi" class="font-weight-bold">V </span>
+          <algo-icon
+            v-else
+            color="currentColor"
+            :width="10"
+            class="algo-glyph"
+          />
+          {{ bigintToString(item.amount, 6) }}
         </div>
         <div class="text-dim text-caption">
           {{
