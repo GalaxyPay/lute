@@ -1,21 +1,21 @@
 <template>
-  <v-dialog v-model="show" max-width="500" persistent>
+  <v-dialog v-model="show" max-width="440" persistent>
     <v-card :loading="rotating" :disabled="rotating">
       <v-card-title class="d-flex">
         Change Password
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
-      <v-card-text class="text-warning pb-0">
-        Make sure your recovery phrase(s) are backed up before continuing.
-      </v-card-text>
-      <v-card-text class="pb-0 text-muted text-body-2">
-        The password protects every account stored in this browser: HD, Algo25
-        and Falcon. Ledger, watch, multi-sig, and passkey accounts are not
-        affected.
-      </v-card-text>
-      <v-container>
-        <v-form ref="form" @submit.prevent="rotate()" validate-on="submit">
+      <v-form ref="form" @submit.prevent="rotate()" validate-on="submit">
+        <v-card-text>
+          <p class="text-warning text-body-2 mb-1">
+            Make sure your recovery phrase(s) are backed up before continuing.
+          </p>
+          <p class="text-muted text-body-2 mb-2">
+            The password protects every account stored in this browser: HD,
+            Algo25 and Falcon. Ledger, watch, multi-sig, and passkey accounts
+            are not affected.
+          </p>
           <v-text-field
             v-show="false"
             name="username"
@@ -49,12 +49,16 @@
             density="comfortable"
             :rules="[required, match]"
           />
-          <v-card-actions>
-            <v-spacer />
-            <v-btn text="Submit" type="submit" :loading="rotating" />
-          </v-card-actions>
-        </v-form>
-      </v-container>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn
+            variant="flat"
+            text="Submit"
+            type="submit"
+            :loading="rotating"
+          />
+        </v-card-actions>
+      </v-form>
     </v-card>
   </v-dialog>
 </template>

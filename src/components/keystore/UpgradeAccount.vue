@@ -1,12 +1,12 @@
 <template>
-  <v-dialog :model-value="!!account" max-width="700" persistent>
+  <v-dialog :model-value="!!account" max-width="620" persistent>
     <v-card v-if="account" :loading="busy" :disabled="busy">
       <v-card-title class="d-flex">
         Upgrade Account
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="emit('close')" />
+        <v-icon :icon="mdiClose" @click="emit('close')" />
       </v-card-title>
-      <v-card-text class="pb-0">
+      <v-card-text class="pb-0 text-text-body">
         This account was added before Lute could show mnemonics, so only a
         one-way form of its key is stored. Re-enter its
         {{ words }}-word mnemonic to store it in a form you can export later.
@@ -16,14 +16,12 @@
         </template>
         Nothing changes on chain.
       </v-card-text>
-      <v-container class="pt-0">
-        <import-key
-          :key="account.addr"
-          :number-of-words="words"
-          button-text="Upgrade"
-          @mn="upgrade"
-        />
-      </v-container>
+      <import-key
+        :key="account.addr"
+        :number-of-words="words"
+        button-text="Upgrade"
+        @mn="upgrade"
+      />
     </v-card>
   </v-dialog>
   <keystore-unlock ref="unlocker" />

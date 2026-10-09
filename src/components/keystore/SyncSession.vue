@@ -3,7 +3,7 @@
     <v-card-title class="d-flex">
       {{ title }}
       <v-spacer />
-      <v-icon v-if="finished" :icon="mdiClose" size="small" @click="close()" />
+      <v-icon v-if="finished" :icon="mdiClose" @click="close()" />
     </v-card-title>
     <template v-if="state === 'confirm' && !finished">
       <v-card-text>
@@ -14,14 +14,13 @@
         Only continue if you started this sync yourself.
       </v-card-text>
       <v-card-text v-if="store.keystoreMode === 'device'" class="pt-0">
-        <no-password-notice />
-        The keys sent here will not be password protected. Set a password
-        first to keep them protected.
+        <no-password-notice class="mb-3" />
+        The keys sent here will not be password protected. Set a password first
+        to keep them protected.
       </v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Decline" @click="answer(false)" />
-        <v-btn text="Add Accounts" color="primary" @click="answer(true)" />
+      <v-card-actions class="card-footer">
+        <v-btn text="Decline" color="text-body" @click="answer(false)" />
+        <v-btn variant="flat" text="Add Accounts" @click="answer(true)" />
       </v-card-actions>
     </template>
     <template v-else-if="result">
@@ -30,26 +29,23 @@
         :skipped="result.skipped"
         :warning="result.warning"
       />
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Close" @click="close()" />
+      <v-card-actions class="card-footer">
+        <v-btn variant="outlined" text="Close" @click="close()" />
       </v-card-actions>
     </template>
     <template v-else-if="error">
-      <v-card-text class="text-error">{{ error }}</v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Close" @click="close()" />
+      <v-card-text class="text-error-text">{{ error }}</v-card-text>
+      <v-card-actions class="card-footer">
+        <v-btn variant="outlined" text="Close" @click="close()" />
       </v-card-actions>
     </template>
     <template v-else>
-      <v-card-text class="d-flex align-center">
-        <v-progress-circular indeterminate size="20" width="2" class="mr-3" />
+      <v-card-text class="d-flex align-center text-high-emphasis">
+        <v-progress-circular indeterminate size="18" width="2" class="mr-3" />
         {{ status }}
       </v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Cancel" @click="cancel()" />
+      <v-card-actions class="card-footer">
+        <v-btn text="Cancel" color="text-body" @click="cancel()" />
       </v-card-actions>
     </template>
   </v-card>
@@ -180,15 +176,19 @@ async function receive(onState: (s: ReceiverState) => void) {
     props.side === "web"
       ? webTransport(props.token)
       : receiverTransport(props.tabId!);
-  const { added, upgraded, skipped } = await runReceiver(props.side, transport, {
-    onState,
-    confirm: () => new Promise((resolve) => (answerConfirm = resolve)),
-    getMk: () => unlocker.value!.ensureMk(),
-    abandon: () => {
-      answerConfirm = undefined;
-      unlocker.value?.cancel();
-    },
-  });
+  const { added, upgraded, skipped } = await runReceiver(
+    props.side,
+    transport,
+    {
+      onState,
+      confirm: () => new Promise((resolve) => (answerConfirm = resolve)),
+      getMk: () => unlocker.value!.ensureMk(),
+      abandon: () => {
+        answerConfirm = undefined;
+        unlocker.value?.cancel();
+      },
+    }
+  );
   await store.getCache();
   store.refresh++;
   result.value = {

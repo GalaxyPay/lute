@@ -4,10 +4,10 @@
     warning
   }}</v-card-text>
   <v-card-text v-if="skipped.length" class="pt-0">
-    <div class="pb-1">Not included:</div>
-    <div v-for="s in skipped" :key="s.addr" style="font-size: 0.8em">
+    <div class="pb-1 text-text-body text-body-2">Not included:</div>
+    <div v-for="s in skipped" :key="s.addr" class="text-caption">
       <span class="font-mono">{{ formatAddr(s.addr) }}</span>
-      <span class="text-grey ml-1">{{ s.reason }}</span>
+      <span class="text-dim ml-2">{{ s.reason }}</span>
     </div>
   </v-card-text>
 </template>

@@ -1,16 +1,23 @@
 <template>
-  <v-dialog :model-value="!!account" max-width="600" persistent>
+  <v-dialog
+    :model-value="!!account"
+    :max-width="words.length ? 520 : 440"
+    persistent
+  >
     <v-card v-if="account">
       <v-card-title class="d-flex">
         {{ words.length ? "Mnemonic" : "Export Mnemonic" }}
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="close()" />
+        <v-icon :icon="mdiClose" @click="close()" />
       </v-card-title>
       <template v-if="!words.length">
         <v-card-text>
           This mnemonic gives full control of
-          {{ hd ? "every account on this seed" : "this account" }}. Anyone who
-          sees it can take your funds, so only reveal it somewhere private.
+          <b class="text-high-emphasis">{{
+            hd ? "every account on this seed" : "this account"
+          }}</b
+          >. Anyone who sees it can take your funds, so only reveal it somewhere
+          private.
         </v-card-text>
         <v-card-text
           v-if="!passkey && store.keystoreMode === 'device'"
@@ -20,9 +27,9 @@
           confirmation.
         </v-card-text>
         <v-card-actions>
-          <v-spacer />
-          <v-btn text="Cancel" @click="close()" />
+          <v-btn text="Cancel" color="text-body" @click="close()" />
           <v-btn
+            variant="flat"
             text="Reveal"
             color="warning"
             :loading="busy"
@@ -35,8 +42,7 @@
           <mnemonic-display :words="words" />
         </v-card-text>
         <v-card-actions>
-          <v-spacer />
-          <v-btn text="Close" @click="close()" />
+          <v-btn variant="outlined" text="Close" @click="close()" />
         </v-card-actions>
       </template>
     </v-card>

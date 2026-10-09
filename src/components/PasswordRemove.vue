@@ -1,21 +1,22 @@
 <template>
-  <v-dialog v-model="show" max-width="500" persistent>
+  <v-dialog v-model="show" max-width="440" persistent>
     <v-card :loading="removing" :disabled="removing">
       <v-card-title class="d-flex">
         Remove Password
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
-      <v-card-text class="text-warning pb-0">
-        Without a password, anyone with access to this browser profile can sign
-        with the accounts stored in it, and reveal their mnemonics.
-      </v-card-text>
-      <v-card-text class="pb-0 text-muted text-body-2">
-        Every account stored in this browser is re-encrypted under a key that
-        never leaves the browser. You can set a password again at any time.
-      </v-card-text>
-      <v-container>
-        <v-form ref="form" @submit.prevent="remove()" validate-on="submit">
+      <v-form ref="form" @submit.prevent="remove()" validate-on="submit">
+        <v-card-text>
+          <v-alert type="warning" class="mb-3">
+            Without a password, anyone with access to this browser profile can
+            sign with the accounts stored in it, and reveal their mnemonics.
+          </v-alert>
+          <p class="text-muted text-body-2 mb-2">
+            Every account stored in this browser is re-encrypted under a key
+            that never leaves the browser. You can set a password again at any
+            time.
+          </p>
           <v-text-field
             v-model="current"
             label="Current Password"
@@ -26,17 +27,17 @@
             :rules="[required]"
             autofocus
           />
-          <v-card-actions>
-            <v-spacer />
-            <v-btn
-              text="Remove Password"
-              color="error"
-              type="submit"
-              :loading="removing"
-            />
-          </v-card-actions>
-        </v-form>
-      </v-container>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn
+            variant="flat"
+            text="Remove Password"
+            color="danger-fill"
+            type="submit"
+            :loading="removing"
+          />
+        </v-card-actions>
+      </v-form>
     </v-card>
   </v-dialog>
 </template>
