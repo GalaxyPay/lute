@@ -611,6 +611,10 @@ pre {
 .v-switch.v-input--horizontal .v-input__details {
   display: none;
 }
+/* Enabled / Disabled label sits before the switch */
+.v-switch .v-selection-control {
+  flex-direction: row-reverse;
+}
 .v-switch .v-label {
   font-size: 13px;
   color: rgb(var(--v-theme-text-muted));
