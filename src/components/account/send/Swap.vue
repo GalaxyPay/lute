@@ -1,6 +1,6 @@
 <template>
   <v-form v-if="!reviewTxns" ref="form" @submit.prevent="propose()">
-    <v-container class="px-0 pt-6">
+    <v-container class="send-form">
       <v-row justify="center">
         <v-col cols="12" sm="6">
           <v-autocomplete
@@ -64,15 +64,14 @@
       </v-row>
     </v-container>
     <v-container class="text-center">
-      <div class="text-caption text-grey">
+      <div class="text-caption text-muted">
         To propose a swap you'll sign the first transaction - this transaction
         will not be valid unless the second transaction is signed by the
         receiver
       </div>
     </v-container>
-    <v-card-actions>
-      <v-spacer />
-      <v-btn text="Propose Swap" type="submit" />
+    <v-card-actions class="card-footer">
+      <v-btn variant="flat" text="Propose Swap" type="submit" />
     </v-card-actions>
   </v-form>
 </template>
@@ -241,3 +240,9 @@ async function propose() {
   store.overlay = false;
 }
 </script>
+
+<style scoped>
+.send-form {
+  padding: 8px 18px 12px;
+}
+</style>

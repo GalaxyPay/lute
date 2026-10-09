@@ -1,56 +1,47 @@
 <template>
-  <v-card class="fill-height" color="surface-variant">
-    <v-container>
-      <v-row>
-        <v-col cols="2" align-self="center" class="pr-0 pl-2">
-          <v-img contain max-width="60" :src="image" />
-        </v-col>
-        <v-col :cols="optOut ? 9 : 10" class="py-1">
-          <v-container>
-            <v-row no-gutters>
-              <v-col class="pa-0">
-                <v-row>
-                  {{ assetInfo?.params?.name || asset.assetId }}
-                  <a
-                    :href="store.network.explorer + '/asset/' + asset.assetId"
-                    target="_blank"
-                  >
-                    <v-icon
-                      :icon="mdiInformationOutline"
-                      color="grey"
-                      class="pl-2"
-                    />
-                  </a>
-                </v-row>
-                <v-row class="text-caption">
-                  {{ formatAmount() }}
-                  {{ assetInfo?.params?.unitName }}
-                </v-row>
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-col>
-        <v-col cols="1" v-show="optOut" class="pt-0 pl-0 pr-1 text-right">
-          <v-icon
-            :icon="mdiClose"
-            color="error"
-            size="x-small"
-            @click="setReceiver()"
-          />
-        </v-col>
-      </v-row>
-    </v-container>
+  <div class="asset-row">
+    <v-avatar size="28" color="surface-selected" class="asset-avatar">
+      <v-img v-if="image" :src="image" />
+      <span v-else>{{ initials }}</span>
+    </v-avatar>
+    <div class="flex-grow-1 min-w-0">
+      <div class="asset-name">
+        <span class="ellipsis">
+          {{ assetInfo?.params?.name || asset.assetId }}
+        </span>
+        <a
+          :href="store.network.explorer + '/asset/' + asset.assetId"
+          target="_blank"
+          class="d-inline-flex"
+        >
+          <v-icon :icon="mdiInformationOutline" size="14" class="text-icon" />
+        </a>
+      </div>
+      <div class="address">
+        {{ formatAmount() }}
+        {{ assetInfo?.params?.unitName }}
+      </div>
+    </div>
+    <v-btn
+      v-show="optOut"
+      :icon="mdiClose"
+      color="error"
+      variant="text"
+      size="small"
+      aria-label="Opt-out of asset"
+      @click="setReceiver()"
+    />
     <!-- receiver dialog -->
-    <v-dialog v-model="showReceiver" max-width="600">
+    <v-dialog v-model="showReceiver" max-width="520">
       <v-card>
         <v-card-title class="d-flex">
           Choose Receiver
           <v-spacer />
-          <v-icon :icon="mdiClose" size="small" @click="showReceiver = false" />
+          <v-icon :icon="mdiClose" @click="showReceiver = false" />
         </v-card-title>
-        <v-card-text> Where should the remainder of the asset go? </v-card-text>
         <v-form ref="form" @submit.prevent="closeOut()">
-          <v-container>
+          <v-card-text>
+            <p class="mb-2">Where should the remainder of the asset go?</p>
             <v-text-field
               class="font-mono"
               v-model="receiver"
@@ -64,15 +55,14 @@
               label="Send back to creator"
               hide-details
             />
-          </v-container>
+          </v-card-text>
           <v-card-actions>
-            <v-spacer />
-            <v-btn text="Submit" type="submit" />
+            <v-btn variant="flat" text="Submit" type="submit" />
           </v-card-actions>
         </v-form>
       </v-card>
     </v-dialog>
-  </v-card>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -124,6 +114,12 @@ onMounted(async () => {
   }
 });
 
+const initials = computed(() =>
+  (assetInfo.value?.params?.unitName || assetInfo.value?.params?.name || "")
+    .slice(0, 2)
+    .toUpperCase()
+);
+
 function formatAmount() {
   return assetInfo.value?.params
     ? bigintToString(props.asset.amount, assetInfo.value.params.decimals)
@@ -167,3 +163,30 @@ async function closeOut() {
   store.overlay = false;
 }
 </script>
+
+<style scoped>
+.asset-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 18px;
+  border-bottom: 1px solid rgb(var(--v-theme-border-subtle));
+}
+.asset-avatar {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-text-body));
+}
+.asset-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+.min-w-0 {
+  min-width: 0;
+}
+</style>

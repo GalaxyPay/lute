@@ -1,39 +1,32 @@
 <template>
-  <v-container>
-    <v-row v-if="ownedNfds?.length > 1" justify="center" class="py-2">
-      <v-col cols="10" sm="8" md="6" lg="4">
-        <v-select
-          v-model="nfd"
-          :items="ownedNfds"
-          item-title="name"
-          return-object
-          @update:model-value="getAssets()"
-          hide-details
-        />
-      </v-col>
-    </v-row>
-    <v-row v-if="vaultAssets && !vaultAssets.length">
-      <v-col class="text-center text-body-2 font-italic">
-        No Assets in your Vault
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col
+  <div class="tab-pane">
+    <div v-if="ownedNfds?.length > 1" class="vault-select">
+      <v-select
+        v-model="nfd"
+        :items="ownedNfds"
+        item-title="name"
+        return-object
+        @update:model-value="getAssets()"
+        hide-details
+      />
+    </div>
+    <div
+      v-if="vaultAssets && !vaultAssets.length"
+      class="text-center text-muted text-body-2 py-4"
+    >
+      No Assets in your Vault
+    </div>
+    <div class="asset-grid">
+      <vault-asset
         v-for="asset in vaultAssets"
         :key="Number(asset.assetId)"
-        cols="12"
-        md="6"
-        lg="4"
-      >
-        <vault-asset
-          :nfd="nfd"
-          :asset="asset"
-          :acct="acct"
-          @complete="emit('complete')"
-        />
-      </v-col>
-    </v-row>
-  </v-container>
+        :nfd="nfd"
+        :asset="asset"
+        :acct="acct"
+        @complete="emit('complete')"
+      />
+    </div>
+  </div>
 </template>
 <script lang="ts" setup>
 import Algo from "@/services/Algo";
@@ -62,3 +55,18 @@ async function getAssets() {
   ).assets?.filter((a) => a.amount);
 }
 </script>
+
+<style scoped>
+.tab-pane {
+  padding: 14px 18px 18px;
+}
+.vault-select {
+  max-width: 280px;
+  margin-bottom: 14px;
+}
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+</style>

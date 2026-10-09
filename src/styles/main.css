@@ -41,6 +41,24 @@ a:not(.v-list-item, .v-btn, .v-chip) {
   color: rgb(var(--v-theme-primary-text));
 }
 
+/* ---- Page layout ---- */
+.page {
+  padding: 28px 36px 36px;
+}
+.page--flush {
+  padding: 0 0 16px;
+}
+@media (max-width: 599.98px) {
+  .page:not(.page--flush) {
+    padding: 16px;
+  }
+}
+.title-panel {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
 /* ---- Utilities ---- */
 .pointer {
   cursor: pointer;
@@ -105,6 +123,10 @@ pre {
   color: rgb(var(--v-theme-text-body));
   border: 1px solid rgb(var(--v-theme-border-strong));
   white-space: nowrap;
+}
+/* Account kind as plain text in an address line */
+.acct-type {
+  font-family: var(--font-mono);
 }
 /* Info dot: upgradeable accounts */
 .dot {
@@ -210,10 +232,18 @@ pre {
 .v-btn--loading.v-btn--variant-flat.bg-primary {
   background: rgba(var(--v-theme-primary), 0.6) !important;
 }
-/* Icon buttons: glyphs in the icon color unless a color is set */
+/* Icon buttons: glyphs in the icon color unless another color is set */
 .v-btn.v-btn--icon.v-btn--variant-plain:not([class*="text-"]),
-.v-btn.v-btn--icon.v-btn--variant-text:not([class*="text-"]) {
-  color: rgb(var(--v-theme-icon));
+.v-btn.v-btn--icon.v-btn--variant-text:not([class*="text-"]),
+.v-btn.v-btn--icon.v-btn--variant-plain.text-primary,
+.v-btn.v-btn--icon.v-btn--variant-text.text-primary {
+  color: rgb(var(--v-theme-icon)) !important;
+}
+.v-btn.v-btn--icon:is(.v-btn--variant-text, .v-btn--variant-plain):is(
+    :not([class*="text-"]),
+    .text-primary
+  ):hover {
+  color: rgb(var(--v-theme-on-surface)) !important;
 }
 .v-icon.clickable {
   color: rgb(var(--v-theme-icon));
@@ -236,6 +266,12 @@ pre {
 }
 .v-card-actions {
   gap: 8px;
+}
+/* Footer row at the bottom of a card section: top border, actions right */
+.v-card-actions.card-footer {
+  border-top: 1px solid rgb(var(--v-theme-border));
+  padding: 16px 18px;
+  justify-content: flex-end;
 }
 .v-card-actions .v-btn ~ .v-btn:not(.v-btn-toggle .v-btn) {
   margin-inline-start: 0;
@@ -368,9 +404,10 @@ pre {
 }
 .v-data-table-rows-no-data > td {
   color: rgb(var(--v-theme-text-muted));
+  text-align: center !important;
   padding: 24px 0 !important;
 }
-.v-data-table .v-progress-linear {
+.v-data-table-progress .v-progress-linear {
   height: 3px !important;
 }
 

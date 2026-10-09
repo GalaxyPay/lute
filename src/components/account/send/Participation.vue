@@ -1,6 +1,6 @@
 <template>
   <v-form ref="form" @submit.prevent="submit()">
-    <v-container class="px-0 pt-6">
+    <v-container class="send-form">
       <v-row>
         <v-col>
           {{ `Your account is currently ${acct.info?.status}.` }}
@@ -83,9 +83,9 @@
         </v-col>
       </v-row>
     </v-container>
-    <v-card-actions>
-      <span>
-        <v-icon :icon="mdiInformationOutline" />
+    <v-card-actions class="card-footer">
+      <span class="d-inline-flex">
+        <v-icon :icon="mdiInformationOutline" size="18" class="text-icon" />
         <v-tooltip
           activator="parent"
           location="top end"
@@ -93,7 +93,7 @@
         />
       </span>
       <v-spacer />
-      <v-btn text="Send" type="submit" />
+      <v-btn variant="flat" text="Send" type="submit" />
     </v-card-actions>
   </v-form>
 </template>
@@ -260,3 +260,9 @@ onMounted(async () => {
   await calcAvgBlockTime();
 });
 </script>
+
+<style scoped>
+.send-form {
+  padding: 8px 18px 12px;
+}
+</style>

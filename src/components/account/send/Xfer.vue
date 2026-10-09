@@ -5,7 +5,7 @@
     validate-on="blur"
     autocomplete="off"
   >
-    <v-container class="px-0 pt-6">
+    <v-container class="send-form">
       <template v-if="!rekey">
         <v-row>
           <v-col cols="12" sm="6">
@@ -18,7 +18,7 @@
               :hint="itemBalance"
               persistent-hint
               variant="outlined"
-              class="pb-3"
+              class="pb-3 mono-hint"
             />
           </v-col>
           <v-col cols="12" sm="6">
@@ -29,7 +29,14 @@
               :rules="[required]"
             >
               <template #append-inner>
-                <v-btn text="Max" @click="maxAmount()" />
+                <v-btn
+                  text="Max"
+                  variant="flat"
+                  color="surface-selected"
+                  size="x-small"
+                  class="max-btn"
+                  @click="maxAmount()"
+                />
               </template>
             </v-text-field>
           </v-col>
@@ -59,7 +66,11 @@
           <template #label>
             Close Remainder To
             <span>
-              <v-icon size="x-small" class="ml-2" :icon="mdiInformation" />
+              <v-icon
+                size="14"
+                class="ml-2 text-icon"
+                :icon="mdiInformationOutline"
+              />
               <v-tooltip
                 activator="parent"
                 location="bottom"
@@ -81,7 +92,11 @@
           <template #label>
             Revocation Target
             <span>
-              <v-icon size="x-small" class="ml-2" :icon="mdiInformation" />
+              <v-icon
+                size="14"
+                class="ml-2 text-icon"
+                :icon="mdiInformationOutline"
+              />
               <v-tooltip
                 activator="parent"
                 location="bottom"
@@ -110,20 +125,23 @@
         class="pb-2"
       />
     </v-container>
-    <v-card-actions>
-      <v-spacer />
-      <v-btn text="Send" type="submit" />
+    <v-card-actions class="card-footer">
+      <v-btn variant="flat" text="Send" type="submit" />
     </v-card-actions>
   </v-form>
-  <v-dialog v-model="showInboxWarning" max-width="600" persistent>
+  <v-dialog v-model="showInboxWarning" max-width="440" persistent>
     <v-card
       title="WARNING"
       text="The recipient is not opted-in to the asset, so the asset will be sent using the Inbox Router.
         Custodial accounts, like those on an exchange, may not be able to claim the asset."
     >
       <v-card-actions>
-        <v-btn text="Cancel" color="grey" @click="showInboxWarning = false" />
-        <v-btn text="Use Inbox" @click="arc59SendAsset()" />
+        <v-btn
+          text="Cancel"
+          color="text-body"
+          @click="showInboxWarning = false"
+        />
+        <v-btn variant="flat" text="Use Inbox" @click="arc59SendAsset()" />
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -143,7 +161,7 @@ import {
   whenLoaded,
 } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
-import { mdiInformation } from "@mdi/js";
+import { mdiInformationOutline } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 
 const props = defineProps<{ acct: AccountInfo; rekey: boolean }>();
@@ -302,7 +320,9 @@ async function arc59SendAsset() {
   try {
     showInboxWarning.value = false;
     if (!asset.value.params) throw Error("Invalid Asset");
-    const note64 = note.value ? new TextEncoder().encode(note.value) : undefined;
+    const note64 = note.value
+      ? new TextEncoder().encode(note.value)
+      : undefined;
     const txns = await Inbox.sendTxns({
       sender: props.acct.addr,
       receiver: to.value,
@@ -352,3 +372,16 @@ watch(
   { immediate: true }
 );
 </script>
+
+<style scoped>
+.send-form {
+  padding: 8px 18px 12px;
+}
+.mono-hint :deep(.v-messages) {
+  font-family: var(--font-mono);
+}
+.max-btn {
+  margin-inline-end: -6px;
+  font-size: 12px;
+}
+</style>

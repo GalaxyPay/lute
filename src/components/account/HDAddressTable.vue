@@ -1,53 +1,51 @@
 <template>
-  <v-container>
-    <v-data-table
-      :items="addrs"
-      :headers="headers"
-      class="no-select"
-      items-per-page="-1"
-      hover
-      @click:row="acctDetails"
-    >
-      <template #headers />
-      <template #bottom />
-      <template #[`item.address`]="{ item }">
-        <div
-          class="font-mono"
-          :class="isAdded(item.address) ? '' : 'text-grey'"
-        >
-          {{ item.address }}
-        </div>
-        <div class="text-grey text-caption">
-          {{ `44'/283'/${acct.slot}'/0/${item.addrIdx}` }}
-        </div>
-      </template>
-      <template #[`item.actions`]="{ item }">
-        <v-icon
-          v-if="isAdded(item.address)"
-          :icon="mdiMinus"
-          color="primary"
-          @click.stop="removeFromWallet(item.addrIdx)"
-        />
-        <v-icon
-          v-else
-          :icon="mdiPlus"
-          color="primary"
-          @click.stop="addToWallet(item.addrIdx)"
-        />
-      </template>
-    </v-data-table>
-  </v-container>
-  <v-container class="text-center">
-    <v-row>
-      <v-col>
-        <v-btn
-          @click="getAddrs(addrs.length + 1)"
-          :append-icon="mdiChevronDown"
-          text="Load more addresses"
-        />
-      </v-col>
-    </v-row>
-  </v-container>
+  <v-data-table
+    :items="addrs"
+    :headers="headers"
+    class="no-select hd-table"
+    items-per-page="-1"
+    hover
+    @click:row="acctDetails"
+  >
+    <template #headers />
+    <template #bottom />
+    <template #[`item.address`]="{ item }">
+      <div class="hd-address" :class="isAdded(item.address) ? '' : 'text-dim'">
+        {{ item.address }}
+      </div>
+      <div class="address">
+        {{ `44'/283'/${acct.slot}'/0/${item.addrIdx}` }}
+      </div>
+    </template>
+    <template #[`item.actions`]="{ item }">
+      <v-btn
+        v-if="isAdded(item.address)"
+        :icon="mdiMinus"
+        color="primary-text"
+        variant="text"
+        size="small"
+        aria-label="Remove from wallet"
+        @click.stop="removeFromWallet(item.addrIdx)"
+      />
+      <v-btn
+        v-else
+        :icon="mdiPlus"
+        color="primary-text"
+        variant="text"
+        size="small"
+        aria-label="Add to wallet"
+        @click.stop="addToWallet(item.addrIdx)"
+      />
+    </template>
+  </v-data-table>
+  <div class="d-flex justify-center pa-2">
+    <v-btn
+      size="small"
+      @click="getAddrs(addrs.length + 1)"
+      :append-icon="mdiChevronDown"
+      text="Load more addresses"
+    />
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -131,3 +129,22 @@ function acctDetails(_event: any, row: any) {
   if (isAdded(row.item.address)) router.push(row.item.address);
 }
 </script>
+
+<style scoped>
+.hd-table :deep(tbody tr) {
+  height: 48px;
+}
+.hd-table :deep(td) {
+  padding: 6px 18px !important;
+}
+.hd-table :deep(td:first-child) {
+  width: 100%;
+  max-width: 0;
+}
+.hd-address {
+  font: 12.5px var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

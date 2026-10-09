@@ -20,7 +20,7 @@
   <v-app>
     <AppBar v-if="showAppBar" />
     <AppNav />
-    <v-main :class="!showAppBar && 'pt-6'">
+    <v-main>
       <router-view />
       <SignDialog />
     </v-main>

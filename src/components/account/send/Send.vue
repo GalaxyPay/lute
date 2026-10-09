@@ -1,6 +1,6 @@
 <template>
-  <v-container class="py-6">
-    <v-row justify="center">
+  <div class="send-tab">
+    <v-row justify="center" no-gutters>
       <v-col cols="12" sm="5">
         <v-select
           v-model="txnType"
@@ -23,7 +23,7 @@
       <Participation v-if="txnType.key === 'keyreg'" :acct="acct" />
       <Swap v-else-if="txnType.key === 'swap'" :sender="acct" />
     </template>
-  </v-container>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -39,3 +39,12 @@ const txnTypes = [
 ];
 const txnType = ref(txnTypes[0]);
 </script>
+
+<style scoped>
+.send-tab {
+  padding-top: 4px;
+}
+.send-tab > .v-row {
+  padding: 0 18px;
+}
+</style>
