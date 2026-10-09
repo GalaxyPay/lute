@@ -678,3 +678,21 @@ pre {
 .v-progress-linear {
   color: rgb(var(--v-theme-primary));
 }
+
+/* Network chip: only off MainNet */
+.v-chip.net-chip {
+  font: 400 12px/1.3 var(--font-sans);
+  padding: 3px 9px 3px 8px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(var(--v-theme-error), 0.5);
+  background: rgba(var(--v-theme-error), 0.12);
+  color: rgb(var(--v-theme-error-text)) !important;
+}
+.v-chip.net-chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-error));
+}
