@@ -42,11 +42,18 @@
         variant="outlined"
         :prepend-icon="mdiPlus"
         text="Add seed"
-        @click="newSeed = true"
+        @click="
+          newSeed = true;
+          $emit('adding');
+        "
       />
     </v-card-actions>
   </template>
-  <local-seed v-else @seed="(id, seed) => $emit('seed', id, seed)" />
+  <local-seed
+    v-else
+    @seed="(id, seed) => $emit('seed', id, seed)"
+    @stage="(s) => $emit('stage', s)"
+  />
   <remove-seed
     :row="removing"
     @close="removing = undefined"
@@ -63,7 +70,7 @@ defineProps({
   rows: { type: Array as PropType<SeedRow[]>, required: true },
 });
 
-defineEmits(["pick", "seed", "removed"]);
+defineEmits(["pick", "seed", "removed", "adding", "stage"]);
 
 const store = useAppStore();
 const newSeed = ref(false);

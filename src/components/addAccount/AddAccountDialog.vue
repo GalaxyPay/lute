@@ -3,8 +3,14 @@
     <v-card>
       <div class="dialog-header dialog-header--divider">
         <div class="min-w-0">
-          <div v-if="type" class="dialog-breadcrumb">Add an account</div>
-          <div class="dialog-heading">{{ type || "Add an account" }}</div>
+          <template v-if="type === HD && stepTitle">
+            <div class="dialog-breadcrumb">Add an account › {{ HD }}</div>
+            <div class="dialog-heading">{{ stepTitle }}</div>
+          </template>
+          <template v-else>
+            <div v-if="type" class="dialog-breadcrumb">Add an account</div>
+            <div class="dialog-heading">{{ type || "Add an account" }}</div>
+          </template>
         </div>
         <v-btn
           :icon="mdiClose"
@@ -69,7 +75,11 @@
           />
         </div>
       </div>
-      <h-d-wallet v-else-if="type === HD" @close="show = false" />
+      <h-d-wallet
+        v-else-if="type === HD"
+        @close="show = false"
+        @title="stepTitle = $event"
+      />
       <ledger v-else-if="type === LEDGER" @close="show = false" />
       <multi-sig v-else-if="type === MSIG" @close="show = false" />
       <watch v-else-if="type === WATCH" @close="show = false" />
@@ -95,6 +105,8 @@ import {
 
 const store = useAppStore();
 const type = ref();
+// Set by the HD wallet flow to name its current step.
+const stepTitle = ref<string>();
 
 const LEDGER = "Ledger account";
 const WATCH = "Watch account";
@@ -180,6 +192,7 @@ watch(
   (val) => {
     if (val) {
       type.value = undefined;
+      stepTitle.value = undefined;
       showMore.value = false;
     }
   }

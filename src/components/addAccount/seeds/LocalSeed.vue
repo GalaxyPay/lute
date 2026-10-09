@@ -33,11 +33,17 @@
 import Seed from "@/services/Seed";
 import { mdiFingerprint } from "@mdi/js";
 
-const emit = defineEmits(["seed"]);
+const emit = defineEmits(["seed", "stage"]);
 
 const store = useAppStore();
 const hideTabs = ref(false);
 const tab = ref(0);
+
+// For the HD wallet step title. NewKey hides the tabs for its word check.
+const stage = computed(() =>
+  tab.value === 1 ? "import" : hideTabs.value ? "check" : "new"
+);
+watch(stage, (s) => emit("stage", s), { immediate: true });
 
 // Passkeys can no longer create seeds, but one registered with an earlier
 // version can still be recovered on a new device.
