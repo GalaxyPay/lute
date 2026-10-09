@@ -1,6 +1,6 @@
 <template>
   <div v-if="acct?.info" class="page detail-page" :class="xs && 'page--flush'">
-    <div class="stat-grid">
+    <div class="stat-grid" :style="{ '--chars': amountChars }">
       <v-card class="stat-card stat-card--address">
         <div class="stat-label">
           Address
@@ -55,9 +55,7 @@
             :width="xs ? 13 : 18"
             class="algo-glyph"
           />
-          {{
-            acct.info.amount != null ? bigintToString(acct.info.amount, 6) : "-"
-          }}
+          {{ balance }}
         </div>
       </v-card>
       <v-card class="stat-card">
@@ -76,11 +74,7 @@
             :width="xs ? 13 : 18"
             class="algo-glyph"
           />
-          {{
-            acct.info.minBalance != null
-              ? bigintToString(acct.info.minBalance, 6)
-              : "-"
-          }}
+          {{ minBalance }}
         </div>
       </v-card>
     </div>
@@ -146,6 +140,22 @@ const store = useAppStore();
 const { xs } = useDisplay();
 const props = defineProps({ addr: { type: String, required: true } });
 const acct = computed(() => store.acctInfo.find((i) => i.addr === props.addr));
+const balance = computed(() =>
+  acct.value?.info?.amount != null
+    ? bigintToString(acct.value.info.amount, 6)
+    : "-"
+);
+const minBalance = computed(() =>
+  acct.value?.info?.minBalance != null
+    ? bigintToString(acct.value.info.minBalance, 6)
+    : "-"
+);
+// Both amounts share one size; Voi's "V" prefix takes a character too.
+const amountChars = computed(
+  () =>
+    Math.max(balance.value.length, minBalance.value.length) +
+    (store.isVoi ? 1 : 0)
+);
 const showRekeyTip = ref(false);
 const showNsTip = ref(false);
 const tab = ref(MSIG);
@@ -196,6 +206,7 @@ watch(
   margin-bottom: 18px;
 }
 .stat-card {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -217,12 +228,23 @@ watch(
   color: rgb(var(--v-theme-on-surface));
   word-break: break-all;
 }
+/* Long amounts shrink to fit the card. Each mono character takes 0.6em
+   (the -0.02em tracking leaves slack for rounding); the glyph and the 0.35em
+   gap come off the width first. Past 12px the number wraps instead. */
 .stat-value {
+  --max: 26px;
+  --glyph: 18px;
   display: flex;
   align-items: baseline;
   gap: 0.35em;
-  font: 500 26px/1.2 var(--font-mono);
+  font: 500 var(--max) / 1.2 var(--font-mono);
+  font-size: clamp(
+    12px,
+    (100cqi - var(--glyph)) / (var(--chars) * 0.6 + 0.35),
+    var(--max)
+  );
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 .tabs-card {
   margin-bottom: 18px;
@@ -236,7 +258,7 @@ watch(
   font-weight: 500;
   border-bottom: 1px solid rgb(var(--v-theme-border));
 }
-@media (max-width: 959.98px) {
+@media (max-width: 1279.98px) {
   .stat-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -261,7 +283,8 @@ watch(
   font-size: 12.5px;
 }
 .page--flush .stat-value {
-  font-size: 19px;
+  --max: 19px;
+  --glyph: 13px;
 }
 .page--flush .tabs-card,
 .page--flush .hd-card {
