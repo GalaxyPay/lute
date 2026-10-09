@@ -789,9 +789,12 @@ pre {
 }
 
 /* Network chip: only off MainNet */
+/* A whole-pixel height keeps the text centered at 1x; 1.3 line-height left it
+   on a fractional offset. */
 .v-chip.net-chip {
-  font: 400 12px/1.3 var(--font-sans);
-  padding: 3px 9px 3px 8px !important;
+  font: 400 12px/20px var(--font-sans);
+  height: 22px !important;
+  padding: 0 9px 0 8px !important;
   border-radius: 20px !important;
   border: 1px solid rgba(var(--v-theme-error), 0.5);
   background: rgba(var(--v-theme-error), 0.12);
