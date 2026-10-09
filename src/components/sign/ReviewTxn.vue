@@ -8,7 +8,7 @@
       <v-chip
         size="x-small"
         @click="viewRaw = !viewRaw"
-        :text="viewRaw ? 'View Summary' : 'View Raw'"
+        :text="viewRaw ? 'View summary' : 'View raw'"
       />
     </div>
     <pre v-show="viewRaw" class="review-raw">{{
@@ -22,7 +22,7 @@
         <dd>{{ ftxn.to }}</dd>
       </template>
       <template v-if="ftxn.clawbackFrom">
-        <dt>Clawback From</dt>
+        <dt>Clawback from</dt>
         <dd :class="toSign ? 'text-error-text' : ''">
           {{ ftxn.clawbackFrom }}
         </dd>
@@ -44,27 +44,27 @@
         {{ ftxn.fee }}
       </dd>
       <template v-if="ftxn.voteFirst">
-        <dt>First Vote Round</dt>
+        <dt>First vote round</dt>
         <dd>{{ ftxn.voteFirst }}</dd>
       </template>
       <template v-if="ftxn.voteLast">
-        <dt>Last Vote Round</dt>
+        <dt>Last vote round</dt>
         <dd>{{ ftxn.voteLast }}</dd>
       </template>
       <template v-if="ftxn.voteKeyDilution">
-        <dt>Key Dilution</dt>
+        <dt>Key dilution</dt>
         <dd>{{ ftxn.voteKeyDilution }}</dd>
       </template>
       <template v-if="ftxn.selectionKey">
-        <dt>Selection Key</dt>
+        <dt>Selection key</dt>
         <dd>{{ ftxn.selectionKey }}</dd>
       </template>
       <template v-if="ftxn.voteKey">
-        <dt>Voting Key</dt>
+        <dt>Voting key</dt>
         <dd>{{ ftxn.voteKey }}</dd>
       </template>
       <template v-if="ftxn.stateProofKey">
-        <dt>State Proof Key</dt>
+        <dt>State proof key</dt>
         <dd>{{ ftxn.stateProofKey }}</dd>
       </template>
       <template v-if="ftxn.rekeyTo">
@@ -109,7 +109,7 @@ const txnAsset = computed(() =>
 );
 
 const ftxn = computed(() =>
-  formatTxn(props.txn, txnAsset.value, store.isVoi ? "Voi" : "Algo")
+  formatTxn(props.txn, txnAsset.value, store.isVoi ? "VOI" : "ALGO")
 );
 </script>
 

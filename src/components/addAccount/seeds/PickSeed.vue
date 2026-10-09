@@ -1,7 +1,7 @@
 <template>
   <template v-if="!newSeed">
     <div class="seed-body">
-      <div class="seed-label">Your Seeds</div>
+      <div class="seed-label">Your seeds</div>
       <v-data-table
         :items="rows"
         :headers="headers"
@@ -41,7 +41,7 @@
       <v-btn
         variant="outlined"
         :prepend-icon="mdiPlus"
-        text="Add Seed"
+        text="Add seed"
         @click="newSeed = true"
       />
     </v-card-actions>

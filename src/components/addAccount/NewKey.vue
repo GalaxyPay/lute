@@ -125,7 +125,7 @@ async function submit() {
     });
     await store.getCache();
     store.refresh++;
-    store.setSnackbar("Account Created", "success");
+    store.setSnackbar("Account created", "success");
     emit("close");
   } catch (err: any) {
     if (isCancelled(err)) return;

@@ -6,18 +6,18 @@
           {{ `Your account is currently ${acct.info?.status}.` }}
           <v-btn
             v-if="acct.info?.status === 'Online'"
-            text="Go Offline"
+            text="Go offline"
             size="small"
             color="error"
             @click="offline()"
           />
           <v-container v-if="acct.info?.status === 'Online' && expireMs">
             <v-row class="text-caption">
-              Expire Round:
+              Expire round:
               {{ acct.info?.participation?.voteLastValid }}
             </v-row>
             <v-row class="text-caption">
-              Expire Date/Time: {{ expireDt }}
+              Expire date/time: {{ expireDt }}
             </v-row>
           </v-container>
         </v-col>
@@ -26,7 +26,7 @@
         <v-col cols="12" class="pt-0">
           <v-checkbox
             v-model="incentiveEligible"
-            label="Make Incentive Eligible"
+            label="Make incentive eligible"
             density="comfortable"
             :hint="incentiveHint"
             persistent-hint
@@ -36,7 +36,7 @@
         <v-col cols="12" sm="4">
           <v-text-field
             v-model.number="keyreg.voteFirst"
-            label="First Round"
+            label="First round"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -44,7 +44,7 @@
         <v-col cols="12" sm="4">
           <v-text-field
             v-model.number="keyreg.voteLast"
-            label="Last Round"
+            label="Last round"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -52,7 +52,7 @@
         <v-col cols="12" sm="4">
           <v-text-field
             v-model.number="keyreg.voteKeyDilution"
-            label="Key Dilution"
+            label="Key dilution"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -60,7 +60,7 @@
         <v-col cols="12" sm="6">
           <v-text-field
             v-model="keyreg.selectionKey"
-            label="Selection Key"
+            label="Selection key"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -68,7 +68,7 @@
         <v-col cols="12" sm="6">
           <v-text-field
             v-model="keyreg.voteKey"
-            label="Voting Key"
+            label="Voting key"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -76,7 +76,7 @@
         <v-col cols="12">
           <v-text-field
             v-model="keyreg.stateProofKey"
-            label="State Proof Key"
+            label="State proof key"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -115,7 +115,7 @@ const keyreg = ref({} as KeyRegTxn);
 const incentiveEligible = ref(false);
 const incentiveHint = computed(() =>
   props.acct?.info?.incentiveEligible
-    ? "Already Eligible"
+    ? "Already eligible"
     : incentiveEligible.value
       ? "This will increase the fee of this transaction to 2 Algo"
       : ""

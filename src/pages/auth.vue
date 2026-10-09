@@ -14,7 +14,7 @@
           <v-chip
             size="x-small"
             @click="viewRaw = !viewRaw"
-            :text="viewRaw ? 'View Summary' : 'View Raw'"
+            :text="viewRaw ? 'View summary' : 'View raw'"
           />
           <v-container v-show="viewRaw" class="px-0">
             <pre>{{ luteData.siwa }}</pre>

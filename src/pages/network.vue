@@ -3,7 +3,7 @@
     <v-card :loading="loading" :disabled="loading">
       <template v-if="!loading">
         <div class="text-h5 pa-4">
-          {{ `${siteName} wants to add a Network to your Lute configuration` }}
+          {{ `${siteName} wants to add a network to your Lute configuration` }}
         </div>
         <v-container>
           <v-row>

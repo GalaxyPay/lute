@@ -106,7 +106,7 @@
         <div class="text-dim">
           Lute · Version {{ appVersion }} ·
           <router-link to="/privacy" class="text-dim"
-            >Privacy Policy</router-link
+            >Privacy policy</router-link
           >
         </div>
       </div>

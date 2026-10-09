@@ -4,7 +4,7 @@
       <v-col cols="12" sm="5">
         <v-select
           v-model="txnType"
-          label="Transaction Type"
+          label="Transaction type"
           placeholder="Choose a type..."
           persistent-placeholder
           :items="txnTypes"
@@ -33,8 +33,8 @@ defineProps<{ acct: AccountInfo }>();
 
 const txnTypes = [
   { title: "Transfer", key: "xfer" },
-  { title: "Key Registration", key: "keyreg" },
-  { title: "Atomic Swap", key: "swap" },
+  { title: "Key registration", key: "keyreg" },
+  { title: "Atomic swap", key: "swap" },
   { title: "Rekey", key: "rekey" },
 ];
 const txnType = ref(txnTypes[0]);

@@ -10,18 +10,18 @@
         <div class="ext-body d-flex flex-column ga-4 text-text-body">
           <div>
             Because you are connected to Lute with a
-            <span class="text-warning">Multi-Sig account</span>, the requested
+            <span class="text-warning">multi-sig account</span>, the requested
             transactions will be stored in the associated multi-sig contract
             instead of being signed.
           </div>
           <div>
             This action will require
             <span class="text-warning">{{ reviewTxns.length * 2 + 1 }}</span>
-            transactions to be signed by a member of the Multi-Sig. Choose an
+            transactions to be signed by a member of the multi-sig. Choose an
             account and Proceed to review those transactions.
           </div>
           <v-select
-            label="Signing Account"
+            label="Signing account"
             :items="signingAccts"
             v-model="luteTxns.msig!.signerAddr"
             item-value="addr"

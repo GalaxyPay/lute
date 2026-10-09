@@ -63,7 +63,7 @@
   <v-card-actions>
     <v-btn
       variant="flat"
-      text="Add to Wallet"
+      text="Add to wallet"
       :disabled="!selected.length || loading"
       @click="$emit('addAccounts', selected)"
     />
@@ -100,7 +100,7 @@ watch(
   { immediate: true }
 );
 const headers: any[] = [
-  { title: "Select All", key: "address", sortable: false },
+  { title: "Select all", key: "address", sortable: false },
   { key: "amount", align: "end", sortable: false },
 ];
 </script>

@@ -57,7 +57,7 @@ async function onClose(success: boolean, pass?: string) {
     p.resolve(mk);
   } catch (err) {
     if (isBadPassword(err)) {
-      store.setSnackbar("Incorrect Password", "error");
+      store.setSnackbar("Incorrect password", "error");
       show.value = true;
       return;
     }

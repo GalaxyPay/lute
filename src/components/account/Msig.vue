@@ -12,7 +12,7 @@
           target="_blank"
         >
           <v-icon :icon="mdiInformationOutline" size="16" />
-          <v-tooltip activator="parent" text="App Details" location="bottom" />
+          <v-tooltip activator="parent" text="App details" location="bottom" />
         </v-btn>
         <v-btn
           v-if="signingAddr && isAdmin"
@@ -23,7 +23,7 @@
           @click="Msig.destroyApp(app, signingAddr!)"
         >
           <v-icon :icon="mdiDelete" size="16" />
-          <v-tooltip activator="parent" text="Destroy App" location="bottom" />
+          <v-tooltip activator="parent" text="Destroy app" location="bottom" />
         </v-btn>
       </div>
       <template v-if="app">
@@ -41,7 +41,7 @@
     </div>
     <div v-if="app">
       <v-select
-        label="Signing Account"
+        label="Signing account"
         :items="signingAccts"
         v-model="signingAddr"
         item-value="addr"
@@ -53,7 +53,7 @@
     <div class="msig-intro">
       <div class="msig-title">Transactions</div>
       <div class="text-muted text-body-2">
-        When you connect to dApps with your Lute Multi-Sig address, instead of
+        When you connect to dApps with your Lute multi-sig address, instead of
         signing the transactions Lute will add them here to be signed by all
         parties.
       </div>
@@ -77,7 +77,7 @@
         </div>
       </div>
       <div class="msig-box msig-sigs">
-        <div class="msig-box-label">Signatures Gathered</div>
+        <div class="msig-box-label">Signatures gathered</div>
         <div v-if="!grp.sigs.length" class="text-muted text-body-2">None</div>
         <div v-for="sig in grp.sigs" :key="sig.addr" class="msig-member">
           {{ sig.addr }}
@@ -87,7 +87,7 @@
         <v-btn
           v-show="!isSigned(grp)"
           variant="flat"
-          text="Add Your Signature"
+          text="Add your signature"
           :disabled="
             isSubmitted(grp.nonce) ||
             isExpired(grp) ||
@@ -101,7 +101,7 @@
         <v-btn
           v-show="isSigned(grp)"
           variant="outlined"
-          text="Remove Your Signature"
+          text="Remove your signature"
           @click="Msig.clearSigs(appId, grp.nonce, signingAddr!)"
         />
         <v-spacer />
@@ -114,7 +114,7 @@
           @click="Msig.submitGroup(app, grp.nonce)"
         />
         <v-btn
-          text="Delete Group"
+          text="Delete group"
           color="error"
           @click="Msig.deleteGroup(appId, grp, signingAddr!)"
         />
@@ -124,7 +124,7 @@
   <v-dialog v-model="showAddSig" max-width="440" persistent>
     <v-card>
       <v-card-title class="d-flex">
-        Add Your Signature
+        Add your signature
         <v-spacer />
         <v-icon :icon="mdiClose" @click="closeAddSig()" />
       </v-card-title>
@@ -132,7 +132,7 @@
         <v-btn
           block
           variant="outlined"
-          text="Sign Transaction Group"
+          text="Sign transaction group"
           @click="gatherSigs()"
           :disabled="!!signedTxns.length"
           :append-icon="!!signedTxns.length ? mdiCheck : ''"
@@ -140,7 +140,7 @@
         <v-btn
           block
           variant="flat"
-          text="Send Signatures to Contract"
+          text="Send signatures to contract"
           @click="sendSigs()"
           :disabled="!signedTxns.length"
         />
@@ -340,7 +340,7 @@ async function gatherSigs() {
       return wt;
     });
     signedTxns.value = await luteSignerWT(walletTxns);
-    store.setSnackbar("Awaiting Next Step...", "info", -1);
+    store.setSnackbar("Awaiting next step...", "info", -1);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -373,7 +373,7 @@ async function sendSigs() {
       populateAppCallResources: true,
     });
     closeAddSig();
-    store.setSnackbar("Signature(s) Added", "success");
+    store.setSnackbar("Signature(s) added", "success");
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");

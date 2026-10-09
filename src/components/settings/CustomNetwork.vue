@@ -2,7 +2,7 @@
   <v-dialog v-model="show" max-width="620" persistent>
     <v-card>
       <v-card-title class="d-flex">
-        Custom Networks
+        Custom networks
         <v-spacer />
         <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>

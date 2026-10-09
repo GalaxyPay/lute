@@ -2,7 +2,7 @@
   <v-dialog v-model="show" max-width="440" persistent>
     <v-card :loading="removing" :disabled="removing">
       <v-card-title class="d-flex">
-        Remove Password
+        Remove password
         <v-spacer />
         <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
@@ -19,7 +19,7 @@
           </p>
           <v-text-field
             v-model="current"
-            label="Current Password"
+            label="Current password"
             type="password"
             name="current-password"
             autocomplete="current-password"
@@ -31,7 +31,7 @@
         <v-card-actions>
           <v-btn
             variant="flat"
-            text="Remove Password"
+            text="Remove password"
             color="danger-fill"
             type="submit"
             :loading="removing"
@@ -80,11 +80,11 @@ async function remove() {
     if (!valid) return;
     removing.value = true;
     if (!(await Keystore.removePassword(current.value))) {
-      store.setSnackbar("Incorrect Password", "error");
+      store.setSnackbar("Incorrect password", "error");
       return;
     }
     await store.getCache();
-    store.setSnackbar("Password Removed", "success");
+    store.setSnackbar("Password removed", "success");
     emit("close");
   } catch (err: any) {
     console.error(err);

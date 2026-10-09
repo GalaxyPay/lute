@@ -12,7 +12,7 @@
           block
           size="large"
           variant="flat"
-          text="Lute Home"
+          text="Lute home"
           @click="home()"
         />
       </div>
@@ -45,7 +45,7 @@
               <v-tooltip
                 activator="parent"
                 location="top"
-                text="Upgrade Account from the menu"
+                text="Upgrade account from the menu"
               />
             </span>
           </div>

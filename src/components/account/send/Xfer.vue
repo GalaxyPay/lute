@@ -47,7 +47,7 @@
           :items="toAuto"
           :item-props="toProps"
           :return-object="false"
-          :label="`To Address${ns}`"
+          :label="`To address${ns}`"
           spellcheck="false"
           @keyup="lookupNs(to)"
           :rules="[required, validAddress]"
@@ -64,7 +64,7 @@
           @update:model-value="closeRemainderTo = undefined"
         >
           <template #label>
-            Close Remainder To
+            Close remainder to
             <span>
               <v-icon
                 size="14"
@@ -82,7 +82,7 @@
         <v-text-field
           v-if="showCloseRemainderTo"
           v-model="closeRemainderTo"
-          label="Close Remainder To"
+          label="Close remainder to"
           :rules="[validAddress]"
         />
         <v-checkbox-btn
@@ -90,7 +90,7 @@
           @update:model-value="assetSender = undefined"
         >
           <template #label>
-            Revocation Target
+            Revocation target
             <span>
               <v-icon
                 size="14"
@@ -109,7 +109,7 @@
         <v-text-field
           v-if="showRevocationTarget"
           v-model="assetSender"
-          label="Revocation Target"
+          label="Revocation target"
           :rules="[validAddress]"
         />
       </template>
@@ -118,7 +118,7 @@
         v-model="rekeyTo"
         :items="rekeyToAuto"
         :return-object="false"
-        :label="`Rekey To Address${ns}`"
+        :label="`Rekey to address${ns}`"
         spellcheck="false"
         @keyup="lookupNs(rekeyTo)"
         :rules="[required, validAddress]"
@@ -131,7 +131,7 @@
   </v-form>
   <v-dialog v-model="showInboxWarning" max-width="440" persistent>
     <v-card
-      title="WARNING"
+      title="Warning"
       text="The recipient is not opted-in to the asset, so the asset will be sent using the Inbox Router.
         Custodial accounts, like those on an exchange, may not be able to claim the asset."
     >
@@ -141,7 +141,7 @@
           color="text-body"
           @click="showInboxWarning = false"
         />
-        <v-btn variant="flat" text="Use Inbox" @click="arc59SendAsset()" />
+        <v-btn variant="flat" text="Use inbox" @click="arc59SendAsset()" />
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -170,7 +170,7 @@ const store = useAppStore();
 const form = ref();
 const required = (v: any) => !!v || v === 0 || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 const ns = computed(() =>
   store.network.nfdUrl ? " or NFD" : store.network.envoiUrl ? " or EnVoi" : ""
 );
@@ -196,7 +196,12 @@ const asset = ref<modelsv2.Asset>(store.nativeAsset);
 const showInboxWarning = ref(false);
 
 const amountLabel = computed(() => {
-  return `Amount (${asset.value?.params?.unitName || asset.value?.params?.name})`;
+  const params = asset.value?.params;
+  // The native asset reads ALGO (or VOI) in amounts.
+  const unit = asset.value?.index
+    ? params?.unitName || params?.name
+    : params?.name?.toUpperCase();
+  return `Amount (${unit})`;
 });
 const closeRemainderToTip = computed(() =>
   !asset.value?.index

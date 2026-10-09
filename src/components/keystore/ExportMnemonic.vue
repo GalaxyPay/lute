@@ -6,7 +6,7 @@
   >
     <v-card v-if="account">
       <v-card-title class="d-flex">
-        {{ words.length ? "Mnemonic" : "Export Mnemonic" }}
+        {{ words.length ? "Mnemonic" : "Export mnemonic" }}
         <v-spacer />
         <v-icon :icon="mdiClose" @click="close()" />
       </v-card-title>

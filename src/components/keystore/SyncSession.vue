@@ -22,7 +22,7 @@
       </v-card-text>
       <v-card-actions class="card-footer">
         <v-btn text="Decline" color="text-body" @click="answer(false)" />
-        <v-btn variant="flat" text="Add Accounts" @click="answer(true)" />
+        <v-btn variant="flat" text="Add accounts" @click="answer(true)" />
       </v-card-actions>
     </template>
     <template v-else-if="result">
@@ -103,9 +103,9 @@ const otherName = computed(() =>
 const title = computed(() =>
   props.role === "send"
     ? props.side === "web"
-      ? "Sync to Extension"
-      : "Sync to Web App"
-    : "Add Synced Accounts"
+      ? "Sync to extension"
+      : "Sync to web app"
+    : "Add synced accounts"
 );
 const status = computed(() => {
   switch (state.value) {

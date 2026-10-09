@@ -1,7 +1,7 @@
 <template>
   <v-card>
     <v-card-title class="d-flex">
-      Set a Wallet Password
+      Set a wallet password
       <v-spacer />
       <v-icon :icon="mdiClose" @click="emit('close', false)" />
     </v-card-title>
@@ -24,7 +24,7 @@
         />
         <v-text-field
           v-model="pass2"
-          label="Confirm Password"
+          label="Confirm password"
           type="password"
           name="confirm-password"
           autocomplete="new-password"
@@ -61,7 +61,7 @@ async function confirmPassword() {
     saving.value = true;
     await Keystore.newPassword(pass1.value);
     await store.getCache();
-    store.setSnackbar("Password Set", "success");
+    store.setSnackbar("Password set", "success");
     emit("close", true);
   } catch (err: any) {
     console.error(err);

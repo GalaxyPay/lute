@@ -37,7 +37,7 @@ const addr = ref();
 const addrAuto = ref();
 const required = (v: string) => !!v || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 
 let nsTimeout: number;
 async function lookupNs(q: string) {
@@ -60,7 +60,7 @@ async function addWatch() {
     await set("app", "accounts", accts);
     await store.getCache();
     store.refresh++;
-    store.setSnackbar("Watch Account Added", "success");
+    store.setSnackbar("Watch account added", "success");
     emit("close");
   } catch (err: any) {
     console.error(err);

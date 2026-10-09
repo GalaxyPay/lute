@@ -3,8 +3,8 @@
     <v-card>
       <div class="dialog-header dialog-header--divider">
         <div class="min-w-0">
-          <div v-if="type" class="dialog-breadcrumb">Add an Account</div>
-          <div class="dialog-heading">{{ type || "Add an Account" }}</div>
+          <div v-if="type" class="dialog-breadcrumb">Add an account</div>
+          <div class="dialog-heading">{{ type || "Add an account" }}</div>
         </div>
         <v-btn
           :icon="mdiClose"
@@ -96,13 +96,13 @@ import {
 const store = useAppStore();
 const type = ref();
 
-const LEDGER = "Ledger Account";
-const WATCH = "Watch Account";
-const HD = "HD Wallet";
-const MSIG = "Multi-Sig Account";
-const HOT = "Algo25 Account";
-const MN12 = "12-Word Account";
-const FALCON = "Falcon25 Account";
+const LEDGER = "Ledger account";
+const WATCH = "Watch account";
+const HD = "HD wallet";
+const MSIG = "Multi-sig account";
+const HOT = "Algo25 account";
+const MN12 = "12-word account";
+const FALCON = "Falcon25 account";
 
 const showMore = ref(false);
 const mainTypes = computed(() => [
@@ -121,7 +121,7 @@ const mainTypes = computed(() => [
   },
   {
     title: FALCON,
-    subtitle: "Post-Quantum Secure",
+    subtitle: "Post-quantum secure",
     icon: mdiAtom,
     select: () => (type.value = FALCON),
   },
@@ -135,7 +135,7 @@ const moreTypes = [
   },
   {
     title: MSIG,
-    subtitle: "On-Chain (ARC-55)",
+    subtitle: "On-chain (ARC-55)",
     icon: mdiKeyChange,
     select: () => (type.value = MSIG),
   },

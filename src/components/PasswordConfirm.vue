@@ -2,7 +2,7 @@
   <v-dialog v-model="show" max-width="400" persistent>
     <v-card>
       <v-card-title class="d-flex">
-        Enter your Password
+        Enter your password
         <v-spacer />
         <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>

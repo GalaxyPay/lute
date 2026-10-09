@@ -78,7 +78,7 @@ async function claim() {
       sender: props.acct.addr,
     });
     const signedTxns = await luteSigner(txns, indexesToSign);
-    await send(signedTxns, "Claimed Asset");
+    await send(signedTxns, "Claimed asset");
     emit("complete");
   } catch (err: any) {
     reportSignError(err);

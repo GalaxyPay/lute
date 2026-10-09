@@ -70,13 +70,13 @@
       <div class="d-flex ml-n3">
         <v-btn
           color="text-body"
-          text="Show All"
+          text="Show all"
           :append-icon="mdiEye"
           @click="showAll()"
         />
         <v-btn
           color="text-body"
-          text="Hide All"
+          text="Hide all"
           :append-icon="mdiEyeOff"
           @click="visible = []"
         />

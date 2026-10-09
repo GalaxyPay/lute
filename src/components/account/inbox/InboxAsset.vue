@@ -92,7 +92,7 @@ async function claim() {
     const stxns = await luteSigner(
       await priceTxns(txns, props.acct, feeIndexes)
     );
-    await send(stxns, "Claimed Asset");
+    await send(stxns, "Claimed asset");
     emit("complete");
   } catch (err: any) {
     reportSignError(err);
@@ -104,7 +104,7 @@ async function reject() {
   try {
     const txns = await Inbox.rejectTxns(props.acct.addr, props.asset.assetId);
     const stxns = await luteSigner(await priceTxns(txns, props.acct));
-    await send(stxns, "Rejected Asset");
+    await send(stxns, "Rejected asset");
     emit("complete");
   } catch (err: any) {
     reportSignError(err);

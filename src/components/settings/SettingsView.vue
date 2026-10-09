@@ -57,20 +57,20 @@
             store.networkName !== 'LocalNet' && 'set-row--off',
           ]"
         >
-          <div class="set-title">Inbox Router</div>
-          <div class="set-desc">LocalNet Only</div>
+          <div class="set-title">Inbox router</div>
+          <div class="set-desc">LocalNet only</div>
           <div class="set-actions">
             <v-btn
               size="small"
-              text="Create New"
+              text="Create new"
               @click="createRouter()"
               :disabled="store.networkName !== 'LocalNet'"
             />
-            <span class="text-dim text-caption">OR</span>
+            <span class="text-dim text-caption">or</span>
             <v-text-field
               v-model.number="store.network.inboxRouter"
               :key="store.loading"
-              placeholder="Existing App ID"
+              placeholder="Existing app ID"
               hide-details
               density="compact"
               class="router-field font-mono"
@@ -88,7 +88,7 @@
       <div class="section-label">Security</div>
       <div class="group">
         <div class="set-row">
-          <div class="set-title">Wallet Password</div>
+          <div class="set-title">Wallet password</div>
           <div v-if="store.keystoreMode === 'password'" class="set-desc">
             Protects every account stored in this browser: HD, Algo25 and
             Falcon. Ledger and passkey accounts are not affected.
@@ -123,7 +123,7 @@
             </template>
             <v-btn
               v-else
-              text="Set Password"
+              text="Set password"
               :variant="narrow ? 'text' : 'outlined'"
               size="small"
               @click="showCreate = true"
@@ -134,7 +134,7 @@
           v-if="!store.isWeb && store.keystoreMode === 'password'"
           class="set-row set-row--stack"
         >
-          <div class="set-title">Lock After Inactivity</div>
+          <div class="set-title">Lock after inactivity</div>
           <div class="set-desc">
             Skip the password when signing with any account stored in this
             browser, until the wallet has been idle this long. Always locks 8
@@ -152,7 +152,7 @@
               class="lock-select"
             />
             <v-btn
-              text="Lock Now"
+              text="Lock now"
               size="small"
               variant="flat"
               color="border"
@@ -171,7 +171,7 @@
           <div class="set-actions">
             <v-btn
               v-if="!store.isWeb || canSyncToExtension"
-              :text="store.isWeb ? 'Sync to Extension' : 'Sync to Web App'"
+              :text="store.isWeb ? 'Sync to extension' : 'Sync to web app'"
               :variant="narrow ? 'text' : 'outlined'"
               size="small"
               @click="startSync()"
@@ -182,7 +182,7 @@
           </div>
         </div>
         <div class="set-row">
-          <div class="set-title">Manual Ledger Select</div>
+          <div class="set-title">Manual Ledger select</div>
           <div class="set-desc">Always pick which Ledger device to connect</div>
           <div class="set-actions">
             <v-switch
@@ -221,7 +221,7 @@
             </div>
           </div>
           <div v-if="narrow" class="set-row">
-            <div class="set-title">Snoop Mode</div>
+            <div class="set-title">Snoop mode</div>
             <div class="set-desc">
               Allow connecting to dApps with Watch accounts
             </div>
@@ -235,7 +235,7 @@
             </div>
           </div>
           <div v-if="narrow" class="set-row">
-            <div class="set-title">Debug Logging</div>
+            <div class="set-title">Debug logging</div>
             <div class="set-desc">Verbose logging to the console</div>
             <div class="set-actions">
               <v-switch
@@ -252,7 +252,7 @@
         <div class="section-label">dApps</div>
         <div class="group">
           <div class="set-row">
-            <div class="set-title">Snoop Mode</div>
+            <div class="set-title">Snoop mode</div>
             <div class="set-desc">
               Allow connecting to dApps with Watch accounts
             </div>
@@ -273,7 +273,7 @@
       <div class="section-label">Developer</div>
       <div class="group">
         <div class="set-row">
-          <div class="set-title">Debug Logging</div>
+          <div class="set-title">Debug logging</div>
           <div class="set-desc">Verbose logging to the console</div>
           <div class="set-actions">
             <v-switch
@@ -424,7 +424,7 @@ async function setAutoLock(minutes: number) {
 
 async function lockNow() {
   await Unlock.clear();
-  store.setSnackbar("Wallet Locked", "success", 2000);
+  store.setSnackbar("Wallet locked", "success", 2000);
 }
 
 async function createRouter() {
@@ -451,7 +451,7 @@ async function setRouter() {
   store.loading++;
   await set("app", "sandboxRouter", store.network.inboxRouter);
   await store.getCache();
-  store.setSnackbar("Router ID Set", "success", 2000);
+  store.setSnackbar("Router ID set", "success", 2000);
   store.loading--;
 }
 </script>

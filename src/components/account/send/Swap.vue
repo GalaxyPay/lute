@@ -7,7 +7,7 @@
             v-model="senderAsset"
             :items="senderAssets"
             :item-props="assetProps"
-            label="Your Asset"
+            label="Your asset"
             :rules="[required]"
             persistent-hint
             autocomplete="off"
@@ -18,7 +18,7 @@
           <v-text-field
             v-model="sendAmount"
             type="number"
-            label="Your Amount"
+            label="Your amount"
             autocomplete="off"
             :rules="[required]"
           />
@@ -30,7 +30,7 @@
             :items="nsLookups"
             :item-props="receiverProps"
             :return-object="false"
-            label="Their Account"
+            label="Their account"
             :placeholder="`Address${ns}`"
             persistent-placeholder
             spellcheck="false"
@@ -44,7 +44,7 @@
             v-model="receiverAsset"
             :items="receiverAssets"
             :item-props="assetProps"
-            label="Their Asset"
+            label="Their asset"
             :rules="[required]"
             persistent-hint
             variant="outlined"
@@ -56,7 +56,7 @@
             :class="theirClass"
             v-model="receiveAmount"
             type="number"
-            label="Their Amount"
+            label="Their amount"
             :rules="[required]"
             autocomplete="off"
           />
@@ -71,7 +71,7 @@
       </div>
     </v-container>
     <v-card-actions class="card-footer">
-      <v-btn variant="flat" text="Propose Swap" type="submit" />
+      <v-btn variant="flat" text="Propose swap" type="submit" />
     </v-card-actions>
   </v-form>
 </template>
@@ -99,7 +99,7 @@ const theirClass = "text-info";
 const form = ref();
 const required = (v: any) => !!v || v === 0 || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 
 const receiver = ref<string>();
 const nsLookups = ref<NsLookup[]>();

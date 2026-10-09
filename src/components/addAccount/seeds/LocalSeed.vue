@@ -3,8 +3,8 @@
     <no-password-notice />
   </div>
   <v-tabs v-if="!hideTabs" v-model="tab" class="flow-tabs">
-    <v-tab text="NEW" />
-    <v-tab text="IMPORT" />
+    <v-tab text="New" />
+    <v-tab text="Import" />
   </v-tabs>
   <v-window v-model="tab">
     <v-window-item :value="0">

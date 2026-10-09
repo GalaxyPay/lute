@@ -10,7 +10,7 @@
       hover
     >
       <template #headers />
-      <template #no-data>No Devices Connected</template>
+      <template #no-data>No devices connected</template>
       <template #[`item.index`]="{ index }">
         <span class="text-dim font-mono text-caption">{{ index + 1 }}</span>
       </template>
@@ -21,7 +21,7 @@
         block
         size="large"
         variant="outlined"
-        text="Re-Scan Devices"
+        text="Re-scan devices"
         @click="store.getDevices()"
       />
     </div>

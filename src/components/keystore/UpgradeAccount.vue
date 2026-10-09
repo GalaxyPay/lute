@@ -2,7 +2,7 @@
   <v-dialog :model-value="!!account" max-width="620" persistent>
     <v-card v-if="account" :loading="busy" :disabled="busy">
       <v-card-title class="d-flex">
-        Upgrade Account
+        Upgrade account
         <v-spacer />
         <v-icon :icon="mdiClose" @click="emit('close')" />
       </v-card-title>
@@ -69,7 +69,7 @@ async function upgrade(mn: string) {
       addr: acct.addr,
     });
     await store.getCache();
-    store.setSnackbar("Account Upgraded", "success");
+    store.setSnackbar("Account upgraded", "success");
     emit("close");
   } catch (err: any) {
     if (isCancelled(err)) return;

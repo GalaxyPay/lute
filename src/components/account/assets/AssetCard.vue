@@ -35,7 +35,7 @@
     <v-dialog v-model="showReceiver" max-width="520">
       <v-card>
         <v-card-title class="d-flex">
-          Choose Receiver
+          Choose receiver
           <v-spacer />
           <v-icon :icon="mdiClose" @click="showReceiver = false" />
         </v-card-title>
@@ -94,7 +94,7 @@ const image = ref();
 const form = ref();
 const required = (v: string) => !!v || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 const showReceiver = ref(false);
 const receiver = ref();
 const creator = ref(false);
@@ -153,11 +153,11 @@ async function closeOut() {
     });
     await priceTxns([txn], props.acct);
     const stxn = await luteSigner([txn]);
-    await send(stxn, "Closed Out of Asset");
+    await send(stxn, "Closed out of asset");
   } catch (err: any) {
     let message = err.message;
     if (err.status == 400)
-      message = "Must close/destroy all Assets and Apps first.";
+      message = "Must close/destroy all assets and apps first.";
     reportSignError(err, message);
   }
   store.overlay = false;

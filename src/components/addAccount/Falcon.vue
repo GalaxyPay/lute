@@ -3,8 +3,8 @@
     <no-password-notice />
   </div>
   <v-tabs v-if="!hideTabs" v-model="tab" class="flow-tabs">
-    <v-tab text="NEW" />
-    <v-tab text="IMPORT" />
+    <v-tab text="New" />
+    <v-tab text="Import" />
   </v-tabs>
   <v-window v-model="tab">
     <v-window-item :value="0">
@@ -45,7 +45,7 @@ async function handleMnemonic(mn: string) {
     if (store.accounts.some((a) => a.addr === address)) {
       emit("close");
       throw Error(
-        "Account already in wallet. To re-enter its mnemonic, use Upgrade Account from its menu."
+        "Account already in wallet. To re-enter its mnemonic, use Upgrade account from its menu."
       );
     }
     const mk = await unlocker.value!.ensureMk();
@@ -58,7 +58,7 @@ async function handleMnemonic(mn: string) {
     });
     await store.getCache();
     store.refresh++;
-    store.setSnackbar("Account Imported", "success");
+    store.setSnackbar("Account imported", "success");
     emit("close");
   } catch (err: any) {
     if (isCancelled(err)) return;

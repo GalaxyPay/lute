@@ -56,7 +56,7 @@
       </v-card>
       <v-card class="stat-card">
         <div class="stat-label">
-          Min Balance
+          Min balance
           <span class="d-inline-flex">
             <v-icon size="14" class="text-icon" :icon="mdiInformationOutline" />
             <v-tooltip activator="parent" location="top" :text="MBR_TIP" />
@@ -77,7 +77,7 @@
         <v-tab
           v-for="t in tabs"
           :key="t"
-          :text="t === TXNS && xs ? 'TXNS' : t"
+          :text="t === TXNS && xs ? 'Txns' : t"
           :value="t"
         />
       </v-tabs>
@@ -107,7 +107,7 @@
       </v-window>
     </v-card>
     <v-card v-if="acct.xpub" class="hd-card">
-      <div class="card-header">HD Addresses</div>
+      <div class="card-header">HD addresses</div>
       <h-d-address-table :acct="acct" />
     </v-card>
   </div>
@@ -120,12 +120,12 @@ import { mdiInformationOutline, mdiKey, mdiRefresh } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
-const ASSETS = "ASSETS";
-const SEND = "SEND";
-const MSIG = "MULTI-SIG";
-const TXNS = "TRANSACTIONS";
-const INBOX = "INBOX";
-const VAULT = "VAULT";
+const ASSETS = "Assets";
+const SEND = "Send";
+const MSIG = "Multi-sig";
+const TXNS = "Transactions";
+const INBOX = "Inbox";
+const VAULT = "Vault";
 
 const MBR_TIP = `Your MBR increases with each asset and/or application you opt into.
 You can decrease your MBR by closing out of assets and applications.`;

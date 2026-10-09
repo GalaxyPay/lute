@@ -130,7 +130,7 @@ async function handlePass(success: boolean, pass: string) {
     await handleSeed(picked.id, seed);
   } catch (err: any) {
     store.setSnackbar(
-      isBadPassword(err) ? "Incorrect Password" : err.message,
+      isBadPassword(err) ? "Incorrect password" : err.message,
       "error"
     );
   }

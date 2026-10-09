@@ -1,7 +1,7 @@
 <template>
   <v-tabs v-model="tab" class="flow-tabs">
-    <v-tab text="NEW" />
-    <v-tab text="IMPORT" />
+    <v-tab text="New" />
+    <v-tab text="Import" />
   </v-tabs>
   <v-window v-model="tab">
     <v-window-item :value="0">
@@ -37,7 +37,7 @@ async function addMsigAccount(val: {
   await set("app", "accounts", accts);
   await store.getCache();
   store.refresh++;
-  store.setSnackbar("Multi-Sig Imported", "success");
+  store.setSnackbar("Multi-sig imported", "success");
   emit("close");
 }
 </script>

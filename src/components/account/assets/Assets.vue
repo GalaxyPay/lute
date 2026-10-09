@@ -3,20 +3,20 @@
     <v-btn
       variant="outlined"
       size="small"
-      text="Opt-In to Asset"
+      text="Opt-in to asset"
       :prepend-icon="mdiPlus"
       @click="show = true"
     />
     <v-btn
       variant="outlined"
       size="small"
-      text="Opt-Out of Asset"
+      text="Opt-out of asset"
       :prepend-icon="mdiClose"
       :active="optOut"
       @click="optOut = !optOut"
     />
   </div>
-  <div v-if="!acct.info?.assets?.length" class="empty-note">No Assets yet</div>
+  <div v-if="!acct.info?.assets?.length" class="empty-note">No assets yet</div>
   <div v-if="!store.loading">
     <asset-card
       v-for="asset in acct.info?.assets"
@@ -29,7 +29,7 @@
   <v-dialog v-model="show" max-width="440" persistent>
     <v-card>
       <v-card-title class="d-flex">
-        Opt-In to Asset
+        Opt-in to asset
         <v-spacer />
         <v-icon :icon="mdiClose" @click="closeDialog()" />
       </v-card-title>
@@ -49,7 +49,7 @@
           />
         </v-card-text>
         <v-card-actions>
-          <v-btn variant="flat" text="Opt-In" type="submit" />
+          <v-btn variant="flat" text="Opt-in" type="submit" />
         </v-card-actions>
       </v-form>
     </v-card>
@@ -92,7 +92,7 @@ async function getAsset() {
           .do()
           .catch(() => {
             asset.value = undefined;
-            assetError.value = "Invalid Asset";
+            assetError.value = "Invalid asset";
           })
       : undefined;
   }, 500);
@@ -113,7 +113,7 @@ async function optIn() {
     closeDialog();
     await priceTxns([txn], props.acct);
     const stxn = await luteSigner([txn]);
-    await send(stxn, "Opted-In to Asset");
+    await send(stxn, "Opted-in to asset");
   } catch (err: any) {
     reportSignError(err);
   }

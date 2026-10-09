@@ -4,7 +4,7 @@
       <v-select
         v-model="creator"
         label="Creator"
-        placeholder="Choose an Account..."
+        placeholder="Choose an account..."
         density="comfortable"
         persistent-placeholder
         :items="store.signAcctInfo"
@@ -23,10 +23,10 @@
           hint="Number of signatures needed"
           persistent-hint
         />
-        <span class="of-label">OF</span>
+        <span class="of-label">of</span>
         <v-select
           v-model.number="numAddrs"
-          label="Number of Addresses"
+          label="Number of addresses"
           :items="numAddrsOptions"
           density="comfortable"
           @update:model-value="addrs.splice(numAddrs)"
@@ -44,7 +44,7 @@
       <v-text-field
         class="font-mono readonly-field"
         :model-value="msigAddr"
-        :label="'Multi-Sig Address (Calculated)'"
+        :label="'Multi-sig address (calculated)'"
         readonly
         density="comfortable"
       />
@@ -78,7 +78,7 @@ const thresholdOptions = computed(() =>
 
 const required = (v: string) => !!v || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 
 const addrs = ref([]);
 const mparams = computed(() => ({

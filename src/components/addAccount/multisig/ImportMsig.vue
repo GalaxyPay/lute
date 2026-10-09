@@ -27,7 +27,7 @@ const appId = ref();
 let app: Arc55App;
 
 const required = (v: string) => !!v || "Required";
-const validApp = () => !!app?.info || "Invalid AppID";
+const validApp = () => !!app?.info || "Invalid app ID";
 const isArc55 = () =>
   app?.info.params?.globalState?.some(
     (gs) => new TextDecoder().decode(gs.key) === "arc55_admin"
@@ -35,7 +35,7 @@ const isArc55 = () =>
 const isMember = () =>
   store.signAcctInfo.some(
     (a) => a.addr === app?.arc55_admin || app?.addrs.includes(a.addr)
-  ) || "Not a Member";
+  ) || "Not a member";
 
 const mparams = computed(() => ({
   version: 1,

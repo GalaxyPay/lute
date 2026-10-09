@@ -2,14 +2,14 @@
   <v-dialog v-model="show" max-width="440" persistent>
     <v-card :loading="rotating" :disabled="rotating">
       <v-card-title class="d-flex">
-        Change Password
+        Change password
         <v-spacer />
         <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
       <v-form ref="form" @submit.prevent="rotate()" validate-on="submit">
         <v-card-text>
           <p class="text-warning text-body-2 mb-1">
-            Make sure your recovery phrase(s) are backed up before continuing.
+            Make sure your mnemonics are backed up before continuing.
           </p>
           <p class="text-muted text-body-2 mb-2">
             The password protects every account stored in this browser: HD,
@@ -23,7 +23,7 @@
           />
           <v-text-field
             v-model="current"
-            label="Current Password"
+            label="Current password"
             type="password"
             name="current-password"
             autocomplete="current-password"
@@ -33,7 +33,7 @@
           />
           <v-text-field
             v-model="pass1"
-            label="New Password"
+            label="New password"
             type="password"
             name="new-password"
             autocomplete="new-password"
@@ -42,7 +42,7 @@
           />
           <v-text-field
             v-model="pass2"
-            label="Confirm New Password"
+            label="Confirm new password"
             type="password"
             name="confirm-password"
             autocomplete="new-password"
@@ -106,11 +106,11 @@ async function rotate() {
 
     rotating.value = true;
     if (!(await Keystore.rotate(current.value, pass1.value))) {
-      store.setSnackbar("Incorrect Password", "error");
+      store.setSnackbar("Incorrect password", "error");
       return;
     }
     await store.getCache();
-    store.setSnackbar("Password Changed", "success");
+    store.setSnackbar("Password changed", "success");
     emit("close");
   } catch (err: any) {
     console.error(err);

@@ -47,7 +47,7 @@ const headers: any[] = [{ key: "col1" }, { key: "col2" }];
 const txns = ref<indexerModels.Transaction[]>([]);
 const assets = ref<modelsv2.Asset[]>([]);
 const nsRecords = ref<NsObject>({});
-const noData = ref("No Transactions yet");
+const noData = ref("No transactions yet");
 
 const addrs = computed(() => {
   const sends = txns.value.map((txn) => txn.sender);

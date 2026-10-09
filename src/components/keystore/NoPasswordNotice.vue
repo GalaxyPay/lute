@@ -5,10 +5,10 @@
     class="text-left"
   >
     This wallet has no password. Anyone with access to this browser profile can
-    sign with the accounts stored in it.
+    sign with its accounts.
     <template #append>
       <v-btn
-        text="Set Password"
+        text="Set password"
         size="small"
         class="my-n1"
         @click="show = true"

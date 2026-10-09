@@ -2,7 +2,7 @@
   <v-dialog :model-value="!!row" max-width="520" persistent>
     <v-card v-if="row">
       <v-card-title class="d-flex">
-        Remove Seed
+        Remove seed
         <v-spacer />
         <v-icon :icon="mdiClose" @click="close()" />
       </v-card-title>
@@ -210,7 +210,7 @@ async function remove() {
   try {
     await Keystore.removeSeed(props.row!.id);
     await store.getCache();
-    store.setSnackbar("Seed Removed", "success");
+    store.setSnackbar("Seed removed", "success");
     emit("removed");
     close();
   } catch (err: any) {

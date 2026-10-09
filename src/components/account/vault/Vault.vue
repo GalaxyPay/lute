@@ -14,7 +14,7 @@
       v-if="vaultAssets && !vaultAssets.length"
       class="text-center text-muted text-body-2 py-4"
     >
-      No Assets in your Vault
+      No assets in your vault
     </div>
     <div class="asset-grid">
       <vault-asset

@@ -13,7 +13,7 @@
         wallet. Rekeyed accounts will import automatically as sub-accounts under
         the address they are rekeyed to.
       </p>
-      <v-btn variant="flat" text="Add an Account" @click="addAccount()" />
+      <v-btn variant="flat" text="Add an account" @click="addAccount()" />
     </div>
     <template v-else>
       <div class="page-header">
@@ -28,7 +28,7 @@
             :disabled="!!store.loading"
             @click="store.refresh++"
           />
-          <v-btn variant="flat" text="Add an Account" @click="addAccount()" />
+          <v-btn variant="flat" text="Add an account" @click="addAccount()" />
         </div>
         <div v-else class="d-flex ga-2">
           <v-btn
@@ -44,7 +44,7 @@
             variant="flat"
             :icon="mdiPlus"
             class="square-btn"
-            aria-label="Add an Account"
+            aria-label="Add an account"
             @click="addAccount()"
           />
         </div>
@@ -54,13 +54,12 @@
           {{ upgradeCount }} account{{ upgradeCount > 1 ? "s were" : " was" }}
           added before Lute could show mnemonics. To make
           {{ upgradeCount > 1 ? "them" : "it" }} exportable, choose
-          <b>Upgrade Account</b> from the account menu and re-enter the
+          <b>Upgrade account</b> from the account menu and re-enter the
           mnemonic.
         </v-alert>
         <v-alert v-if="noPassword" type="warning" closable>
           This wallet has no password. Anyone with access to this browser
-          profile can sign with its accounts and export their mnemonics. Set one
-          in Settings.
+          profile can sign with its accounts. Set one in Settings.
         </v-alert>
       </div>
       <v-data-table
@@ -104,7 +103,7 @@
                 <v-tooltip
                   activator="parent"
                   location="top"
-                  text="Upgrade Account from the menu"
+                  text="Upgrade account from the menu"
                 />
               </span>
               <expire-chip :ns="item.ns" />
@@ -143,14 +142,14 @@
               size="small"
               icon
               variant="text"
-              :aria-label="'Copy Address'"
+              :aria-label="'Copy address'"
               @click.stop="copyToClipboard(item.addr)"
             >
               <v-icon :icon="mdiContentCopy" size="16" />
               <v-tooltip
                 activator="parent"
                 location="bottom"
-                text="Copy Address"
+                text="Copy address"
               />
             </v-btn>
             <v-btn
@@ -168,7 +167,7 @@
                 >
                   <v-list-item
                     v-show="!smAndUp"
-                    title="Copy Address"
+                    title="Copy address"
                     @click="copyToClipboard(item.addr)"
                   />
                   <v-list-item
@@ -207,7 +206,7 @@
                     </v-list-item>
                     <v-list-item
                       v-if="!item.appId"
-                      title="Set Network"
+                      title="Set network"
                       class="pointer"
                     >
                       <template #append>
@@ -245,12 +244,12 @@
                       v-if="
                         item.secret === 'keystore' || item.secret === 'passkey'
                       "
-                      title="Export Mnemonic"
+                      title="Export mnemonic"
                       @click="exportAcct = item"
                     />
                     <v-list-item
                       v-if="isUpgradeable(item.secret)"
-                      title="Upgrade Account"
+                      title="Upgrade account"
                       base-color="info"
                       @click="upgradeAcct = item"
                     />
@@ -258,7 +257,7 @@
                   </template>
                   <v-list-item
                     v-if="!item.subType"
-                    title="Remove Account"
+                    title="Remove account"
                     base-color="error"
                     @click="removeAccount(item.addr)"
                   />
@@ -471,7 +470,7 @@ async function setAcctNetwork(acct: LuteAccount, network: string) {
   await set("app", "accounts", accts);
   await store.getCache();
   store.refresh++;
-  store.setSnackbar("Account Network Set", "success");
+  store.setSnackbar("Account network set", "success");
 }
 </script>
 
