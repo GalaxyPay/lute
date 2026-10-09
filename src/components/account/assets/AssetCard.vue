@@ -1,5 +1,5 @@
 <template>
-  <v-card class="fill-height" color="cardSecondary">
+  <v-card class="fill-height" color="surface-variant">
     <v-container>
       <v-row>
         <v-col cols="2" align-self="center" class="pr-0 pl-2">
@@ -52,11 +52,11 @@
         <v-form ref="form" @submit.prevent="closeOut()">
           <v-container>
             <v-text-field
+              class="font-mono"
               v-model="receiver"
               :disabled="creator"
               label="Address"
               :rules="[required, validAddress]"
-              style="font-family: monospace"
             />
             <v-checkbox
               v-show="asset.assetId"

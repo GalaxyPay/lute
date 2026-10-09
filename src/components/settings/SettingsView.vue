@@ -84,7 +84,7 @@
         <v-row align="center">
           <v-col>
             <v-icon :icon="mdiThemeLightDark" class="mb-1 mr-2" /> Theme
-            <div style="color: #9aa0a5; font-size: 0.7em">
+            <div class="text-muted text-caption">
               Gold theme for Lutier holders only
             </div>
           </v-col>
@@ -111,8 +111,8 @@
           <v-col>
             <v-icon :icon="mdiKeyChange" class="mb-1 mr-2" /> Wallet Password
             <div
+              class="text-muted text-caption"
               v-if="store.keystoreMode === 'password'"
-              style="color: #9aa0a5; font-size: 0.7em"
             >
               Protects every account stored in this browser: HD, Algo25 and
               Falcon. Ledger and passkey accounts are not affected.
@@ -161,7 +161,7 @@
           <v-col>
             <v-icon :icon="mdiLockClock" class="mb-1 mr-2" /> Lock After
             Inactivity
-            <div style="color: #9aa0a5; font-size: 0.7em">
+            <div class="text-muted text-caption">
               Skip the password when signing with any account stored in this
               browser, until the wallet has been idle this long. Always locks 8
               hours after initial unlock, regardless of activity.
@@ -195,7 +195,7 @@
         <v-row align="center">
           <v-col>
             <v-icon :icon="mdiSync" class="mb-1 mr-2" /> Sync
-            <div style="color: #9aa0a5; font-size: 0.7em">
+            <div class="text-muted text-caption">
               Copy this wallet's accounts and keys to the Lute
               {{ store.isWeb ? "extension" : "web app" }} in this browser. Your
               mnemonics are your backup; keep them safe.
@@ -208,7 +208,7 @@
               :size="xs ? 'small' : 'default'"
               @click="startSync()"
             />
-            <div v-else style="color: #9aa0a5; font-size: 0.8em">
+            <div class="text-muted text-body-2" v-else>
               Install the Lute extension to sync
             </div>
           </v-col>
@@ -216,7 +216,7 @@
         <v-row align="center">
           <v-col>
             <v-icon :icon="mdiEye" class="mb-1 mr-2" /> Snoop Mode
-            <div style="color: #9aa0a5; font-size: 0.7em">
+            <div class="text-muted text-caption">
               Allow connecting to dApps with Watch accounts
             </div>
           </v-col>
@@ -234,7 +234,7 @@
         <v-row align="center">
           <v-col>
             <v-icon :icon="mdiBug" class="mb-1 mr-2" /> Debug Logging
-            <div style="color: #9aa0a5; font-size: 0.7em">
+            <div class="text-muted text-caption">
               Verbose logging to the console
             </div>
           </v-col>
@@ -255,7 +255,7 @@
               <ledger-icon :width="18" color="currentColor" />
             </v-icon>
             Manual Ledger Select
-            <div style="color: #9aa0a5; font-size: 0.7em">
+            <div class="text-muted text-caption">
               Always pick which Ledger device to connect
             </div>
           </v-col>

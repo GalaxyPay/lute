@@ -3,14 +3,8 @@
     Mnemonic: <v-spacer />
     <v-btn text="Copy" @click="copyToClipboard(words.join(' '))" />
   </div>
-  <v-row style="font-family: monospace">
-    <v-col
-      v-for="(word, ix) in words"
-      :key="ix"
-      cols="6"
-      sm="4"
-      class="py-0"
-    >
+  <v-row class="font-mono">
+    <v-col v-for="(word, ix) in words" :key="ix" cols="6" sm="4" class="py-0">
       <v-text-field
         :model-value="word"
         variant="plain"
@@ -18,7 +12,9 @@
         hide-details
         density="compact"
       >
-        <template #prepend>{{ ix < 9 ? "&nbsp;" + (ix + 1) : ix + 1 }}.</template>
+        <template #prepend
+          >{{ ix < 9 ? "&nbsp;" + (ix + 1) : ix + 1 }}.</template
+        >
       </v-text-field>
     </v-col>
   </v-row>

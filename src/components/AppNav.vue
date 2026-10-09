@@ -7,7 +7,7 @@
         :to="btn.to"
         class="text-caption"
         base-color="grey"
-        active-color="white"
+        active-color="on-surface"
         :ripple="false"
       >
         <v-icon :icon="btn.icon" />
@@ -18,7 +18,7 @@
         class="text-caption"
         :active="store.isWeb && router.currentRoute.value.path === '/settings'"
         base-color="grey"
-        active-color="white"
+        active-color="on-surface"
         :ripple="false"
       >
         <v-icon :icon="mdiCog" />
@@ -100,7 +100,7 @@
           <img src="@/assets/store.png" />
         </a>
       </div>
-      <div class="text-center pa-2" style="color: #9aa0a5; font-size: 9px">
+      <div class="text-center pa-2 text-dim text-caption">
         Lute • Version
         {{ appVersion }} •
         <router-link to="/privacy" class="text-grey">

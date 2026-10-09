@@ -95,9 +95,7 @@ const ns = store.network.nfdUrl
     ? " or EnVoi"
     : "";
 
-const theirClass = computed(
-  () => `text-blue-${store.theme == "light" ? "darken-2" : "lighten-2"}`
-);
+const theirClass = "text-info";
 
 const form = ref();
 const required = (v: any) => !!v || v === 0 || "Required";

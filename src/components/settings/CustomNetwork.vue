@@ -14,10 +14,10 @@
       <v-container>
         <v-form ref="form" @submit.prevent="setCustomNetworks()">
           <v-textarea
+            class="font-mono"
             rows="16"
             v-model="custom"
             spellcheck="false"
-            style="font-family: monospace"
             :rules="[tryParse]"
           />
           <v-card-actions>

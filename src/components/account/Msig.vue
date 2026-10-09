@@ -1,6 +1,6 @@
 <template>
   <v-container>
-    <v-card color="cardSecondary">
+    <v-card color="surface-variant">
       <v-card-title class="d-flex">
         Application {{ appId }}
         <v-spacer />
@@ -27,12 +27,7 @@
         <v-card-text class="pl-6">
           <div>
             <b>Members:</b>
-            <div
-              v-for="addr in app.addrs"
-              :key="addr"
-              class="pl-3"
-              style="font-family: monospace"
-            >
+            <div v-for="addr in app.addrs" :key="addr" class="pl-3 font-mono">
               {{ addr }}
             </div>
             <div>
@@ -57,7 +52,7 @@
     </v-card>
   </v-container>
   <v-container v-if="signingAddr">
-    <v-card title="Transactions" color="cardSecondary">
+    <v-card title="Transactions" color="surface-variant">
       <v-card-text class="pl-6">
         When you connect to dApps with your Lute Multi-Sig address, instead of
         signing the transactions Lute will add them here to be signed by all
@@ -77,7 +72,7 @@
             <v-row>
               <v-col v-for="(txn, tix) in grp.txns" :key="tix" cols="12" md="6">
                 <div class="pa-1">
-                  <v-card color="cardSecondary">
+                  <v-card color="surface-variant">
                     <v-card-title class="text-subtitle-2 pb-0">
                       Transaction {{ tix + 1 }}
                       {{ grp.stxns[tix] ? "(Not to be Signed)" : "" }}
@@ -95,7 +90,7 @@
           <v-container>
             <v-row justify="center">
               <v-col cols="12" md="10" lg="7" xl="5">
-                <v-card color="cardSecondary">
+                <v-card color="surface-variant">
                   <v-card-title class="text-subtitle-2 pb-0">
                     Signatures Gathered
                   </v-card-title>
@@ -108,9 +103,9 @@
                       None
                     </div>
                     <div
+                      class="font-mono text-caption"
                       v-for="sig in grp.sigs"
                       :key="sig.addr"
-                      style="font-family: monospace; font-size: 0.85em"
                     >
                       {{ sig.addr }}
                     </div>

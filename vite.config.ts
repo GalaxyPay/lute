@@ -66,6 +66,11 @@ export default defineConfig({
     // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
     Vuetify({
       autoImport: true,
+      styles: {
+        configFile: fileURLToPath(
+          new URL("./src/styles/settings.scss", import.meta.url)
+        ),
+      },
     }),
     nodePolyfills(),
     VitePWA({

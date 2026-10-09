@@ -16,8 +16,8 @@
       <template v-else-if="!seed">
         <v-card-text>
           This seed has no accounts in Lute, but its addresses can still hold
-          funds. Removing it deletes it from this browser, and only its
-          mnemonic can bring it back.
+          funds. Removing it deletes it from this browser, and only its mnemonic
+          can bring it back.
         </v-card-text>
         <v-card-text class="pt-0">
           You will be asked for your password and to confirm you have the
@@ -26,7 +26,12 @@
       </template>
       <template v-else>
         <v-card-text>
-          <v-alert v-if="scanning" type="info" variant="tonal" density="compact">
+          <v-alert
+            v-if="scanning"
+            type="info"
+            variant="tonal"
+            density="compact"
+          >
             Checking the first {{ SCAN }} accounts on this seed…
           </v-alert>
           <v-alert
@@ -49,13 +54,11 @@
             <div
               v-for="a in inUse"
               :key="a.address"
-              class="text-caption"
-              style="font-family: monospace"
+              class="text-caption font-mono"
             >
               {{ formatAddr(a.address) }}
-              ({{ bigintToString(a.amount, 6) }}{{
-                a.subs?.length ? `, controls ${a.subs.length}` : ""
-              }})
+              ({{ bigintToString(a.amount, 6)
+              }}{{ a.subs?.length ? `, controls ${a.subs.length}` : "" }})
             </div>
           </v-alert>
           <v-alert v-else type="success" variant="tonal" density="compact">
@@ -92,8 +95,8 @@
         </template>
         <template v-else>
           <v-card-text class="pt-0">
-            This seed was added before mnemonic export, so enter its mnemonic
-            to confirm you have it.
+            This seed was added before mnemonic export, so enter its mnemonic to
+            confirm you have it.
           </v-card-text>
           <import-key
             v-if="!verified"

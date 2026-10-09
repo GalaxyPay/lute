@@ -10,7 +10,7 @@
         Address: <v-spacer />
         <v-btn text="Copy" @click="copyToClipboard(addr.toString())" />
       </div>
-      <div style="font-family: monospace">{{ addr }}</div>
+      <div class="font-mono">{{ addr }}</div>
     </v-card-text>
     <v-card-text>
       <mnemonic-display :words="mnemonicArray" />

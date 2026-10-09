@@ -8,7 +8,7 @@
             {{ luteData.stdSignData.domain }} wants you to sign in with your
             Algorand account:
           </div>
-          <div style="font-size: 0.79em; font-family: monospace">
+          <div class="font-mono text-caption">
             {{ luteData.siwa.account_address }}
           </div>
           <v-chip

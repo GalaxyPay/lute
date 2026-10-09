@@ -9,7 +9,7 @@
       <v-card-text class="text-warning pb-0">
         Make sure your recovery phrase(s) are backed up before continuing.
       </v-card-text>
-      <v-card-text class="pb-0" style="color: #9aa0a5; font-size: 0.8em">
+      <v-card-text class="pb-0 text-muted text-body-2">
         The password protects every account stored in this browser: HD, Algo25
         and Falcon. Ledger, watch, multi-sig, and passkey accounts are not
         affected.

@@ -43,23 +43,23 @@
       <v-row v-for="n in numAddrs" :key="n">
         <v-col>
           <v-text-field
+            class="font-mono"
             v-model="addrs[n - 1]"
             :label="`Address ${n}`"
             density="comfortable"
             :rules="[required, validAddress]"
-            style="font-family: monospace"
           />
         </v-col>
       </v-row>
       <v-row>
         <v-col>
           <v-text-field
+            class="font-mono"
             :model-value="msigAddr"
             :label="'Multi-Sig Address (Calculated)'"
             readonly
             density="comfortable"
             variant="solo-filled"
-            style="font-family: monospace"
           />
         </v-col>
       </v-row>

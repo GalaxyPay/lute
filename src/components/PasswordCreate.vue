@@ -5,7 +5,7 @@
       <v-spacer />
       <v-icon :icon="mdiClose" size="small" @click="emit('close', false)" />
     </v-card-title>
-    <v-card-text class="pb-0" style="color: #9aa0a5; font-size: 0.8em">
+    <v-card-text class="pb-0 text-muted text-body-2">
       Protects every account stored in this browser. There is no way to recover
       it: if you forget it, you will need your mnemonics.
     </v-card-text>

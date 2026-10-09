@@ -33,6 +33,7 @@ export const sharedConfig: UserConfig = {
     Vue({ template: { transformAssetUrls } }),
     Vuetify({
       autoImport: true,
+      styles: { configFile: r("src/styles/settings.scss") },
     }),
 
     AutoImport({

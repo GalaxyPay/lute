@@ -8,7 +8,7 @@
       </v-card-subtitle>
       <v-container v-if="reviewTxns">
         <v-container class="text-center">
-          <div style="font-family: monospace">
+          <div class="font-mono">
             {{ reviewTxns[0]?.sender }}
           </div>
           is proposing a swap. They would like to send you

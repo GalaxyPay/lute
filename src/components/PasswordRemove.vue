@@ -10,7 +10,7 @@
         Without a password, anyone with access to this browser profile can sign
         with the accounts stored in it, and reveal their mnemonics.
       </v-card-text>
-      <v-card-text class="pb-0" style="color: #9aa0a5; font-size: 0.8em">
+      <v-card-text class="pb-0 text-muted text-body-2">
         Every account stored in this browser is re-encrypted under a key that
         never leaves the browser. You can set a password again at any time.
       </v-card-text>

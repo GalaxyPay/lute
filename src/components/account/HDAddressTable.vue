@@ -12,7 +12,7 @@
       <template #bottom />
       <template #[`item.address`]="{ item }">
         <div
-          style="font-family: monospace"
+          class="font-mono"
           :class="isAdded(item.address) ? '' : 'text-grey'"
         >
           {{ item.address }}

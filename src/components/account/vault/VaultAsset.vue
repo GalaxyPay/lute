@@ -1,5 +1,5 @@
 <template>
-  <v-card class="fill-height" color="#2B2B2B">
+  <v-card class="fill-height" color="surface-variant">
     <v-container>
       <v-row>
         <v-col cols="2" align-self="center" class="pr-0 pl-2">

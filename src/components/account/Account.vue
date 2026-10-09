@@ -17,10 +17,10 @@
                   >
                     Rekeyed
                     <v-tooltip
+                      class="font-mono"
                       activator="parent"
                       v-model="showRekeyTip"
                       :text="acct.info.authAddr.toString()"
-                      style="font-family: monospace"
                     />
                   </v-chip>
                   <v-chip
@@ -48,7 +48,7 @@
               </v-row>
             </v-container>
             <v-card-text class="pt-1 pb-3">
-              <div style="font-family: monospace">{{ acct.info.address }}</div>
+              <div class="font-mono">{{ acct.info.address }}</div>
               <div
                 v-if="acct.info.addrIdx != null || acct.xpub"
                 class="text-grey text-caption"
