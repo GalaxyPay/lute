@@ -3,17 +3,23 @@
     <v-card :loading="loading" :disabled="loading">
       <template v-if="!loading">
         <div class="text-h5 pa-4">
-          {{ `${siteName} wants to add a Network to your Lute configuration` }}
+          {{ `${siteName} wants to add a network to your Lute configuration` }}
         </div>
         <v-container>
           <v-row>
             <v-col>
-              <pre style="overflow: auto; font-size: 0.75em">{{ network }}</pre>
+              <pre>{{ network }}</pre>
             </v-col>
           </v-row>
           <v-row class="text-center">
             <v-col>
-              <v-btn text="Add" :disabled="!valid" @click="addNetwork()" />
+              <v-btn
+                variant="flat"
+                size="large"
+                text="Add"
+                :disabled="!valid"
+                @click="addNetwork()"
+              />
             </v-col>
           </v-row>
         </v-container>
@@ -82,10 +88,10 @@ async function messageHandler(event: any) {
 }
 
 async function validateNetwork() {
-  const errMsg = networkError(
-    network.value,
-    [...networks, ...store.customNetworks]
-  );
+  const errMsg = networkError(network.value, [
+    ...networks,
+    ...store.customNetworks,
+  ]);
   valid.value = !errMsg;
   if (errMsg) {
     const message = {

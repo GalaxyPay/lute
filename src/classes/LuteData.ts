@@ -291,7 +291,7 @@ export default class LuteData {
       }
       if (isBadPassword(err)) {
         // Let the caller re-prompt rather than failing the whole request.
-        this.store.setSnackbar("Incorrect Password", "error");
+        this.store.setSnackbar("Incorrect password", "error");
         return false;
       }
       // Unlocked, but this seed missed the cache: prompt, nothing is wrong.

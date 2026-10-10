@@ -1,33 +1,38 @@
 <template>
-  <template v-if="seed">
-    <account-table
-      :accounts="accounts"
-      :added="added"
-      :preselect="preselect"
-      :loading="loading"
-      @get-addrs="getAddrs"
-      @add-accounts="addAccounts"
+  <div v-if="steps.length > 1" class="stepper">
+    <div
+      v-for="(s, i) in steps"
+      :key="s"
+      class="stepper-bar"
+      :class="i <= step && 'stepper-bar--on'"
     />
-    <v-container class="text-center pt-0">
-      <v-btn
-        variant="text"
-        size="small"
-        text="Use a different seed"
-        @click="reset"
-      />
-    </v-container>
-  </template>
+  </div>
+  <account-table
+    v-if="seed"
+    :accounts="accounts"
+    :added="added"
+    :preselect="preselect"
+    :loading="loading"
+    @get-addrs="getAddrs"
+    @add-accounts="addAccounts"
+  >
+    <template #links>
+      <v-btn size="small" text="Use a different seed" @click="reset" />
+    </template>
+  </account-table>
   <pick-seed
     v-else-if="!pending && rows.length"
     :rows="rows"
     @pick="pick"
     @seed="handleSeed"
     @removed="reloadRows"
+    @adding="adding = true"
+    @stage="stage = $event"
   />
-  <local-seed v-else-if="!pending" @seed="handleSeed" />
-  <v-container v-else class="text-center">
+  <local-seed v-else-if="!pending" @seed="handleSeed" @stage="stage = $event" />
+  <div v-else class="dialog-body text-center">
     <v-progress-circular indeterminate />
-  </v-container>
+  </div>
   <keystore-unlock ref="unlocker" />
   <password-confirm :visible="showPass" @close="handlePass" />
 </template>
@@ -49,7 +54,7 @@ import { deepClone, isBadPassword, isCancelled } from "@/utils";
 // Batches of derived accounts to scan for an unused one before giving up.
 const MAX_SCAN = 3;
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "title"]);
 
 const store = useAppStore();
 const unlocker = ref<Unlocker>();
@@ -62,6 +67,37 @@ const seed = shallowRef<Buffer>();
 const seedId = ref<number>();
 let picked: SeedRow;
 
+// Display only: the step bars and dialog title follow the state above.
+const adding = ref(false);
+const autoPicked = ref(false);
+const stage = ref<"new" | "check" | "import">("new");
+const steps = computed(() =>
+  autoPicked.value
+    ? []
+    : rows.value.length
+      ? ["Seed", "Mnemonic", "Accounts"]
+      : ["Mnemonic", "Accounts"]
+);
+const current = computed(() =>
+  seed.value
+    ? "Accounts"
+    : adding.value || !rows.value.length
+      ? "Mnemonic"
+      : "Seed"
+);
+const step = computed(() => steps.value.indexOf(current.value));
+const title = computed(() => {
+  if (pending.value) return;
+  if (current.value === "Accounts") return "Choose accounts to add";
+  if (current.value === "Seed") return "Choose a seed";
+  return {
+    new: "Write down your mnemonic",
+    check: "Confirm your mnemonic",
+    import: "Import your mnemonic",
+  }[stage.value];
+});
+watch(title, (t) => emit("title", t), { immediate: true });
+
 const added = computed(() =>
   store.accounts.filter((a) => a.seedId === seedId.value).map((a) => a.addr)
 );
@@ -72,7 +108,10 @@ const preselect = computed(() =>
 onBeforeMount(async () => {
   rows.value = await loadRows();
   // Most wallets have a single seed: go straight to its accounts.
-  if (rows.value.length === 1) await pick(rows.value[0]);
+  if (rows.value.length === 1) {
+    autoPicked.value = true;
+    await pick(rows.value[0]);
+  }
   pending.value = false;
 });
 
@@ -92,9 +131,7 @@ async function loadRows(): Promise<SeedRow[]> {
       exportable: Keystore.isExportable(r.kind, r.form),
     })),
     ...legacyAndPasskey
-      .filter(
-        (s) => s.data && !keystore.some((r) => r.id === `bip39:${s.id}`)
-      )
+      .filter((s) => s.data && !keystore.some((r) => r.id === `bip39:${s.id}`))
       .map((s) => ({ id: s.id, legacy: s })),
   ].sort((a, b) => a.id - b.id);
 }
@@ -137,7 +174,7 @@ async function handlePass(success: boolean, pass: string) {
     await handleSeed(picked.id, seed);
   } catch (err: any) {
     store.setSnackbar(
-      isBadPassword(err) ? "Incorrect Password" : err.message,
+      isBadPassword(err) ? "Incorrect password" : err.message,
       "error"
     );
   }
@@ -177,6 +214,9 @@ async function reset() {
   seed.value?.fill(0);
   seed.value = undefined;
   accounts.value = [];
+  adding.value = false;
+  autoPicked.value = false;
+  stage.value = "new";
   rows.value = await loadRows();
 }
 
@@ -197,3 +237,20 @@ async function addAccounts(selected: AccountSubs[]) {
   emit("close");
 }
 </script>
+
+<style scoped>
+.stepper {
+  display: flex;
+  gap: 6px;
+  padding: 16px 24px 0;
+}
+.stepper-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgb(var(--v-theme-border-strong));
+}
+.stepper-bar--on {
+  background: rgb(var(--v-theme-primary));
+}
+</style>

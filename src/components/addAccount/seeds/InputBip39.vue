@@ -1,5 +1,7 @@
 <template>
-  <import-key :number-of-words="24" button-text="Import" @mn="handleMnemonic" />
+  <import-key :number-of-words="24" button-text="Import" @mn="handleMnemonic">
+    <slot />
+  </import-key>
   <keystore-unlock ref="unlocker" />
 </template>
 

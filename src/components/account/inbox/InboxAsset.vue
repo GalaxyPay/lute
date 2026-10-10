@@ -1,50 +1,29 @@
 <template>
-  <v-card class="fill-height" color="#2B2B2B">
-    <v-container>
-      <v-row>
-        <v-col cols="2" align-self="center" class="pr-0 pl-2">
-          <v-img contain max-width="60" :src="image" />
-        </v-col>
-        <v-col cols="10" class="py-1">
-          <v-container>
-            <v-row>
-              {{ assetInfo?.params?.name || asset.assetId }}
-              <v-icon
-                v-if="asset.assetId"
-                :icon="mdiInformationOutline"
-                color="grey"
-                class="pl-2"
-                @click="exploreAsset()"
-              />
-              <v-spacer />
-              <span class="mr-2">
-                <v-icon
-                  :icon="mdiCheck"
-                  color="success"
-                  size="small"
-                  @click="claim()"
-                />
-                <v-tooltip activator="parent" text="Claim" location="top" />
-              </span>
-              <span>
-                <v-icon
-                  :icon="mdiClose"
-                  color="error"
-                  size="small"
-                  @click="reject()"
-                />
-                <v-tooltip activator="parent" text="Reject" location="top" />
-              </span>
-            </v-row>
-            <v-row class="text-caption">
-              {{ formatAmount() }}
-              {{ assetInfo?.params?.unitName }}
-            </v-row>
-          </v-container>
-        </v-col>
-      </v-row>
-    </v-container>
-  </v-card>
+  <div class="asset-tile">
+    <div class="asset-image">
+      <v-img v-if="image" contain :src="image" />
+    </div>
+    <div class="flex-grow-1 min-w-0">
+      <div class="asset-name">
+        <span class="ellipsis">
+          {{ assetInfo?.params?.name || asset.assetId }}
+        </span>
+        <v-icon
+          v-if="asset.assetId"
+          :icon="mdiInformationOutline"
+          size="14"
+          class="clickable"
+          @click="exploreAsset()"
+        />
+      </div>
+      <div class="address">
+        {{ formatAmount() }}
+        {{ assetInfo?.params?.unitName }}
+      </div>
+    </div>
+    <v-btn size="small" color="error" text="Reject" @click="reject()" />
+    <v-btn size="small" text="Claim" @click="claim()" />
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -58,7 +37,7 @@ import {
   send,
 } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
-import { mdiCheck, mdiClose, mdiInformationOutline } from "@mdi/js";
+import { mdiInformationOutline } from "@mdi/js";
 import { modelsv2 } from "algosdk";
 
 const store = useAppStore();
@@ -113,7 +92,7 @@ async function claim() {
     const stxns = await luteSigner(
       await priceTxns(txns, props.acct, feeIndexes)
     );
-    await send(stxns, "Claimed Asset");
+    await send(stxns, "Claimed asset");
     emit("complete");
   } catch (err: any) {
     reportSignError(err);
@@ -125,7 +104,7 @@ async function reject() {
   try {
     const txns = await Inbox.rejectTxns(props.acct.addr, props.asset.assetId);
     const stxns = await luteSigner(await priceTxns(txns, props.acct));
-    await send(stxns, "Rejected Asset");
+    await send(stxns, "Rejected asset");
     emit("complete");
   } catch (err: any) {
     reportSignError(err);
@@ -133,3 +112,34 @@ async function reject() {
   store.overlay = false;
 }
 </script>
+
+<style scoped>
+.asset-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--v-theme-border));
+  background: rgb(var(--v-theme-background));
+}
+.asset-image {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgb(var(--v-theme-surface-variant));
+  overflow: hidden;
+}
+.asset-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.min-w-0 {
+  min-width: 0;
+}
+</style>

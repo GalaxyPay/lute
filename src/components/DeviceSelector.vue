@@ -1,35 +1,31 @@
 <template>
-  <v-container class="pt-0">
-    <v-card>
-      <v-card-title class="text-h5">Please select a device</v-card-title>
-      <v-container>
-        <v-data-table
-          :items="store.device.list"
-          :headers="headers"
-          class="no-select"
-          items-per-page="-1"
-          @click:row="select"
-          hover
-        >
-          <template #headers />
-          <template #no-data>
-            <i>No Devices Connected</i>
-          </template>
-          <template #[`item.index`]="{ index }">
-            {{ index + 1 }}
-          </template>
-          <template #bottom />
-        </v-data-table>
-      </v-container>
-      <v-container>
-        <v-row class="text-center">
-          <v-col>
-            <v-btn text="Re-Scan Devices" @click="store.getDevices()" />
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-card>
-  </v-container>
+  <div class="device-select">
+    <div class="title-panel px-2 pb-3">Please select a device</div>
+    <v-data-table
+      :items="store.device.list"
+      :headers="headers"
+      class="no-select device-table"
+      items-per-page="-1"
+      @click:row="select"
+      hover
+    >
+      <template #headers />
+      <template #no-data>No devices connected</template>
+      <template #[`item.index`]="{ index }">
+        <span class="text-dim font-mono text-caption">{{ index + 1 }}</span>
+      </template>
+      <template #bottom />
+    </v-data-table>
+    <div class="device-footer">
+      <v-btn
+        block
+        size="large"
+        variant="outlined"
+        text="Re-scan devices"
+        @click="store.getDevices()"
+      />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -42,3 +38,19 @@ async function select(_event: any, row: any) {
   store.selectDevice(row.item);
 }
 </script>
+
+<style scoped>
+.device-select {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 10px 0;
+}
+.device-table :deep(td:first-child) {
+  width: 28px;
+}
+.device-footer {
+  margin-top: 16px;
+  padding: 14px 6px;
+  border-top: 1px solid rgb(var(--v-theme-border));
+}
+</style>

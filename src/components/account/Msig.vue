@@ -1,190 +1,150 @@
 <template>
-  <v-container>
-    <v-card color="cardSecondary">
-      <v-card-title class="d-flex">
-        Application {{ appId }}
+  <div class="msig-app">
+    <div class="d-flex flex-column ga-2 min-w-0">
+      <div class="d-flex align-center ga-2">
+        <span class="msig-title">Application {{ appId }}</span>
         <v-spacer />
         <v-btn
           icon
+          variant="text"
           size="small"
           :href="store.network.explorer + '/application/' + appId"
           target="_blank"
         >
-          <v-icon :icon="mdiInformationOutline" color="grey" size="x-large" />
-          <v-tooltip activator="parent" text="App Details" location="bottom" />
+          <v-icon :icon="mdiInformationOutline" size="16" />
+          <v-tooltip activator="parent" text="App details" location="bottom" />
         </v-btn>
         <v-btn
           v-if="signingAddr && isAdmin"
           icon
+          variant="text"
           size="small"
+          color="error"
           @click="Msig.destroyApp(app, signingAddr!)"
         >
-          <v-icon :icon="mdiDelete" color="error" size="x-large" />
-          <v-tooltip activator="parent" text="Destroy App" location="bottom" />
+          <v-icon :icon="mdiDelete" size="16" />
+          <v-tooltip activator="parent" text="Destroy app" location="bottom" />
         </v-btn>
-      </v-card-title>
+      </div>
       <template v-if="app">
-        <v-card-text class="pl-6">
-          <div>
-            <b>Members:</b>
-            <div
-              v-for="addr in app.addrs"
-              :key="addr"
-              class="pl-3"
-              style="font-family: monospace"
-            >
-              {{ addr }}
-            </div>
-            <div>
-              <b>Threshold:</b>
-              {{ app.arc55_threshold }} of {{ app.addrs.length }}
-            </div>
-          </div>
-        </v-card-text>
-        <v-container>
-          <v-row justify="center">
-            <v-col cols="12" sm="10" md="4">
-              <v-select
-                label="Signing Account"
-                :items="signingAccts"
-                v-model="signingAddr"
-                item-value="addr"
-              />
-            </v-col>
-          </v-row>
-        </v-container>
+        <div class="msig-label">Members:</div>
+        <div v-for="addr in app.addrs" :key="addr" class="msig-member">
+          {{ addr }}
+        </div>
+        <div class="msig-label">
+          Threshold:
+          <b class="text-high-emphasis">
+            {{ app.arc55_threshold }} of {{ app.addrs.length }}
+          </b>
+        </div>
       </template>
-    </v-card>
-  </v-container>
-  <v-container v-if="signingAddr">
-    <v-card title="Transactions" color="cardSecondary">
-      <v-card-text class="pl-6">
-        When you connect to dApps with your Lute Multi-Sig address, instead of
+    </div>
+    <div v-if="app">
+      <v-select
+        label="Signing account"
+        :items="signingAccts"
+        v-model="signingAddr"
+        item-value="addr"
+        hide-details
+      />
+    </div>
+  </div>
+  <template v-if="signingAddr">
+    <div class="msig-intro">
+      <div class="msig-title">Transactions</div>
+      <div class="text-muted text-body-2">
+        When you connect to dApps with your Lute multi-sig address, instead of
         signing the transactions Lute will add them here to be signed by all
         parties.
-      </v-card-text>
-      <v-container
-        v-for="grp in shownGroups"
-        :key="Number(grp.nonce)"
-        class="pt-0"
-      >
-        <v-card>
-          <v-card-title class="text-subtitle-1 pb-0 d-flex">
-            Group {{ grp.nonce }} <v-spacer /> Status:
-            {{ status(grp) }}
-          </v-card-title>
-          <v-container v-show="app?.groups.length" class="py-1">
-            <v-row>
-              <v-col v-for="(txn, tix) in grp.txns" :key="tix" cols="12" md="6">
-                <div class="pa-1">
-                  <v-card color="cardSecondary">
-                    <v-card-title class="text-subtitle-2 pb-0">
-                      Transaction {{ tix + 1 }}
-                      {{ grp.stxns[tix] ? "(Not to be Signed)" : "" }}
-                    </v-card-title>
-                    <v-container class="py-1">
-                      <pre style="overflow: auto; font-size: 0.75em">{{
-                        algosdk.encodeJSON(txn, { space: 2 })
-                      }}</pre>
-                    </v-container>
-                  </v-card>
-                </div>
-              </v-col>
-            </v-row>
-          </v-container>
-          <v-container>
-            <v-row justify="center">
-              <v-col cols="12" md="10" lg="7" xl="5">
-                <v-card color="cardSecondary">
-                  <v-card-title class="text-subtitle-2 pb-0">
-                    Signatures Gathered
-                  </v-card-title>
-                  <v-container class="text-center py-1">
-                    <div
-                      v-if="!grp.sigs.length"
-                      class="font-italic"
-                      style="font-size: 0.9em"
-                    >
-                      None
-                    </div>
-                    <div
-                      v-for="sig in grp.sigs"
-                      :key="sig.addr"
-                      style="font-family: monospace; font-size: 0.85em"
-                    >
-                      {{ sig.addr }}
-                    </div>
-                  </v-container>
-                </v-card>
-              </v-col>
-            </v-row>
-          </v-container>
-          <v-card-actions>
-            <v-btn
-              v-show="!isSigned(grp)"
-              text="Add Your Signature"
-              :disabled="
-                isSubmitted(grp.nonce) ||
-                isExpired(grp) ||
-                !app?.addrs.includes(signingAddr)
-              "
-              @click="
-                showAddSig = true;
-                signGroup = grp;
-              "
-            />
-            <v-btn
-              v-show="isSigned(grp)"
-              text="Remove Your Signature"
-              @click="Msig.clearSigs(appId, grp.nonce, signingAddr!)"
-            />
-            <v-spacer />
-            <v-btn
-              text="Submit"
-              :disabled="
-                isSubmitted(grp.nonce) || isExpired(grp) || !metThreshold(grp)
-              "
-              @click="Msig.submitGroup(app, grp.nonce)"
-            />
-            <v-btn
-              text="Delete Group"
-              @click="Msig.deleteGroup(appId, grp, signingAddr!)"
-            />
-          </v-card-actions>
-        </v-card>
-      </v-container>
-    </v-card>
-  </v-container>
-  <v-dialog v-model="showAddSig" max-width="400" persistent>
+      </div>
+    </div>
+    <div v-for="grp in shownGroups" :key="Number(grp.nonce)" class="msig-group">
+      <div class="msig-group-header">
+        <span class="font-weight-medium">Group {{ grp.nonce }}</span>
+        <v-spacer />
+        <span class="text-muted">
+          Status:
+          <span class="text-high-emphasis">{{ status(grp) }}</span>
+        </span>
+      </div>
+      <div v-show="app?.groups.length" class="msig-txns">
+        <div v-for="(txn, tix) in grp.txns" :key="tix" class="msig-box">
+          <div class="msig-box-label">
+            Transaction {{ tix + 1 }}
+            {{ grp.stxns[tix] ? "(Not to be Signed)" : "" }}
+          </div>
+          <pre>{{ algosdk.encodeJSON(txn, { space: 2 }) }}</pre>
+        </div>
+      </div>
+      <div class="msig-box msig-sigs">
+        <div class="msig-box-label">Signatures gathered</div>
+        <div v-if="!grp.sigs.length" class="text-muted text-body-2">None</div>
+        <div v-for="sig in grp.sigs" :key="sig.addr" class="msig-member">
+          {{ sig.addr }}
+        </div>
+      </div>
+      <v-card-actions class="card-footer">
+        <v-btn
+          v-show="!isSigned(grp)"
+          variant="flat"
+          text="Add your signature"
+          :disabled="
+            isSubmitted(grp.nonce) ||
+            isExpired(grp) ||
+            !app?.addrs.includes(signingAddr)
+          "
+          @click="
+            showAddSig = true;
+            signGroup = grp;
+          "
+        />
+        <v-btn
+          v-show="isSigned(grp)"
+          variant="outlined"
+          text="Remove your signature"
+          @click="Msig.clearSigs(appId, grp.nonce, signingAddr!)"
+        />
+        <v-spacer />
+        <v-btn
+          variant="flat"
+          text="Submit"
+          :disabled="
+            isSubmitted(grp.nonce) || isExpired(grp) || !metThreshold(grp)
+          "
+          @click="Msig.submitGroup(app, grp.nonce)"
+        />
+        <v-btn
+          text="Delete group"
+          color="error"
+          @click="Msig.deleteGroup(appId, grp, signingAddr!)"
+        />
+      </v-card-actions>
+    </div>
+  </template>
+  <v-dialog v-model="showAddSig" max-width="440" persistent>
     <v-card>
       <v-card-title class="d-flex">
-        Add Your Signature
+        Add your signature
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="closeAddSig()" />
+        <v-icon :icon="mdiClose" @click="closeAddSig()" />
       </v-card-title>
-      <v-container>
-        <v-row>
-          <v-col>
-            <v-btn
-              block
-              text="Sign Transaction Group"
-              @click="gatherSigs()"
-              :disabled="!!signedTxns.length"
-              :append-icon="!!signedTxns.length ? mdiCheck : ''"
-            />
-          </v-col>
-        </v-row>
-        <v-row>
-          <v-col>
-            <v-btn
-              block
-              text="Send Signatures to Contract"
-              @click="sendSigs()"
-              :disabled="!signedTxns.length"
-            />
-          </v-col>
-        </v-row>
-      </v-container>
+      <v-card-text class="d-flex flex-column ga-3">
+        <v-btn
+          block
+          variant="outlined"
+          text="Sign transaction group"
+          @click="gatherSigs()"
+          :disabled="!!signedTxns.length"
+          :append-icon="!!signedTxns.length ? mdiCheck : ''"
+        />
+        <v-btn
+          block
+          variant="flat"
+          text="Send signatures to contract"
+          @click="sendSigs()"
+          :disabled="!signedTxns.length"
+        />
+      </v-card-text>
     </v-card>
   </v-dialog>
 </template>
@@ -380,7 +340,7 @@ async function gatherSigs() {
       return wt;
     });
     signedTxns.value = await luteSignerWT(walletTxns);
-    store.setSnackbar("Awaiting Next Step...", "info", -1);
+    store.setSnackbar("Awaiting next step...", "info", -1);
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -413,7 +373,7 @@ async function sendSigs() {
       populateAppCallResources: true,
     });
     closeAddSig();
-    store.setSnackbar("Signature(s) Added", "success");
+    store.setSnackbar("Signature(s) added", "success");
   } catch (err: any) {
     console.error(err);
     store.setSnackbar(err.message, "error");
@@ -421,3 +381,88 @@ async function sendSigs() {
   store.overlay = false;
 }
 </script>
+
+<style scoped>
+.msig-app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+  padding: 18px;
+  border-bottom: 1px solid rgb(var(--v-theme-border));
+}
+@media (max-width: 599.98px) {
+  .msig-app {
+    grid-template-columns: 1fr;
+  }
+}
+.msig-app .v-input {
+  margin-top: 0;
+}
+.msig-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.msig-label {
+  font-size: 12px;
+  color: rgb(var(--v-theme-text-muted));
+}
+.msig-member {
+  font: 11.5px var(--font-mono);
+  color: rgb(var(--v-theme-text-body));
+  word-break: break-all;
+}
+.msig-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px 6px;
+}
+.msig-group {
+  margin: 8px 18px 18px;
+  border: 1px solid rgb(var(--v-theme-border-strong));
+  border-radius: 10px;
+  overflow: hidden;
+}
+.msig-group-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  border-bottom: 1px solid rgb(var(--v-theme-border));
+}
+.msig-group-header .text-muted {
+  font-size: 12.5px;
+}
+.msig-txns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+}
+.msig-box {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgb(var(--v-theme-border));
+  border-radius: 8px;
+  background: rgb(var(--v-theme-background));
+}
+.msig-box pre {
+  font-size: 11px;
+  max-height: 240px;
+}
+.msig-box-label {
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  color: rgb(var(--v-theme-text-muted));
+}
+.msig-sigs {
+  margin: 0 14px 12px;
+  text-align: center;
+}
+.msig-group .card-footer {
+  padding: 12px 14px;
+}
+.min-w-0 {
+  min-width: 0;
+}
+</style>

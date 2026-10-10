@@ -2,16 +2,16 @@
   <v-dialog v-model="show" max-width="400" persistent>
     <v-card>
       <v-card-title class="d-flex">
-        Enter your Password
+        Enter your password
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
-      <v-container>
-        <v-form
-          ref="form"
-          @submit.prevent="confirmPassword()"
-          validate-on="submit"
-        >
+      <v-form
+        ref="form"
+        @submit.prevent="confirmPassword()"
+        validate-on="submit"
+      >
+        <v-card-text>
           <v-text-field
             v-model="password"
             label="Password"
@@ -22,12 +22,11 @@
             :rules="[required]"
             autofocus
           />
-          <v-card-actions>
-            <v-spacer />
-            <v-btn text="Submit" type="submit" />
-          </v-card-actions>
-        </v-form>
-      </v-container>
+        </v-card-text>
+        <v-card-actions class="no-divider pt-0">
+          <v-btn variant="flat" text="Submit" type="submit" />
+        </v-card-actions>
+      </v-form>
     </v-card>
   </v-dialog>
 </template>

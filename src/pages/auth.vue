@@ -8,18 +8,16 @@
             {{ luteData.stdSignData.domain }} wants you to sign in with your
             Algorand account:
           </div>
-          <div style="font-size: 0.79em; font-family: monospace">
+          <div class="font-mono text-caption">
             {{ luteData.siwa.account_address }}
           </div>
           <v-chip
             size="x-small"
             @click="viewRaw = !viewRaw"
-            :text="viewRaw ? 'View Summary' : 'View Raw'"
+            :text="viewRaw ? 'View summary' : 'View raw'"
           />
           <v-container v-show="viewRaw" class="px-0">
-            <pre style="overflow: auto; font-size: 0.75em">{{
-              luteData.siwa
-            }}</pre>
+            <pre>{{ luteData.siwa }}</pre>
           </v-container>
           <v-container v-show="!viewRaw" class="px-0">
             <v-row v-if="luteData.siwa.statement">
@@ -29,13 +27,19 @@
             </v-row>
             <v-row>
               <v-col>
-                <pre style="overflow: auto; font-size: 0.75em">{{ msg }}</pre>
+                <pre>{{ msg }}</pre>
               </v-col>
             </v-row>
           </v-container>
           <v-row class="text-center">
             <v-col>
-              <v-btn text="Sign" @click="passwordCheck()" :disabled="signing" />
+              <v-btn
+                variant="flat"
+                size="large"
+                text="Sign"
+                @click="passwordCheck()"
+                :disabled="signing"
+              />
             </v-col>
           </v-row>
         </v-container>

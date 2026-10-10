@@ -1,28 +1,28 @@
 <template>
-  <v-container class="pt-0">
+  <div v-if="store.keystoreMode === 'device'" class="flow-notice">
     <no-password-notice />
-    <v-tabs v-if="!hideTabs" v-model="tab" color="primary">
-      <v-tab text="NEW" />
-      <v-tab text="IMPORT" />
-    </v-tabs>
-    <v-window v-model="tab">
-      <v-window-item :value="0">
-        <new-key
-          :number-of-words="25"
-          is-falcon
-          @hide-tabs="hideTabs = true"
-          @close="$emit('close')"
-        />
-      </v-window-item>
-      <v-window-item :value="1">
-        <import-key
-          :number-of-words="25"
-          button-text="Import"
-          @mn="handleMnemonic"
-        />
-      </v-window-item>
-    </v-window>
-  </v-container>
+  </div>
+  <v-tabs v-if="!hideTabs" v-model="tab" class="flow-tabs">
+    <v-tab text="New" />
+    <v-tab text="Import" />
+  </v-tabs>
+  <v-window v-model="tab">
+    <v-window-item :value="0">
+      <new-key
+        :number-of-words="25"
+        is-falcon
+        @hide-tabs="hideTabs = true"
+        @close="$emit('close')"
+      />
+    </v-window-item>
+    <v-window-item :value="1">
+      <import-key
+        :number-of-words="25"
+        button-text="Import"
+        @mn="handleMnemonic"
+      />
+    </v-window-item>
+  </v-window>
   <keystore-unlock ref="unlocker" />
 </template>
 
@@ -45,7 +45,7 @@ async function handleMnemonic(mn: string) {
     if (store.accounts.some((a) => a.addr === address)) {
       emit("close");
       throw Error(
-        "Account already in wallet. To re-enter its mnemonic, use Upgrade Account from its menu."
+        "Account already in wallet. To re-enter its mnemonic, use Upgrade account from its menu."
       );
     }
     const mk = await unlocker.value!.ensureMk();
@@ -58,7 +58,7 @@ async function handleMnemonic(mn: string) {
     });
     await store.getCache();
     store.refresh++;
-    store.setSnackbar("Account Imported", "success");
+    store.setSnackbar("Account imported", "success");
     emit("close");
   } catch (err: any) {
     if (isCancelled(err)) return;

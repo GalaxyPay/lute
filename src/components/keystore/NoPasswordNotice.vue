@@ -2,17 +2,20 @@
   <v-alert
     v-if="store.keystoreMode === 'device'"
     type="warning"
-    variant="tonal"
-    density="compact"
-    class="mb-2 text-left"
+    class="text-left"
   >
     This wallet has no password. Anyone with access to this browser profile can
-    sign with the accounts stored in it.
+    sign with its accounts.
     <template #append>
-      <v-btn text="Set Password" size="small" @click="show = true" />
+      <v-btn
+        text="Set password"
+        size="small"
+        class="my-n1"
+        @click="show = true"
+      />
     </template>
   </v-alert>
-  <v-dialog v-model="show" max-width="600" persistent>
+  <v-dialog v-model="show" max-width="440" persistent>
     <password-create @close="show = false" />
   </v-dialog>
 </template>

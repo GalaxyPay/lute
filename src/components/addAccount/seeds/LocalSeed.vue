@@ -1,43 +1,49 @@
 <template>
-  <v-container class="pt-0">
+  <div v-if="store.keystoreMode === 'device'" class="flow-notice">
     <no-password-notice />
-    <v-tabs v-if="!hideTabs" v-model="tab" color="primary">
-      <v-tab text="NEW" />
-      <v-tab text="IMPORT" />
-    </v-tabs>
-    <v-window v-model="tab">
-      <v-window-item :value="0">
-        <new-key
-          :number-of-words="24"
-          @hide-tabs="hideTabs = true"
-          @seed="(id, seed) => $emit('seed', id, seed)"
-        />
-      </v-window-item>
-      <v-window-item :value="1">
-        <input-bip39 @seed="(id, seed) => $emit('seed', id, seed)" />
+  </div>
+  <v-tabs v-if="!hideTabs" v-model="tab" class="flow-tabs">
+    <v-tab text="New" />
+    <v-tab text="Import" />
+  </v-tabs>
+  <v-window v-model="tab">
+    <v-window-item :value="0">
+      <new-key
+        :number-of-words="24"
+        @hide-tabs="hideTabs = true"
+        @seed="(id, seed) => $emit('seed', id, seed)"
+      />
+    </v-window-item>
+    <v-window-item :value="1">
+      <input-bip39 @seed="(id, seed) => $emit('seed', id, seed)">
         <div class="text-center">
           <v-btn
-            variant="text"
             size="small"
             :prepend-icon="mdiFingerprint"
             text="Recover from a passkey"
             @click="recoverPasskey"
           />
         </div>
-      </v-window-item>
-    </v-window>
-  </v-container>
+      </input-bip39>
+    </v-window-item>
+  </v-window>
 </template>
 
 <script lang="ts" setup>
 import Seed from "@/services/Seed";
 import { mdiFingerprint } from "@mdi/js";
 
-const emit = defineEmits(["seed"]);
+const emit = defineEmits(["seed", "stage"]);
 
 const store = useAppStore();
 const hideTabs = ref(false);
 const tab = ref(0);
+
+// For the HD wallet step title. NewKey hides the tabs for its word check.
+const stage = computed(() =>
+  tab.value === 1 ? "import" : hideTabs.value ? "check" : "new"
+);
+watch(stage, (s) => emit("stage", s), { immediate: true });
 
 // Passkeys can no longer create seeds, but one registered with an earlier
 // version can still be recovered on a new device.

@@ -1,20 +1,16 @@
 <template>
   <v-card>
     <v-card-title class="d-flex">
-      Set a Wallet Password
+      Set a wallet password
       <v-spacer />
-      <v-icon :icon="mdiClose" size="small" @click="emit('close', false)" />
+      <v-icon :icon="mdiClose" @click="emit('close', false)" />
     </v-card-title>
-    <v-card-text class="pb-0" style="color: #9aa0a5; font-size: 0.8em">
-      Protects every account stored in this browser. There is no way to recover
-      it: if you forget it, you will need your mnemonics.
-    </v-card-text>
-    <v-container>
-      <v-form
-        ref="form"
-        @submit.prevent="confirmPassword()"
-        validate-on="submit"
-      >
+    <v-form ref="form" @submit.prevent="confirmPassword()" validate-on="submit">
+      <v-card-text>
+        <p class="text-muted text-body-2 mb-2">
+          Protects every account stored in this browser. There is no way to
+          recover it: if you forget it, you will need your mnemonics.
+        </p>
         <v-text-field v-show="false" name="username" autocomplete="username" />
         <v-text-field
           v-model="pass1"
@@ -28,19 +24,18 @@
         />
         <v-text-field
           v-model="pass2"
-          label="Confirm Password"
+          label="Confirm password"
           type="password"
           name="confirm-password"
           autocomplete="new-password"
           density="comfortable"
           :rules="[required, match]"
         />
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text="Submit" type="submit" :loading="saving" />
-        </v-card-actions>
-      </v-form>
-    </v-container>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn variant="flat" text="Submit" type="submit" :loading="saving" />
+      </v-card-actions>
+    </v-form>
   </v-card>
 </template>
 
@@ -66,7 +61,7 @@ async function confirmPassword() {
     saving.value = true;
     await Keystore.newPassword(pass1.value);
     await store.getCache();
-    store.setSnackbar("Password Set", "success");
+    store.setSnackbar("Password set", "success");
     emit("close", true);
   } catch (err: any) {
     console.error(err);

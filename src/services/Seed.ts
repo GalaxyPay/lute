@@ -76,7 +76,7 @@ const Seed = {
 
   async getPasskeyMnemonic(credentialId?: string) {
     const store = useAppStore();
-    store.setSnackbar("Waiting on Authenticator...", "info", -1);
+    store.setSnackbar("Waiting on authenticator...", "info", -1);
     const allowCredentials: PublicKeyCredentialDescriptor[] = [];
     if (credentialId)
       allowCredentials.push({

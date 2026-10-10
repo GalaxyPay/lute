@@ -1,5 +1,5 @@
 <template>
-  <v-container class="pt-0">
+  <div class="sync-page">
     <sync-session
       v-if="ready"
       :side="store.isWeb ? 'web' : 'ext'"
@@ -9,7 +9,7 @@
       @close="done()"
       @done="done()"
     />
-  </v-container>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -49,3 +49,50 @@ async function done() {
   window.close();
 }
 </script>
+
+<style scoped>
+.sync-page {
+  display: flex;
+  min-height: calc(
+    100dvh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px)
+  );
+}
+.sync-page > :deep(.v-card) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+.sync-page :deep(.v-card-title) {
+  margin-top: auto;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 500;
+  padding: 24px 20px 8px;
+}
+.sync-page :deep(.v-card-text) {
+  flex: none;
+  padding: 0 20px 14px;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgb(var(--v-theme-text-body));
+}
+.sync-page :deep(.v-alert) {
+  text-align: start;
+}
+.sync-page :deep(.card-footer) {
+  margin-top: auto;
+  padding: 14px 16px;
+}
+.sync-page :deep(.card-footer .v-btn) {
+  flex: 1;
+  --v-btn-height: 40px;
+  font-size: 14px;
+}
+.sync-page :deep(.card-footer .v-btn--variant-flat) {
+  flex: 2;
+}
+</style>

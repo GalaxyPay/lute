@@ -1,14 +1,14 @@
 <template>
-  <v-container class="pt-0">
+  <v-container class="page">
     <v-card :loading="loading">
-      <v-card-title>Atomic Swap</v-card-title>
+      <v-card-title>Atomic swap</v-card-title>
       <v-card-subtitle>
         Swap assets directly with another party - no middle-man or smart
         contract
       </v-card-subtitle>
       <v-container v-if="reviewTxns">
         <v-container class="text-center">
-          <div style="font-family: monospace">
+          <div class="font-mono">
             {{ reviewTxns[0]?.sender }}
           </div>
           is proposing a swap. They would like to send you
@@ -20,11 +20,16 @@
           </div>
         </v-container>
         <v-container class="text-center">
-          <v-btn text="Copy Link" @click="copyLink()" />
-          <v-btn text="Review & Sign" @click="accept()" />
+          <v-btn variant="outlined" text="Copy link" @click="copyLink()" />
+          <v-btn
+            variant="flat"
+            class="ml-2"
+            text="Review & Sign"
+            @click="accept()"
+          />
           <v-row v-if="extensionDetected">
             <v-col class="pb-0">
-              <v-btn text="Open in Extension" @click="openExtension()" />
+              <v-btn text="Open in extension" @click="openExtension()" />
             </v-col>
           </v-row>
         </v-container>
@@ -117,7 +122,7 @@ async function accept() {
   try {
     if (!stxn1 || !reviewTxns.value) throw Error("Invalid Transactions");
     const resp = await luteSigner(reviewTxns.value, [1]);
-    await send([stxn1, resp[1]!], "Swap Completed");
+    await send([stxn1, resp[1]!], "Swap completed");
     router.replace("/");
   } catch (err: any) {
     reportSignError(err);
@@ -161,7 +166,7 @@ function openExtension() {
       detail: { action: "swap", tx1, tx2 },
     })
   );
-  store.setSnackbar("Opened in Extension", "info");
+  store.setSnackbar("Opened in extension", "info");
   router.replace("/");
 }
 </script>

@@ -1,78 +1,93 @@
 <template>
-  <v-row class="mb-3">
-    <v-col>
-      <v-row class="text-info" no-gutters>
-        <v-col>
-          Transaction {{ idx + 1 }} {{ toSign ? "" : "(Not to be Signed)" }}:
-        </v-col>
-      </v-row>
-      <v-row class="text-h6" no-gutters>
-        <v-col>
-          {{ ftxn.type }}
-          <v-chip
-            size="x-small"
-            @click="viewRaw = !viewRaw"
-            :text="viewRaw ? 'View Summary' : 'View Raw'"
-          />
-        </v-col>
-      </v-row>
-      <v-row v-show="viewRaw">
-        <pre style="overflow: auto; font-size: 0.75em">{{
-          algosdk.encodeJSON(txn, { space: 2 })
-        }}</pre>
-      </v-row>
-      <v-row v-show="!viewRaw" no-gutters>
-        <v-col :cols> From: {{ ftxn.from }} </v-col>
-        <v-col :cols v-if="ftxn.to"> To: {{ ftxn.to }} </v-col>
-        <v-col
-          :cols
-          v-if="ftxn.clawbackFrom"
-          :class="toSign ? 'text-error' : ''"
-        >
-          Clawback From: {{ ftxn.clawbackFrom }}
-        </v-col>
-        <v-col :cols v-if="ftxn.appId"> App ID: {{ ftxn.appId }} </v-col>
-        <v-col :cols v-if="ftxn.asset"> Asset: {{ ftxn.asset }} </v-col>
-        <v-col :cols v-if="ftxn.amount"> Amount: {{ ftxn.amount }} </v-col>
-        <v-col :cols :class="txn.fee > feeWarn && toSign ? 'text-warning' : ''">
-          Fee: {{ ftxn.fee }}
-        </v-col>
-        <v-col :cols v-if="ftxn.voteFirst">
-          First Vote Round: {{ ftxn.voteFirst }}
-        </v-col>
-        <v-col :cols v-if="ftxn.voteLast">
-          Last Vote Round: {{ ftxn.voteLast }}
-        </v-col>
-        <v-col :cols v-if="ftxn.voteKeyDilution">
-          Key Dilution: {{ ftxn.voteKeyDilution }}
-        </v-col>
-        <v-col v-if="ftxn.selectionKey">
-          Selection Key: {{ ftxn.selectionKey }}
-        </v-col>
-        <v-col v-if="ftxn.voteKey"> Voting Key: {{ ftxn.voteKey }} </v-col>
-        <v-col v-if="ftxn.stateProofKey">
-          State Proof Key: {{ ftxn.stateProofKey }}
-        </v-col>
-        <v-col :cols v-if="ftxn.rekeyTo" :class="toSign ? 'text-error' : ''">
-          RekeyTo: {{ ftxn.rekeyTo }}
-        </v-col>
-        <v-col
-          :cols
-          v-if="ftxn.closeRemainderTo"
-          :class="toSign ? 'text-error' : ''"
-        >
-          CloseRemainderTo: {{ ftxn.closeRemainderTo }}
-        </v-col>
-        <v-col :cols v-if="ftxn.note?.length"> Note: {{ ftxn.note }} </v-col>
-      </v-row>
-    </v-col>
-  </v-row>
+  <div class="review-txn">
+    <div class="review-index">
+      {{ `Transaction ${idx + 1}${toSign ? "" : " (Not to be Signed)"}:` }}
+    </div>
+    <div class="d-flex align-center ga-2 mt-1">
+      <span class="review-type">{{ ftxn.type }}</span>
+      <v-chip
+        size="x-small"
+        @click="viewRaw = !viewRaw"
+        :text="viewRaw ? 'View summary' : 'View raw'"
+      />
+    </div>
+    <pre v-show="viewRaw" class="review-raw">{{
+      algosdk.encodeJSON(txn, { space: 2 })
+    }}</pre>
+    <dl v-show="!viewRaw" class="review-fields">
+      <dt>From</dt>
+      <dd>{{ ftxn.from }}</dd>
+      <template v-if="ftxn.to">
+        <dt>To</dt>
+        <dd>{{ ftxn.to }}</dd>
+      </template>
+      <template v-if="ftxn.clawbackFrom">
+        <dt>Clawback from</dt>
+        <dd :class="toSign ? 'text-error-text' : ''">
+          {{ ftxn.clawbackFrom }}
+        </dd>
+      </template>
+      <template v-if="ftxn.appId">
+        <dt>App ID</dt>
+        <dd>{{ ftxn.appId }}</dd>
+      </template>
+      <template v-if="ftxn.asset">
+        <dt>Asset</dt>
+        <dd>{{ ftxn.asset }}</dd>
+      </template>
+      <template v-if="ftxn.amount">
+        <dt>Amount</dt>
+        <dd>{{ ftxn.amount }}</dd>
+      </template>
+      <dt>Fee</dt>
+      <dd :class="txn.fee > feeWarn && toSign ? 'text-warning' : ''">
+        {{ ftxn.fee }}
+      </dd>
+      <template v-if="ftxn.voteFirst">
+        <dt>First vote round</dt>
+        <dd>{{ ftxn.voteFirst }}</dd>
+      </template>
+      <template v-if="ftxn.voteLast">
+        <dt>Last vote round</dt>
+        <dd>{{ ftxn.voteLast }}</dd>
+      </template>
+      <template v-if="ftxn.voteKeyDilution">
+        <dt>Key dilution</dt>
+        <dd>{{ ftxn.voteKeyDilution }}</dd>
+      </template>
+      <template v-if="ftxn.selectionKey">
+        <dt>Selection key</dt>
+        <dd>{{ ftxn.selectionKey }}</dd>
+      </template>
+      <template v-if="ftxn.voteKey">
+        <dt>Voting key</dt>
+        <dd>{{ ftxn.voteKey }}</dd>
+      </template>
+      <template v-if="ftxn.stateProofKey">
+        <dt>State proof key</dt>
+        <dd>{{ ftxn.stateProofKey }}</dd>
+      </template>
+      <template v-if="ftxn.rekeyTo">
+        <dt>RekeyTo</dt>
+        <dd :class="toSign ? 'text-error-text' : ''">{{ ftxn.rekeyTo }}</dd>
+      </template>
+      <template v-if="ftxn.closeRemainderTo">
+        <dt>CloseRemainderTo</dt>
+        <dd :class="toSign ? 'text-error-text' : ''">
+          {{ ftxn.closeRemainderTo }}
+        </dd>
+      </template>
+      <template v-if="ftxn.note?.length">
+        <dt>Note</dt>
+        <dd>{{ ftxn.note }}</dd>
+      </template>
+    </dl>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import { formatTxn } from "@/utils/formatTxn";
 import algosdk, { modelsv2 } from "algosdk";
-import { useDisplay } from "vuetify";
 
 const props = defineProps({
   txn: { type: algosdk.Transaction, required: true },
@@ -82,8 +97,6 @@ const props = defineProps({
 });
 
 const store = useAppStore();
-const { width } = useDisplay();
-const cols = computed(() => (width.value < 500 ? "12" : "6"));
 const viewRaw = ref(false);
 
 const isFalcon25 = store.acctInfo.find(
@@ -96,6 +109,40 @@ const txnAsset = computed(() =>
 );
 
 const ftxn = computed(() =>
-  formatTxn(props.txn, txnAsset.value, store.isVoi ? "Voi" : "Algo")
+  formatTxn(props.txn, txnAsset.value, store.isVoi ? "VOI" : "ALGO")
 );
 </script>
+
+<style scoped>
+.review-txn {
+  padding: 12px 0;
+  border-bottom: 1px solid rgb(var(--v-theme-border));
+}
+.review-index {
+  font-size: 12.5px;
+  color: rgb(var(--v-theme-info));
+}
+.review-type {
+  font-size: 15px;
+  font-weight: 500;
+}
+.review-raw {
+  margin-top: 8px;
+  max-height: 320px;
+}
+.review-fields {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 4px;
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+.review-fields dt {
+  color: rgb(var(--v-theme-text-dim));
+}
+.review-fields dd {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+</style>

@@ -1,6 +1,6 @@
 <template>
-  <v-container>
-    <v-form ref="form" @submit.prevent="addWatch()">
+  <v-form ref="form" @submit.prevent="addWatch()">
+    <div class="dialog-body">
       <v-combobox
         v-model="addr"
         :items="addrAuto"
@@ -11,12 +11,11 @@
         :rules="[required, validAddress]"
         autofocus
       />
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Add" type="submit" />
-      </v-card-actions>
-    </v-form>
-  </v-container>
+    </div>
+    <v-card-actions>
+      <v-btn variant="flat" text="Add" type="submit" />
+    </v-card-actions>
+  </v-form>
 </template>
 
 <script lang="ts" setup>
@@ -31,14 +30,14 @@ const store = useAppStore();
 const ns = store.network.nfdUrl
   ? " or NFD"
   : store.network.envoiUrl
-  ? " or EnVoi"
-  : "";
+    ? " or EnVoi"
+    : "";
 const form = ref();
 const addr = ref();
 const addrAuto = ref();
 const required = (v: string) => !!v || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 
 let nsTimeout: number;
 async function lookupNs(q: string) {
@@ -61,7 +60,7 @@ async function addWatch() {
     await set("app", "accounts", accts);
     await store.getCache();
     store.refresh++;
-    store.setSnackbar("Watch Account Added", "success");
+    store.setSnackbar("Watch account added", "success");
     emit("close");
   } catch (err: any) {
     console.error(err);

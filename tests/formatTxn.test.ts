@@ -6,7 +6,7 @@ import { formatTxn } from "@/utils/formatTxn";
 
 const [me, them, thief] = [0, 1, 2].map(() => algosdk.generateAccount().addr);
 const short = (a: algosdk.Address) =>
-  `${a.toString().slice(0, 6)}...${a.toString().slice(52)}`;
+  `${a.toString().slice(0, 6)}…${a.toString().slice(52)}`;
 const suggestedParams = {
   fee: 2000n,
   minFee: 1000n,
