@@ -109,10 +109,10 @@
               <expire-chip :ns="item.ns" />
             </div>
             <div
-              v-if="!smAndUp || item.name || item.ns?.name"
+              v-if="!mdAndUp || item.name || item.ns?.name"
               class="acct-sub ellipsis"
             >
-              <template v-if="!smAndUp">
+              <template v-if="!mdAndUp">
                 <account-icon :item plain />
                 <template v-if="item.name || item.ns?.name">
                   · {{ item.title }}
@@ -303,7 +303,7 @@ import {
 } from "@mdi/js";
 import { useDisplay } from "vuetify";
 
-const { smAndUp } = useDisplay();
+const { smAndUp, mdAndUp } = useDisplay();
 const store = useAppStore();
 const showAdd = ref(false);
 const rename = ref<any>({});
@@ -319,15 +319,25 @@ const noPassword = computed(
     store.keystoreMode === "device" &&
     store.acctInfo.some((a) => !a.subType && isLocalSecret(a.secret))
 );
+// Below md the type tag moves under the name, leaving the name room to show.
 const headers = computed(() => {
   const val: any[] = [{ key: "addr" }];
+  if (mdAndUp.value)
+    val.push({ key: "type", width: 110, cellProps: { class: "col-type" } });
   if (smAndUp.value)
-    val.push(
-      { key: "type", width: 110 },
-      { key: "info.assets", align: "end", width: 80 }
-    );
+    val.push({
+      key: "info.assets",
+      align: "end",
+      width: 80,
+      cellProps: { class: "col-assets" },
+    });
   val.push(
-    { key: "info.amount", align: "end", width: smAndUp.value ? 150 : 1 },
+    {
+      key: "info.amount",
+      align: "end",
+      width: smAndUp.value ? 150 : 1,
+      cellProps: { class: "col-amount" },
+    },
     { key: "actions", align: "end", width: smAndUp.value ? 88 : 1 }
   );
   return val;
@@ -512,15 +522,15 @@ async function setAcctNetwork(acct: LuteAccount, network: string) {
 .accounts-table :deep(td:not(:first-child)) {
   white-space: nowrap;
 }
-.accounts-page:not(.page--flush) .accounts-table :deep(td:nth-child(2)) {
+.accounts-page:not(.page--flush) .accounts-table :deep(.col-type) {
   width: 110px;
   min-width: 110px;
 }
-.accounts-page:not(.page--flush) .accounts-table :deep(td:nth-child(3)) {
+.accounts-page:not(.page--flush) .accounts-table :deep(.col-assets) {
   width: 80px;
   min-width: 80px;
 }
-.accounts-page:not(.page--flush) .accounts-table :deep(td:nth-child(4)) {
+.accounts-page:not(.page--flush) .accounts-table :deep(.col-amount) {
   width: 150px;
   min-width: 150px;
 }
