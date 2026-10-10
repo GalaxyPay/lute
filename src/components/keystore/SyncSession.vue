@@ -1,0 +1,228 @@
+<template>
+  <v-card>
+    <v-card-title class="d-flex">
+      {{ title }}
+      <v-spacer />
+      <v-icon v-if="finished" :icon="mdiClose" @click="close()" />
+    </v-card-title>
+    <template v-if="state === 'confirm' && !finished">
+      <v-card-text>
+        {{ otherName }} wants to send its accounts and keys to this wallet.
+        Accounts already here are left as they are, and nothing is removed.
+      </v-card-text>
+      <v-card-text class="pt-0">
+        <v-alert type="warning">
+          Only continue if you started this sync yourself.
+        </v-alert>
+      </v-card-text>
+      <v-card-text v-if="store.keystoreMode === 'device'" class="pt-0">
+        <no-password-notice class="mb-3" />
+        The keys sent here will not be password protected. Set a password first
+        to keep them protected.
+      </v-card-text>
+      <v-card-actions class="card-footer">
+        <v-btn text="Decline" color="text-body" @click="answer(false)" />
+        <v-btn variant="flat" text="Add accounts" @click="answer(true)" />
+      </v-card-actions>
+    </template>
+    <template v-else-if="result">
+      <sync-result
+        :summary="result.summary"
+        :skipped="result.skipped"
+        :warning="result.warning"
+      />
+      <v-card-actions class="card-footer">
+        <v-btn variant="outlined" text="Close" @click="close()" />
+      </v-card-actions>
+    </template>
+    <template v-else-if="error">
+      <v-card-text class="text-error-text">{{ error }}</v-card-text>
+      <v-card-actions class="card-footer">
+        <v-btn variant="outlined" text="Close" @click="close()" />
+      </v-card-actions>
+    </template>
+    <template v-else>
+      <v-card-text class="d-flex align-center text-high-emphasis">
+        <v-progress-circular indeterminate size="18" width="2" class="mr-3" />
+        {{ status }}
+      </v-card-text>
+      <v-card-actions class="card-footer">
+        <v-btn text="Cancel" color="text-body" @click="cancel()" />
+      </v-card-actions>
+    </template>
+  </v-card>
+  <keystore-unlock ref="unlocker" />
+</template>
+
+<script lang="ts" setup>
+import { syncWebOrigin } from "@/ext/syncOrigins";
+import {
+  type ReceiverState,
+  runReceiver,
+  runSender,
+  type SenderState,
+  type SyncTransport,
+} from "@/services/SyncSession";
+import {
+  extensionSenderTransport,
+  receiverTransport,
+  webTransport,
+} from "@/services/syncTransports";
+import type { Skipped, WalletSide } from "@/services/Transfer";
+import type { MasterKey, Unlocker } from "@/types";
+import { mdiClose } from "@mdi/js";
+
+const props = defineProps<{
+  side: WalletSide;
+  role: "send" | "receive";
+  // Sending: unlocked by the caller first so its password prompt doesn't
+  // compete with this dialog for focus.
+  mk?: MasterKey;
+  // Receiving on web: the one-time token from the extension's link.
+  token?: string;
+  // Receiving in the extension: the lute.app tab that started the sync.
+  tabId?: number;
+}>();
+// `close`: the user closed it. `done`: a receiver finished or declined and
+// its popup window can go away; the sender shows the result.
+const emit = defineEmits(["close", "done"]);
+
+const store = useAppStore();
+const unlocker = ref<Unlocker>();
+const state = ref<SenderState | ReceiverState>("connecting");
+const result = ref<{ summary: string; skipped: Skipped[]; warning?: string }>();
+const error = ref<string>();
+const finished = computed(() => !!result.value || !!error.value);
+let transport: SyncTransport | undefined;
+let closeWebWindow: (() => void) | undefined;
+let answerConfirm: ((ok: boolean) => void) | undefined;
+
+const otherName = computed(() =>
+  props.side === "web" ? "The Lute extension" : "The Lute web app"
+);
+const title = computed(() =>
+  props.role === "send"
+    ? props.side === "web"
+      ? "Sync to extension"
+      : "Sync to web app"
+    : "Add synced accounts"
+);
+const status = computed(() => {
+  switch (state.value) {
+    case "connecting":
+      return props.role === "send"
+        ? `Opening the Lute ${props.side === "web" ? "extension" : "web app"}…`
+        : "Connecting…";
+    case "waiting":
+      return "Confirm in the other window…";
+    case "unlocking":
+      return "Unlocking…";
+    case "sending":
+      return "Sending accounts…";
+    case "adding":
+      return "Adding accounts…";
+    default:
+      return "";
+  }
+});
+
+onMounted(start);
+onBeforeUnmount(() => transport?.close());
+
+async function start() {
+  const onState = (s: SenderState | ReceiverState) => (state.value = s);
+  try {
+    if (props.role === "send") await send(onState);
+    else await receive(onState);
+  } catch (err: any) {
+    console.error(err);
+    error.value = err?.message ?? "Sync failed.";
+    if (props.role === "receive" && err?.code === "declined") emit("done");
+  } finally {
+    if (props.role === "send") closePopup();
+  }
+}
+
+function upgradedNote(n: number) {
+  return n ? ` ${n} account${n === 1 ? "" : "s"} upgraded.` : "";
+}
+
+async function send(onState: (s: SenderState) => void) {
+  const mk = props.mk;
+  if (!mk) throw Error("The wallet is locked.");
+  if (props.side === "web") transport = webTransport();
+  else {
+    const opened = await extensionSenderTransport(
+      syncWebOrigin(import.meta.env.DEV)
+    );
+    transport = opened.transport;
+    closeWebWindow = opened.close;
+  }
+  const { added, upgraded, skipped, passwordProtected } = await runSender(
+    props.side,
+    transport,
+    { appVersion: __APP_VERSION__, onState, mk }
+  );
+  const other = props.side === "web" ? "the extension" : "the web app";
+  result.value = {
+    summary: `${added} account${added === 1 ? "" : "s"} added to ${other}.${upgradedNote(upgraded)}`,
+    skipped,
+    warning: passwordProtected
+      ? undefined
+      : `${otherName.value} has no password. Anyone with access to its browser profile can sign with these accounts and reveal their mnemonics. Set a password there to protect them.`,
+  };
+}
+
+async function receive(onState: (s: ReceiverState) => void) {
+  transport =
+    props.side === "web"
+      ? webTransport(props.token)
+      : receiverTransport(props.tabId!);
+  const { added, upgraded, skipped } = await runReceiver(
+    props.side,
+    transport,
+    {
+      onState,
+      confirm: () => new Promise((resolve) => (answerConfirm = resolve)),
+      getMk: () => unlocker.value!.ensureMk(),
+      abandon: () => {
+        answerConfirm = undefined;
+        unlocker.value?.cancel();
+      },
+    }
+  );
+  await store.getCache();
+  store.refresh++;
+  result.value = {
+    summary: `${added} account${added === 1 ? "" : "s"} added.${upgradedNote(upgraded)}`,
+    skipped,
+  };
+  // The sender shows the full result.
+  emit("done");
+}
+
+/** The web app's window closes itself when it finishes; this makes sure. */
+function closePopup() {
+  closeWebWindow?.();
+  closeWebWindow = undefined;
+}
+
+function answer(ok: boolean) {
+  answerConfirm?.(ok);
+  answerConfirm = undefined;
+}
+
+function cancel() {
+  transport?.send({
+    t: "error",
+    code: "cancelled",
+    message: "The sync was cancelled in the other window.",
+  });
+  transport?.close();
+}
+
+function close() {
+  transport?.close();
+  emit("close");
+}
+</script>

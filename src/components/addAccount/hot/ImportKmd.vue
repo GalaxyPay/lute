@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <div class="dialog-body">
     <v-data-table
       v-model="selected"
       item-value="address"
@@ -12,8 +12,8 @@
       <template v-if="loading && !accounts.length" #headers />
       <template #bottom />
       <template #[`item.address`]="{ item }">
-        {{ formatAddr(item.address) }}
-        <div class="text-grey">
+        <span class="font-mono">{{ formatAddr(item.address) }}</span>
+        <div class="text-dim text-caption">
           {{
             `${item.assets?.length} asset${
               item.assets?.length === 1 ? "" : "s"
@@ -22,42 +22,52 @@
         </div>
       </template>
       <template #[`item.amount`]="{ value }">
-        <span v-if="store.isVoi" class="font-weight-bold">V</span>
-        <algo-icon v-else color="currentColor" :width="10" />
-        {{ bigintToString(value, 6) }}
+        <span class="amount">
+          <span v-if="store.isVoi" class="font-weight-bold">V </span>
+          <algo-icon
+            v-else
+            color="currentColor"
+            :width="10"
+            class="algo-glyph"
+          />
+          {{ bigintToString(value, 6) }}
+        </span>
       </template>
     </v-data-table>
-  </v-container>
-  <v-container class="text-center">
-    <v-row>
-      <v-col>
-        <v-btn
-          text="Add to Wallet"
-          :disabled="!selected.length || loading"
-          @click="addAccounts()"
-        />
-      </v-col>
-    </v-row>
-  </v-container>
+  </div>
+  <v-card-actions>
+    <v-btn
+      variant="flat"
+      text="Add to wallet"
+      :disabled="!selected.length || loading"
+      @click="addAccounts()"
+    />
+  </v-card-actions>
+  <keystore-unlock ref="unlocker" />
 </template>
 
 <script lang="ts" setup>
-import { set } from "@/dbLute";
 import Algo from "@/services/Algo";
-import { bigintToString, deepClone, formatAddr, storeKey } from "@/utils";
+import Keystore from "@/services/Keystore";
+import type { LuteAccount, Unlocker } from "@/types";
+import { bigintToString, formatAddr, isCancelled } from "@/utils";
 import algosdk, { type Account, modelsv2 } from "algosdk";
 
 const selected = ref([]);
 const loading = ref(false);
 const headers: any[] = [
-  { title: "Select All", key: "address", sortable: false },
+  { title: "Select all", key: "address", sortable: false },
   { key: "amount", align: "end", sortable: false },
 ];
 
 const store = useAppStore();
+const unlocker = ref<Unlocker>();
 const accts = ref<Account[]>();
 const accounts = ref<modelsv2.Account[]>([]);
 const emit = defineEmits(["close"]);
+
+// The exported keys are secrets: zero them once this is done with them.
+onBeforeUnmount(() => accts.value?.forEach((a) => a.sk.fill(0)));
 
 onMounted(async () => {
   try {
@@ -92,21 +102,47 @@ onMounted(async () => {
 });
 
 async function addAccounts() {
-  const add = selected.value
-    .filter((a) => !store.accounts.some((acct) => acct.addr === a))
-    .map((a) => {
-      const acct = accts.value?.find((acct) => acct.addr.toString() === a);
-      if (!acct) throw Error("Invalid Account");
-      storeKey(acct);
-      return {
-        addr: a,
-        hot: true,
-      };
-    });
-  const newVal = deepClone(store.accounts.concat(add));
-  await set("app", "accounts", newVal);
-  await store.getCache();
-  store.refresh++;
-  emit("close");
+  const plaintexts: Uint8Array[] = [];
+  try {
+    const add = (selected.value as string[])
+      .filter((a) => !store.accounts.some((acct) => acct.addr === a))
+      .map((a) => {
+        const acct = accts.value?.find((acct) => acct.addr.toString() === a);
+        if (!acct) throw Error("Invalid Account");
+        return acct;
+      });
+    const mk = await unlocker.value!.ensureMk();
+    await Keystore.putSecrets(
+      mk,
+      add.map((acct) => {
+        const plaintext = acct.sk.slice(0, 32);
+        plaintexts.push(plaintext);
+        return {
+          kind: "algo25" as const,
+          form: "seed" as const,
+          id: `algo25:${acct.addr}`,
+          plaintext,
+        };
+      }),
+      {
+        accounts: (current: LuteAccount[]) =>
+          current.concat(
+            add
+              .map((acct) => acct.addr.toString())
+              .filter((addr) => !current.some((c) => c.addr === addr))
+              .map((addr) => ({ addr }))
+          ),
+      }
+    );
+    await store.getCache();
+    store.refresh++;
+    emit("close");
+  } catch (err: any) {
+    if (isCancelled(err)) return;
+    console.error(err);
+    store.setSnackbar(err.message, "error");
+  } finally {
+    plaintexts.forEach((p) => p.fill(0));
+  }
 }
 </script>

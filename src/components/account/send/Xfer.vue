@@ -5,7 +5,7 @@
     validate-on="blur"
     autocomplete="off"
   >
-    <v-container class="px-0 pt-6">
+    <v-container class="send-form">
       <template v-if="!rekey">
         <v-row>
           <v-col cols="12" sm="6">
@@ -18,7 +18,7 @@
               :hint="itemBalance"
               persistent-hint
               variant="outlined"
-              class="pb-3"
+              class="pb-3 mono-hint"
             />
           </v-col>
           <v-col cols="12" sm="6">
@@ -29,7 +29,14 @@
               :rules="[required]"
             >
               <template #append-inner>
-                <v-btn text="Max" @click="maxAmount()" />
+                <v-btn
+                  text="Max"
+                  variant="flat"
+                  color="surface-selected"
+                  size="x-small"
+                  class="max-btn"
+                  @click="maxAmount()"
+                />
               </template>
             </v-text-field>
           </v-col>
@@ -40,7 +47,7 @@
           :items="toAuto"
           :item-props="toProps"
           :return-object="false"
-          :label="`To Address${ns}`"
+          :label="`To address${ns}`"
           spellcheck="false"
           @keyup="lookupNs(to)"
           :rules="[required, validAddress]"
@@ -57,9 +64,13 @@
           @update:model-value="closeRemainderTo = undefined"
         >
           <template #label>
-            Close Remainder To
+            Close remainder to
             <span>
-              <v-icon size="x-small" class="ml-2" :icon="mdiInformation" />
+              <v-icon
+                size="14"
+                class="ml-2 text-icon"
+                :icon="mdiInformationOutline"
+              />
               <v-tooltip
                 activator="parent"
                 location="bottom"
@@ -71,7 +82,7 @@
         <v-text-field
           v-if="showCloseRemainderTo"
           v-model="closeRemainderTo"
-          label="Close Remainder To"
+          label="Close remainder to"
           :rules="[validAddress]"
         />
         <v-checkbox-btn
@@ -79,9 +90,13 @@
           @update:model-value="assetSender = undefined"
         >
           <template #label>
-            Revocation Target
+            Revocation target
             <span>
-              <v-icon size="x-small" class="ml-2" :icon="mdiInformation" />
+              <v-icon
+                size="14"
+                class="ml-2 text-icon"
+                :icon="mdiInformationOutline"
+              />
               <v-tooltip
                 activator="parent"
                 location="bottom"
@@ -94,7 +109,7 @@
         <v-text-field
           v-if="showRevocationTarget"
           v-model="assetSender"
-          label="Revocation Target"
+          label="Revocation target"
           :rules="[validAddress]"
         />
       </template>
@@ -103,49 +118,50 @@
         v-model="rekeyTo"
         :items="rekeyToAuto"
         :return-object="false"
-        :label="`Rekey To Address${ns}`"
+        :label="`Rekey to address${ns}`"
         spellcheck="false"
         @keyup="lookupNs(rekeyTo)"
         :rules="[required, validAddress]"
         class="pb-2"
       />
     </v-container>
-    <v-card-actions>
-      <v-spacer />
-      <v-btn text="Send" type="submit" />
+    <v-card-actions class="card-footer">
+      <v-btn variant="flat" text="Send" type="submit" />
     </v-card-actions>
   </v-form>
-  <v-dialog v-model="showInboxWarning" max-width="600" persistent>
+  <v-dialog v-model="showInboxWarning" max-width="440" persistent>
     <v-card
-      title="WARNING"
+      title="Warning"
       text="The recipient is not opted-in to the asset, so the asset will be sent using the Inbox Router.
         Custodial accounts, like those on an exchange, may not be able to claim the asset."
     >
       <v-card-actions>
-        <v-btn text="Cancel" color="grey" @click="showInboxWarning = false" />
-        <v-btn text="Use Inbox" @click="arc59SendAsset()" />
+        <v-btn
+          text="Cancel"
+          color="text-body"
+          @click="showInboxWarning = false"
+        />
+        <v-btn variant="flat" text="Use inbox" @click="arc59SendAsset()" />
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script lang="ts" setup>
-import { Arc59Factory } from "@/clients/Arc59Client";
 import Algo from "@/services/Algo";
+import Inbox from "@/services/Inbox";
 import NameService from "@/services/NameService";
 import type { AccountInfo } from "@/types";
 import {
   bigintToString,
-  composerTxns,
   getAssetInfo,
   priceTxns,
   send,
   stringToBigint,
   whenLoaded,
 } from "@/utils";
-import { luteSigner } from "@/utils/signers";
-import { AlgorandClient } from "@algorandfoundation/algokit-utils";
-import { mdiInformation } from "@mdi/js";
+import { luteSigner, reportSignError } from "@/utils/signers";
+import { mdiInformationOutline } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 
 const props = defineProps<{ acct: AccountInfo; rekey: boolean }>();
@@ -154,7 +170,7 @@ const store = useAppStore();
 const form = ref();
 const required = (v: any) => !!v || v === 0 || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 const ns = computed(() =>
   store.network.nfdUrl ? " or NFD" : store.network.envoiUrl ? " or EnVoi" : ""
 );
@@ -180,7 +196,12 @@ const asset = ref<modelsv2.Asset>(store.nativeAsset);
 const showInboxWarning = ref(false);
 
 const amountLabel = computed(() => {
-  return `Amount (${asset.value?.params?.unitName || asset.value?.params?.name})`;
+  const params = asset.value?.params;
+  // The native asset reads ALGO (or VOI) in amounts.
+  const unit = asset.value?.index
+    ? params?.unitName || params?.name
+    : params?.name?.toUpperCase();
+  return `Amount (${unit})`;
 });
 const closeRemainderToTip = computed(() =>
   !asset.value?.index
@@ -267,11 +288,7 @@ async function submit() {
         closeRemainderTo: closeRemainderTo.value,
         assetSender: assetSender.value,
       });
-      const toInfo = await Algo.algod.accountInformation(to.value).do();
-      const receiverOptedIn = toInfo.assets?.some(
-        (a) => a.assetId === asset.value!.index
-      );
-      if (!receiverOptedIn && store.network.inboxRouter) {
+      if (await Inbox.needed(to.value, asset.value.index)) {
         showInboxWarning.value = true;
         return;
       }
@@ -300,8 +317,7 @@ async function submit() {
     const stxn = await luteSigner([txn]);
     await send(stxn);
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 
@@ -309,106 +325,22 @@ async function arc59SendAsset() {
   try {
     showInboxWarning.value = false;
     if (!asset.value.params) throw Error("Invalid Asset");
-    if (!store.network.inboxRouter) throw Error("Invalid Router");
-    const suggestedParams = await Algo.algod.getTransactionParams().do();
-    const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
-    algorand.setDefaultSigner(luteSigner);
-    algorand.setDefaultValidityWindow(1000);
-    const factory = new Arc59Factory({
-      defaultSender: props.acct.addr,
-      algorand,
-    });
-    const appClient = factory.getAppClientById({
-      appId: BigInt(store.network.inboxRouter),
-    });
-    const simParams = {
-      allowEmptySignatures: true,
-      allowUnnamedResources: true,
-      fixSigners: true,
-    };
-    const sendAssetInfo = (
-      await appClient
-        .newGroup()
-        .arc59GetSendAssetInfo({
-          args: { asset: asset.value.index, receiver: to.value },
-          signer: algosdk.makeEmptyTransactionSigner(),
-        })
-        .simulate(simParams)
-    ).returns[0];
-    if (!sendAssetInfo) throw Error("Simulate Failed");
-    const [
-      itxns,
-      mbr,
-      routerOptedIn,
-      _receiverOptedIn,
-      receiverAlgoNeededForClaim,
-    ] = sendAssetInfo;
-    const receiverAlgoPQ = receiverAlgoNeededForClaim
-      ? receiverAlgoNeededForClaim + 2000n
-      : 0n;
-    const composer = appClient.newGroup();
-    const appAddr = appClient.appClient.appAddress;
-    const enc = new TextEncoder();
-    const note64 = note.value ? enc.encode(note.value) : undefined;
-    const axfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      assetIndex: asset.value.index,
-      receiver: appAddr,
+    const note64 = note.value
+      ? new TextEncoder().encode(note.value)
+      : undefined;
+    const txns = await Inbox.sendTxns({
       sender: props.acct.addr,
-      note: note64,
-      suggestedParams,
+      receiver: to.value,
+      assetId: asset.value.index,
       amount: stringToBigint(amount.value, asset.value.params.decimals),
+      note: note64,
       closeRemainderTo: closeRemainderTo.value,
       assetSender: assetSender.value,
     });
-    // If the MBR is non-zero, send the MBR to the router
-    if (mbr || receiverAlgoPQ) {
-      const mbrPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        receiver: appAddr,
-        sender: props.acct.addr,
-        suggestedParams,
-        amount: mbr + receiverAlgoPQ,
-      });
-      composer.addTransaction(mbrPayment, luteSigner);
-    }
-    // If the router is not opted in, add a call to arc59OptRouterIn to do so
-    if (!routerOptedIn)
-      composer.arc59OptRouterIn({ args: { asa: asset.value.index } });
-    // An extra itxn is if we are also sending ALGO for the receiver claim
-    const totalItxns = itxns + (receiverAlgoPQ === 0n ? 0n : 1n);
-    // starting point for the simulate that populates resources; priceTxns
-    // then sets the exact fee
-    const fee = Number(
-      suggestedParams.minFee + totalItxns * 1000n
-    ).microAlgos();
-    const boxReferences = [algosdk.Address.fromString(to.value).publicKey];
-    const inboxAddress = (
-      await appClient
-        .newGroup()
-        .arc59GetInbox({
-          args: { receiver: to.value },
-          signer: algosdk.makeEmptyTransactionSigner(),
-        })
-        .simulate(simParams)
-    ).returns[0];
-    const accountReferences = [to.value, inboxAddress];
-    const assetReferences = [asset.value.index];
-    composer.arc59SendAsset({
-      args: {
-        axfer,
-        receiver: to.value,
-        additionalReceiverFunds: receiverAlgoPQ,
-      },
-      staticFee: fee,
-      boxReferences,
-      accountReferences,
-      assetReferences,
-    });
-    const txns = await composerTxns(await composer.composer());
     const stxns = await luteSigner(await priceTxns(txns, props.acct));
     await send(stxns);
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
   store.overlay = false;
 }
@@ -445,3 +377,16 @@ watch(
   { immediate: true }
 );
 </script>
+
+<style scoped>
+.send-form {
+  padding: 8px 18px 12px;
+}
+.mono-hint :deep(.v-messages) {
+  font-family: var(--font-mono);
+}
+.max-btn {
+  margin-inline-end: -6px;
+  font-size: 12px;
+}
+</style>

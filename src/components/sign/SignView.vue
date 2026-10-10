@@ -1,79 +1,85 @@
 <template>
   <device-selector v-if="store.device.showSelector" />
-  <v-container v-else class="pt-0">
-    <v-card :loading="loading" :disabled="loading">
-      <template v-if="!loading">
-        <template v-if="showMsig">
-          <div class="text-warning text-h5 pa-4">Warning</div>
-          <v-card-text>
+  <div v-else class="ext-page sign-view" :class="loading && 'sign-view--busy'">
+    <v-progress-linear v-if="loading" indeterminate height="3" />
+    <template v-if="!loading">
+      <template v-if="showMsig">
+        <div class="ext-header">
+          <div class="title-panel text-warning">Warning</div>
+        </div>
+        <div class="ext-body d-flex flex-column ga-4 text-text-body">
+          <div>
             Because you are connected to Lute with a
-            <span class="text-warning">Multi-Sig account</span>, the requested
+            <span class="text-warning">multi-sig account</span>, the requested
             transactions will be stored in the associated multi-sig contract
             instead of being signed.
-          </v-card-text>
-          <v-card-text>
+          </div>
+          <div>
             This action will require
             <span class="text-warning">{{ reviewTxns.length * 2 + 1 }}</span>
-            transactions to be signed by a member of the Multi-Sig. Choose an
+            transactions to be signed by a member of the multi-sig. Choose an
             account and Proceed to review those transactions.
-          </v-card-text>
-          <v-container class="pb-0">
-            <v-row justify="center">
-              <v-col cols="9">
-                <v-select
-                  label="Signing Account"
-                  :items="signingAccts"
-                  v-model="luteTxns.msig!.signerAddr"
-                  item-value="addr"
-                />
-              </v-col>
-            </v-row>
-          </v-container>
-          <v-container class="text-center">
-            <v-btn text="Proceed" @click="luteTxns.addToMsig()" />
-          </v-container>
-        </template>
-        <template v-else>
-          <div class="text-h5 pa-4">
-            {{
-              `${siteName} wants to sign ${signCount}
+          </div>
+          <v-select
+            label="Signing account"
+            :items="signingAccts"
+            v-model="luteTxns.msig!.signerAddr"
+            item-value="addr"
+          />
+        </div>
+        <div class="ext-footer">
+          <v-btn
+            block
+            size="large"
+            variant="flat"
+            text="Proceed"
+            @click="luteTxns.addToMsig()"
+          />
+        </div>
+      </template>
+      <template v-else>
+        <div class="sign-title">
+          {{
+            `${siteName} wants to sign ${signCount}
               transaction${signCount > 1 ? "s" : ""}
               for ${store.networkName}`
-            }}
-          </div>
-          <div v-if="luteTxns.groupWarn" class="text-warning px-4">
-            These transactions are NOT a single atomic group. Review carefully.
-          </div>
-          <v-container class="pt-0">
-            <review-txn
-              v-for="(txn, idx) in reviewTxns"
-              :key="txn.txID()"
-              :txn="txn"
-              :idx="idx"
-              :to-sign="!!luteTxns.atc.getStatus() || toSign(idx)"
-              :assets="assets"
-            />
-            <v-row class="text-center">
-              <v-col>
-                <v-btn
-                  text="Sign"
-                  @click="passwordCheck()"
-                  :disabled="signing"
-                />
-              </v-col>
-            </v-row>
-          </v-container>
-        </template>
+          }}
+        </div>
+        <div v-if="luteTxns.groupWarn" class="text-warning text-body-2 px-5">
+          These transactions are NOT a single atomic group. Review carefully.
+        </div>
+        <div class="sign-list">
+          <review-txn
+            v-for="(txn, idx) in reviewTxns"
+            :key="txn.txID()"
+            :txn="txn"
+            :idx="idx"
+            :to-sign="!!luteTxns.atc.getStatus() || toSign(idx)"
+            :assets="assets"
+          />
+        </div>
+        <div class="ext-footer">
+          <v-btn
+            block
+            size="large"
+            variant="flat"
+            text="Sign"
+            @click="passwordCheck()"
+            :disabled="signing"
+          />
+        </div>
       </template>
-    </v-card>
-  </v-container>
-  <password-confirm :visible="showPass" :verify="false" @close="handlePass" />
+    </template>
+  </div>
+  <password-confirm :visible="showPass" @close="handlePass" />
 </template>
 
 <script lang="ts" setup>
 import LuteTxns from "@/classes/LuteTxns";
 import Algo from "@/services/Algo";
-import Unlock from "@/services/Unlock";
+import Signer from "@/services/Signer";
+import type { AccountInfo } from "@/types";
+import { signingAddr } from "@/utils/signingAddr";
 import {
   isFromOpener,
   postReady,
@@ -181,19 +187,21 @@ async function beginHandler() {
     if (await luteTxns.value.validateNetwork()) await finishHandler();
     return;
   }
-  // wait for refresh to complete before proceeding
-  watch(
+  // validateNetwork may trigger a refresh; finish only after it settles.
+  const stop = watch(
     () => store.loading,
     (val) => {
-      if (!val) finishHandler();
+      if (val) return;
+      stop();
+      finishHandler();
     }
   );
   await luteTxns.value.validateNetwork();
 }
 
 async function finishHandler() {
-  await luteTxns.value.validateGroup();
-  await luteTxns.value.msigCheck();
+  // A failed check has already answered the requester; show nothing to sign.
+  if (!(await luteTxns.value.prepare())) return;
   luteTxns.value.dtxns
     .filter((t) => t.assetTransfer)
     .map(async (t) => {
@@ -216,28 +224,20 @@ async function passwordCheck() {
   try {
     signing.value = true;
     const authAddrs = luteTxns.value.txns.map((txn) => txn.authAddr);
+    const accts: AccountInfo[] = [];
     for (const [idx, txn] of luteTxns.value.dtxns.entries()) {
       if (!toSign(idx)) continue;
-      const from = txn.sender.toString();
-      const addr =
-        luteTxns.value.msig?.signerAddr ||
-        authAddrs?.[idx] ||
-        store.info.find((i) => i.address === from)?.authAddr ||
-        from;
+      const addr = signingAddr(
+        txn,
+        authAddrs[idx],
+        luteTxns.value.msig,
+        store.info
+      );
       const acct = store.acctInfo.find((a) => a.addr === addr);
-      if (acct?.seedId || acct?.isFalcon25) {
-        const seedData = acct.isFalcon25
-          ? store.falcon25Seeds.find((s) => s.id === acct.addr)
-          : store.seeds.find((s) => s.id === acct.seedId);
-        if (!seedData) throw Error("Invalid Seed");
-        if (seedData.data && !(await Unlock.isUnlocked()))
-          showPass.value = true;
-        break;
-      }
+      if (acct) accts.push(acct);
     }
-    if (!showPass.value) {
-      await trySign();
-    }
+    if ((await Signer.gate(accts)) === "password") showPass.value = true;
+    else await trySign();
   } catch (err: any) {
     luteTxns.value.handleError(err);
   }
@@ -246,11 +246,11 @@ async function passwordCheck() {
 
 async function handlePass(success: boolean, pass: string) {
   showPass.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-    return;
-  }
+  if (!success) return;
   await trySign(pass);
+  // The first password entry may have moved 1.x seeds into the keystore; the
+  // in-app signer stays open, so refresh what it shows.
+  if (store.luteTxns) await store.getCache();
 }
 
 window.onbeforeunload = () => {
@@ -258,3 +258,18 @@ window.onbeforeunload = () => {
   sendOrPostMessage(message, tabId);
 };
 </script>
+
+<style scoped>
+.sign-view--busy {
+  pointer-events: none;
+}
+.sign-title {
+  padding: 18px 18px 6px;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.sign-list {
+  padding: 0 18px;
+}
+</style>

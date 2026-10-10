@@ -1,4 +1,6 @@
 allowBuilds:
+  '@parcel/watcher': false
+  core-js: false
   esbuild: true
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:

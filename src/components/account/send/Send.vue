@@ -1,10 +1,10 @@
 <template>
-  <v-container class="py-6">
-    <v-row justify="center">
+  <div class="send-tab">
+    <v-row justify="center" no-gutters>
       <v-col cols="12" sm="5">
         <v-select
           v-model="txnType"
-          label="Transaction Type"
+          label="Transaction type"
           placeholder="Choose a type..."
           persistent-placeholder
           :items="txnTypes"
@@ -23,7 +23,7 @@
       <Participation v-if="txnType.key === 'keyreg'" :acct="acct" />
       <Swap v-else-if="txnType.key === 'swap'" :sender="acct" />
     </template>
-  </v-container>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -33,9 +33,18 @@ defineProps<{ acct: AccountInfo }>();
 
 const txnTypes = [
   { title: "Transfer", key: "xfer" },
-  { title: "Key Registration", key: "keyreg" },
-  { title: "Atomic Swap", key: "swap" },
+  { title: "Key registration", key: "keyreg" },
+  { title: "Atomic swap", key: "swap" },
   { title: "Rekey", key: "rekey" },
 ];
 const txnType = ref(txnTypes[0]);
 </script>
+
+<style scoped>
+.send-tab {
+  padding-top: 4px;
+}
+.send-tab > .v-row {
+  padding: 0 18px;
+}
+</style>

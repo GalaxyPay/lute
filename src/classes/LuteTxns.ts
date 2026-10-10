@@ -3,6 +3,7 @@ import Algo from "@/services/Algo";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
 import { isBadPassword, needsPassword, sendOrPostMessage } from "@/utils";
+import { findNetwork } from "@/utils/networks";
 import { signer } from "@/utils/signers";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
 
@@ -17,6 +18,17 @@ export default class LuteTxns {
   nonce?: bigint;
   groupWarn: boolean = false;
   tabId?: number;
+  // The validators report a failure to the dapp instead of throwing, so sign()
+  // checks these rather than trusting the caller to stop.
+  networkValid = false;
+  groupValid = false;
+  // A reply was sent; the dapp gets only one.
+  finished = false;
+  // The ATC calls its signer without a password, so the msig signer reads the
+  // one handed to sign() from here.
+  private password?: string;
+  private atcSigner: algosdk.TransactionSigner = (txnGroup, indexesToSign) =>
+    signer(txnGroup, indexesToSign, undefined, this.password);
   constructor(txns: WalletTransaction[], tabId?: number) {
     this.txns = txns;
     this.dtxns = this.decode();
@@ -30,6 +42,7 @@ export default class LuteTxns {
   }
 
   private sendAndClose(message: any) {
+    this.finished = true;
     if (this.store.luteTxns) {
       window.dispatchEvent(
         new CustomEvent("modal-signer", { detail: message })
@@ -42,6 +55,8 @@ export default class LuteTxns {
   }
 
   async handleError(err: any) {
+    // The dapp already has its answer.
+    if (this.finished) return;
     const message = {
       action: "error",
       code: err.cause,
@@ -61,13 +76,10 @@ export default class LuteTxns {
       ).length;
       if (this.txns.length !== sameNetwork)
         throw Error("Mixed Networks", INVALID);
-      const network = this.store.allNetworks.find(
-        (n) =>
-          n.genesisID ===
-            (this.dtxns[0]?.genesisID === "sandnet-v1"
-              ? "dockernet-v1"
-              : this.dtxns[0]?.genesisID) &&
-          (n.genesisHash === firstHash || !n.genesisHash)
+      const network = findNetwork(
+        this.store.allNetworks,
+        this.dtxns[0]?.genesisID,
+        firstHash
       )?.name;
       if (!network) throw Error("Unknown Network", INVALID);
       if (this.store.luteTxns) {
@@ -78,6 +90,7 @@ export default class LuteTxns {
         this.store.networkName = network;
         this.store.refresh++;
       }
+      this.networkValid = true;
       return true;
     } catch (err: any) {
       this.handleError(err);
@@ -117,9 +130,22 @@ export default class LuteTxns {
           }
         });
       }
+      this.groupValid = true;
     } catch (err: any) {
       this.handleError(err);
     }
+  }
+
+  /**
+   * Runs once the request's network is loaded. Failures are already reported
+   * to the requester; false means do not show the request.
+   */
+  async prepare() {
+    if (!this.networkValid || this.finished) return false;
+    await this.validateGroup();
+    if (!this.groupValid) return false;
+    await this.msigCheck();
+    return !this.finished;
   }
 
   private toSign(ix: number): boolean {
@@ -131,6 +157,7 @@ export default class LuteTxns {
       const hasAuthAddr = this.txns.filter((t) => !!t.authAddr).length;
       if (hasAuthAddr) return;
       const toBeSigned = this.dtxns.filter((_txn, idx) => this.toSign(idx));
+      if (!toBeSigned.length) return;
       const firstSender = toBeSigned[0]!.sender.toString();
       const sameSender = toBeSigned.filter(
         (t) => t.sender.toString() === firstSender
@@ -182,7 +209,7 @@ export default class LuteTxns {
         method,
         sender,
         suggestedParams,
-        signer,
+        signer: this.atcSigner,
       });
       this.nonce = this.msig.app.arc55_nonce + 1n;
 
@@ -208,7 +235,7 @@ export default class LuteTxns {
             receiver: this.msig.app.acct.address,
             amount: mbrIncrease,
           }),
-          signer,
+          signer: this.atcSigner,
         };
         const boxName = Buffer.allocUnsafe(9);
         boxName.writeBigInt64BE(this.nonce);
@@ -228,7 +255,7 @@ export default class LuteTxns {
           sender,
           suggestedParams,
           boxes: [br],
-          signer,
+          signer: this.atcSigner,
         });
       });
       this.atc.buildGroup();
@@ -251,19 +278,20 @@ export default class LuteTxns {
     while (tracking) {
       try {
         const status = await Algo.algod.statusAfterBlock(round).do();
-        round = status.lastRound;
-        const { block } = await Algo.algod.block(round).do();
-        if (block.payset) {
-          await Promise.all(
-            block.payset.map(async (txn) => {
-              if (
-                txn.signedTxn.signedTxn.txn.applicationCall?.appIndex === appId
-              ) {
-                app = await Msig.loadApp(appId);
-                if (!app) throw Error("Invalid App");
-              }
-            })
+        // Several rounds can pass between polls; a signature in any of them
+        // counts, not only in the latest.
+        let touched = false;
+        for (let r = round + 1n; r <= status.lastRound; r++) {
+          const { block } = await Algo.algod.block(r).do();
+          touched ||= !!block.payset?.some(
+            (txn) =>
+              txn.signedTxn.signedTxn.txn.applicationCall?.appIndex === appId
           );
+        }
+        round = status.lastRound;
+        if (touched) {
+          app = await Msig.loadApp(appId);
+          if (!app) throw Error("Invalid App");
         }
         if (
           app.addrs.filter((a) =>
@@ -292,11 +320,26 @@ export default class LuteTxns {
 
   async sign(password?: string) {
     try {
+      if (this.finished || !this.networkValid || !this.groupValid)
+        throw Error("Invalid Request", INVALID);
       if (this.atc.getStatus()) {
-        await this.atc.gatherSignatures();
+        this.password = password;
+        try {
+          await this.atc.gatherSignatures();
+        } finally {
+          this.password = undefined;
+        }
         this.store.setSnackbar("Processing...", "info", -1);
         await this.atc.execute(Algo.algod, 10);
-        await this.listenForSigs();
+        if (this.store.luteTxns) {
+          // In-app, the members sign in the Multi-Sig tab, which this dialog
+          // would cover: hand back to the caller now.
+          this.sendAndClose({
+            action: "stored",
+            nonce: this.nonce,
+            debug: this.store.debug,
+          });
+        } else await this.listenForSigs();
       } else {
         const signedTxns: (Uint8Array | null)[] = [];
         const indexesToSign: number[] = [];
@@ -367,7 +410,7 @@ export default class LuteTxns {
       }
       if (isBadPassword(err)) {
         // Let the caller re-prompt rather than failing the whole request.
-        this.store.setSnackbar("Incorrect Password", "error");
+        this.store.setSnackbar("Incorrect password", "error");
         return false;
       }
       // Unlocked, but this seed missed the cache: prompt, nothing is wrong.

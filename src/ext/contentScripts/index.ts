@@ -1,8 +1,19 @@
+import { syncOrigins } from "@/ext/syncOrigins";
 import { sendMessage } from "webext-bridge/content-script";
 import getAppName from "@/utils/getAppName";
 import { signDataResponseUnsafe, signDataSafe } from "@/utils/signData";
 
 (() => {
+  // The Lute web app needs the extension id to open a sync port to it. Only
+  // the allowed origins learn it; other pages see just window.lute.
+  if (syncOrigins(import.meta.env.DEV).includes(location.origin)) {
+    const tell = () => {
+      document.documentElement.dataset.luteExtensionId = browser.runtime.id;
+    };
+    if (document.documentElement) tell();
+    else document.addEventListener("DOMContentLoaded", tell, { once: true });
+  }
+
   window.addEventListener("lute-connect", messageHandler);
 
   function b64ToArr(b64: string) {
@@ -97,6 +108,13 @@ import { signDataResponseUnsafe, signDataSafe } from "@/utils/signData";
             return undefined;
           };
           browser.runtime.onMessage.addListener(listener);
+          break;
+        }
+        case "sync": {
+          // Only opens the side panel; the sync runs over its own encrypted connection.
+          if (syncOrigins(import.meta.env.DEV).includes(location.origin))
+            sendMessage("sync-panel-request", {}, "background");
+          resolve();
           break;
         }
         case "swap": {

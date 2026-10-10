@@ -66,6 +66,11 @@ export default defineConfig({
     // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
     Vuetify({
       autoImport: true,
+      styles: {
+        configFile: fileURLToPath(
+          new URL("./src/styles/settings.scss", import.meta.url)
+        ),
+      },
     }),
     nodePolyfills(),
     VitePWA({
@@ -151,6 +156,8 @@ export default defineConfig({
       "@ledgerhq/hw-transport-webhid",
       "@ledgerhq/hw-transport-webusb",
       "@scure/bip32",
+      "@scure/bip39",
+      "@scure/bip39/wordlists/english.js",
       "ledger-algorand-js",
       "micro-key-producer/slip10.js",
       "vite-plugin-node-polyfills/shims/buffer",

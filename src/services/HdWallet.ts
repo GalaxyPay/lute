@@ -1,6 +1,5 @@
 import Algo, { getAuthAccts } from "@/services/Algo";
-import Seed from "@/services/Seed";
-import type { AccountInfo, AccountSubs, SeedData } from "@/types";
+import type { AccountSubs } from "@/types";
 import {
   BIP32DerivationType,
   deriveChildNodePublic,
@@ -60,31 +59,6 @@ const HdWallet = {
     );
     rootKey.fill(0);
     return sig;
-  },
-
-  async deriveChildKey(
-    pass: string,
-    acctInfo: AccountInfo,
-    seedData?: SeedData
-  ) {
-    if (acctInfo.slot == null || !seedData) throw Error("Invalid");
-    const addrIdx = acctInfo.info?.addrIdx || 0;
-    const path = [harden(44), harden(283), harden(acctInfo.slot), 0, addrIdx];
-    const seed = await Seed.decryptSeed(pass, seedData);
-    const rootKey = fromSeed(seed);
-    seed.fill(0);
-    const xhd = new XHDWalletAPI();
-    const childKey = await xhd.deriveKey(
-      rootKey,
-      path,
-      true,
-      BIP32DerivationType.Peikert
-    );
-    rootKey.fill(0);
-    const backupKey =
-      "sk:" + childKey.slice(0, 64).toBase64().replaceAll("=", "");
-    childKey.fill(0);
-    return backupKey;
   },
 };
 

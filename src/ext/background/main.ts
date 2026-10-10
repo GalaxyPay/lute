@@ -1,3 +1,6 @@
+import { syncOrigins } from "@/ext/syncOrigins";
+import { createSyncRelay, type RelayPort } from "@/ext/syncRelay";
+import { syncWindowBounds } from "@/ext/syncWindow";
 import { onMessage } from "webext-bridge/background";
 import type { DeclarativeNetRequest } from "webextension-polyfill";
 
@@ -25,13 +28,101 @@ browser.alarms.onAlarm.addListener(async (alarm) => {
   await browser.storage.session.remove(UNLOCK_KEY);
 });
 
+/*
+ * The side panel is the preferred receiver (it sits beside the web app), but
+ * Chrome opens it only within a user action, which the relay's connection
+ * lacks. So the web app requests it via the content script right after its
+ * password is submitted, and the relay falls back to a popup.
+ */
+const panelAttempts = new Map<number, Promise<boolean>>();
+
+onMessage("sync-panel-request", (message) => {
+  const tabId = message.sender.tabId;
+  const path = `${buildUrl("sync", "Lute", tabId)}&panel=1`;
+  sp.setOptions({ path });
+  // Called straight away, not after an await, so the user action still counts.
+  const attempt: Promise<boolean> = sp.open({ tabId }).then(
+    () => true,
+    () => {
+      // Leave the panel showing the wallet next time, not a dead sync page.
+      sp.setOptions({ path: BASE_PATH });
+      return false;
+    }
+  );
+  panelAttempts.set(tabId, attempt);
+  setTimeout(() => {
+    if (panelAttempts.get(tabId) === attempt) panelAttempts.delete(tabId);
+  }, 10_000);
+});
+
+/** The panel request and the sync connection can arrive in either order. */
+async function panelOpened(tabId: number, waitMs = 1500) {
+  const deadline = Date.now() + waitMs;
+  while (!panelAttempts.has(tabId) && Date.now() < deadline)
+    await new Promise((r) => setTimeout(r, 100));
+  const attempt = panelAttempts.get(tabId);
+  if (!attempt) return false;
+  panelAttempts.delete(tabId);
+  return await attempt;
+}
+
+const syncRelay = createSyncRelay({
+  origins: syncOrigins(import.meta.env.DEV),
+  async openReceiver(tabId) {
+    // The panel page connects as the receiver by itself.
+    if (await panelOpened(tabId)) return;
+    // Over the web app's window so both stay in view.
+    const url = browser.runtime.getURL(buildUrl("sync", "Lute", tabId));
+    let over;
+    try {
+      const tab = await browser.tabs.get(tabId);
+      over = await browser.windows.get(tab.windowId!);
+    } catch {
+      // Position is a nicety; open it anyway.
+    }
+    const openedAt = Date.now();
+    const win = await browser.windows.create({
+      url,
+      type: "popup",
+      focused: true,
+      ...syncWindowBounds(over),
+    });
+    const onRemoved = (id: number) => {
+      if (id !== win.id) return;
+      browser.windows.onRemoved.removeListener(onRemoved);
+      syncRelay.receiverClosed(tabId, openedAt);
+    };
+    browser.windows.onRemoved.addListener(onRemoved);
+  },
+});
+
+function syncPanelTab(url?: string) {
+  try {
+    const params = new URL(url ?? "").searchParams;
+    if (params.get("action") !== "sync") return undefined;
+    const tabId = Number(params.get("tabId"));
+    return Number.isInteger(tabId) ? tabId : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 browser.runtime.onConnect.addListener(function (port) {
   if (port.name === "luteSidepanel") {
+    const openedAt = Date.now();
     port.onDisconnect.addListener(async () => {
       sp.setOptions({ path: BASE_PATH });
+      const tabId = syncPanelTab(port.sender?.url);
+      if (tabId != null) syncRelay.receiverClosed(tabId, openedAt);
     });
+  } else {
+    syncRelay.internal(port as RelayPort);
   }
 });
+
+browser.runtime.onConnectExternal.addListener((port) =>
+  syncRelay.external(port as RelayPort)
+);
 
 function buildUrl(action: string, name: string, tabId: number) {
   const params = new URLSearchParams({ action, name, tabId: tabId.toString() });
@@ -39,7 +130,10 @@ function buildUrl(action: string, name: string, tabId: number) {
 }
 
 function openSidePanel(path: string, tabId: number) {
-  sp.setOptions({ path }).then(sp.open({ tabId }));
+  // Not chained: open() must run inside the dapp's user action, so it can't
+  // await setOptions(). Chrome applies them in order.
+  sp.setOptions({ path });
+  sp.open({ tabId });
 }
 
 onMessage("connect-request", (message) => {

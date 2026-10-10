@@ -6,7 +6,9 @@
     "nightwatch.conf.*",
     "playwright.config.*",
     "scripts",
-    "src/ext/manifest.*"
+    "src/ext/manifest.*",
+    "vitest.config.*",
+    "src/ext/syncOrigins.ts"
   ],
   "compilerOptions": {
     "composite": true,
@@ -14,6 +16,8 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   }
 }

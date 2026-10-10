@@ -1,23 +1,23 @@
 <template>
   <v-form ref="form" @submit.prevent="submit()">
-    <v-container class="px-0 pt-6">
+    <v-container class="send-form">
       <v-row>
         <v-col>
           {{ `Your account is currently ${acct.info?.status}.` }}
           <v-btn
             v-if="acct.info?.status === 'Online'"
-            text="Go Offline"
+            text="Go offline"
             size="small"
             color="error"
             @click="offline()"
           />
           <v-container v-if="acct.info?.status === 'Online' && expireMs">
             <v-row class="text-caption">
-              Expire Round:
+              Expire round:
               {{ acct.info?.participation?.voteLastValid }}
             </v-row>
             <v-row class="text-caption">
-              Expire Date/Time: {{ expireDt }}
+              Expire date/time: {{ expireDt }}
             </v-row>
           </v-container>
         </v-col>
@@ -26,7 +26,7 @@
         <v-col cols="12" class="pt-0">
           <v-checkbox
             v-model="incentiveEligible"
-            label="Make Incentive Eligible"
+            label="Make incentive eligible"
             density="comfortable"
             :hint="incentiveHint"
             persistent-hint
@@ -36,7 +36,7 @@
         <v-col cols="12" sm="4">
           <v-text-field
             v-model.number="keyreg.voteFirst"
-            label="First Round"
+            label="First round"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -44,7 +44,7 @@
         <v-col cols="12" sm="4">
           <v-text-field
             v-model.number="keyreg.voteLast"
-            label="Last Round"
+            label="Last round"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -52,7 +52,7 @@
         <v-col cols="12" sm="4">
           <v-text-field
             v-model.number="keyreg.voteKeyDilution"
-            label="Key Dilution"
+            label="Key dilution"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -60,7 +60,7 @@
         <v-col cols="12" sm="6">
           <v-text-field
             v-model="keyreg.selectionKey"
-            label="Selection Key"
+            label="Selection key"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -68,7 +68,7 @@
         <v-col cols="12" sm="6">
           <v-text-field
             v-model="keyreg.voteKey"
-            label="Voting Key"
+            label="Voting key"
             :rules="[required]"
             @paste="handlePaste"
           />
@@ -76,16 +76,16 @@
         <v-col cols="12">
           <v-text-field
             v-model="keyreg.stateProofKey"
-            label="State Proof Key"
+            label="State proof key"
             :rules="[required]"
             @paste="handlePaste"
           />
         </v-col>
       </v-row>
     </v-container>
-    <v-card-actions>
-      <span>
-        <v-icon :icon="mdiInformationOutline" />
+    <v-card-actions class="card-footer">
+      <span class="d-inline-flex">
+        <v-icon :icon="mdiInformationOutline" size="18" class="text-icon" />
         <v-tooltip
           activator="parent"
           location="top end"
@@ -93,7 +93,7 @@
         />
       </span>
       <v-spacer />
-      <v-btn text="Send" type="submit" />
+      <v-btn variant="flat" text="Send" type="submit" />
     </v-card-actions>
   </v-form>
 </template>
@@ -102,7 +102,7 @@
 import Algo from "@/services/Algo";
 import type { AccountInfo, KeyRegTxn } from "@/types";
 import { priceTxns, send } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiInformationOutline } from "@mdi/js";
 import algosdk from "algosdk";
 
@@ -115,7 +115,7 @@ const keyreg = ref({} as KeyRegTxn);
 const incentiveEligible = ref(false);
 const incentiveHint = computed(() =>
   props.acct?.info?.incentiveEligible
-    ? "Already Eligible"
+    ? "Already eligible"
     : incentiveEligible.value
       ? "This will increase the fee of this transaction to 2 Algo"
       : ""
@@ -219,8 +219,7 @@ async function offline() {
     const stxn = await luteSigner([txn]);
     await send(stxn);
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 
@@ -253,8 +252,7 @@ async function submit() {
     await send(stxn);
     form.value?.reset();
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 
@@ -262,3 +260,9 @@ onMounted(async () => {
   await calcAvgBlockTime();
 });
 </script>
+
+<style scoped>
+.send-form {
+  padding: 8px 18px 12px;
+}
+</style>

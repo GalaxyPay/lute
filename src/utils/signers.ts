@@ -1,20 +1,14 @@
 import LuteTxns from "@/classes/LuteTxns";
-import { get } from "@/dbLute";
-import HdWallet from "@/services/HdWallet";
-import Seed from "@/services/Seed";
+import Signer, { SignContext } from "@/services/Signer";
 import type { LuteMsig, WalletTransaction } from "@/types";
 import { selectDevice } from "@/utils";
+import { signingAddr } from "@/utils/signingAddr";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import algosdk, {
-  Address,
-  signTransactionWithSigner,
-  Transaction,
-  type Falcon1024SigningKey,
-  type TransactionSigner,
-} from "algosdk";
-import { generateKey, signCompressed } from "falcon-1024";
+import algosdk, { signTransactionWithSigner, Transaction } from "algosdk";
 import { AlgorandApp } from "ledger-algorand-js";
+
+export { hotSign } from "@/services/Signer";
 
 class SignTxnsError extends Error {
   code: number;
@@ -28,6 +22,34 @@ class SignTxnsError extends Error {
   }
 }
 
+/**
+ * Not a failure: an in-app msig group went into the ARC-55 app for members to
+ * sign in the Multi-Sig tab, so there is nothing signed to hand back.
+ */
+export class MsigStored extends Error {
+  constructor(nonce: bigint) {
+    super(
+      `Stored as Multi-Sig group ${nonce}. Collect signatures in the Multi-Sig tab.`
+    );
+    this.name = "MsigStored";
+  }
+}
+
+export function isMsigStored(err: any) {
+  return err?.name === "MsigStored";
+}
+
+/** A stored msig group is reported as success, not as an error. */
+export function reportSignError(err: any, message: string = err?.message) {
+  const store = useAppStore();
+  if (isMsigStored(err)) {
+    store.setSnackbar(err.message, "success", 8000);
+    return;
+  }
+  console.error(err);
+  store.setSnackbar(message, "error");
+}
+
 export async function signer(
   txnGroup: Transaction[],
   indexesToSign?: number[],
@@ -37,66 +59,23 @@ export async function signer(
 ) {
   let transport;
   let algoApp;
-  // Hoisted out of the try so the finally can zero them on any exit path.
-  const seeds: Uint8Array[] = [];
-  const falcon25Seeds: Uint8Array[] = [];
+  // One per request so each secret is decrypted once per group; zeroed in finally.
+  const ctx = new SignContext(password);
   try {
     const store = useAppStore();
     const signedTxns: Uint8Array[] = [];
-    const falcon25Signers: {
-      address: Address;
-      txnSigner: TransactionSigner;
-    }[] = [];
     for (const [idx, txn] of txnGroup.entries()) {
       if (!indexesToSign || indexesToSign.includes(idx)) {
-        const sender = txn.sender.toString();
-        const addr =
-          msig?.signerAddr ||
-          authAddrs?.[idx] ||
-          store.info.find((i) => i.address === sender)?.authAddr?.toString() ||
-          sender;
+        const addr = signingAddr(txn, authAddrs?.[idx], msig, store.info);
         const acct = store.acctInfo.find((a) => a.addr === addr);
         if (!acct) throw Error("Account Not Found");
         let sig: Uint8Array;
-        if (acct.seedId && acct.slot != null) {
-          if (!seeds[acct.seedId]) {
-            const seedData = store.seeds.find((s) => s.id === acct.seedId);
-            if (!seedData) throw Error("Invalid Seed");
-            seeds[acct.seedId] = await Seed.unlockSeed(seedData, password);
-          }
-          sig = await HdWallet.sign(
-            Buffer.from(seeds[acct.seedId]!),
-            acct.slot,
-            txn.bytesToSign(),
-            acct.info?.addrIdx
-          );
-        } else if (acct.isFalcon25) {
-          let f25 = falcon25Signers.find(
-            (s) => s.address.toString() === acct.addr
-          );
-          if (!f25) {
-            const seedData = store.falcon25Seeds.find(
-              (s) => s.id === acct.addr
-            );
-            if (!seedData) throw Error("Invalid Seed");
-            const seed = await Seed.unlockSeed(seedData, password);
-            falcon25Seeds.push(seed);
-            const { publicKey, privateKey } = generateKey(seed);
-            const falconSigningKey: Falcon1024SigningKey = {
-              falcon1024PublicKey: publicKey,
-              falcon1024Signer: async (bytesToSign: Uint8Array) =>
-                signCompressed(privateKey, bytesToSign),
-            };
-            f25 =
-              algosdk.addressWithSignersFromRawFalcon1024Signer(
-                falconSigningKey
-              );
-            falcon25Signers.push(f25);
-          }
+        if (acct.isFalcon25) {
+          const f25 = await Signer.falconSigner(acct, ctx);
           const stxn = await signTransactionWithSigner(txn, f25.txnSigner);
           signedTxns.push(stxn.blob);
           continue;
-        } else if (acct.slot != null) {
+        } else if (acct.slot != null && !acct.seedId) {
           if (!transport) {
             await store.getDevices();
             const t = store.device.transport;
@@ -115,7 +94,7 @@ export async function signer(
           if (!algoApp) algoApp = new AlgorandApp(transport);
           sig = await ledgerSign(txn, algoApp, acct.slot);
         } else {
-          sig = await hotSign(addr, txn.bytesToSign());
+          sig = await Signer.signBytes(acct, txn.bytesToSign(), ctx);
         }
         let signedTxn: Uint8Array;
         if (msig?.bypass) {
@@ -132,8 +111,7 @@ export async function signer(
     await transport?.close();
     throw err;
   } finally {
-    seeds.forEach((s) => s.fill(0));
-    falcon25Seeds.forEach((s) => s.fill(0));
+    ctx.dispose();
   }
 }
 
@@ -150,17 +128,6 @@ function attachMsigSig(msig: LuteMsig, txn: Transaction, sig: Uint8Array) {
     msig.signerAddr,
     sig
   ).blob;
-}
-
-export async function hotSign(addr: string, bytes: Uint8Array) {
-  const privateKey: CryptoKey | undefined = await get("keys", addr);
-  if (!privateKey) throw Error("Account Not Found", { cause: 4300 });
-  const sig = await crypto.subtle.sign(
-    { name: "Ed25519" },
-    privateKey,
-    Buffer.from(bytes)
-  );
-  return new Uint8Array(sig);
 }
 
 async function ledgerSign(
@@ -216,6 +183,11 @@ export async function luteSignerWT(walletTxns: WalletTransaction[]) {
               message.detail.code || 4300
             )
           );
+          break;
+        }
+        case "stored": {
+          window.removeEventListener("modal-signer", listener);
+          reject(new MsigStored(message.detail.nonce));
           break;
         }
         case "close":

@@ -1,23 +1,19 @@
 <template>
-  <v-container class="pt-6">
-    <v-form ref="form" validate-on="submit" @submit.prevent="importApp()">
-      <v-row justify="center">
-        <v-col cols="10">
-          <v-text-field
-            v-model.number="appId"
-            label="App ID"
-            density="comfortable"
-            autofocus
-            :rules="[required, validApp, isArc55, isMember]"
-          />
-        </v-col>
-      </v-row>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Import" type="submit" />
-      </v-card-actions>
-    </v-form>
-  </v-container>
+  <v-form ref="form" validate-on="submit" @submit.prevent="importApp()">
+    <div class="dialog-body">
+      <v-text-field
+        v-model.number="appId"
+        class="font-mono"
+        label="App ID"
+        density="comfortable"
+        autofocus
+        :rules="[required, validApp, isArc55, isMember]"
+      />
+    </div>
+    <v-card-actions>
+      <v-btn variant="flat" text="Import" type="submit" />
+    </v-card-actions>
+  </v-form>
 </template>
 
 <script lang="ts" setup>
@@ -31,7 +27,7 @@ const appId = ref();
 let app: Arc55App;
 
 const required = (v: string) => !!v || "Required";
-const validApp = () => !!app?.info || "Invalid AppID";
+const validApp = () => !!app?.info || "Invalid app ID";
 const isArc55 = () =>
   app?.info.params?.globalState?.some(
     (gs) => new TextDecoder().decode(gs.key) === "arc55_admin"
@@ -39,7 +35,7 @@ const isArc55 = () =>
 const isMember = () =>
   store.signAcctInfo.some(
     (a) => a.addr === app?.arc55_admin || app?.addrs.includes(a.addr)
-  ) || "Not a Member";
+  ) || "Not a member";
 
 const mparams = computed(() => ({
   version: 1,

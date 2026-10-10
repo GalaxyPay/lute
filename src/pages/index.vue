@@ -1,130 +1,186 @@
 <template>
-  <v-container class="pt-0">
-    <v-card>
-      <v-card-title class="d-flex">
-        Accounts
-        <v-spacer />
-        <v-icon
-          v-show="store.acctInfo.length"
-          :disabled="!!store.loading"
-          :icon="mdiRefresh"
-          size="small"
-          class="mt-1 mr-1"
-          @click="store.refresh++"
-        />
-      </v-card-title>
-      <v-card-text
-        v-if="!store.acctInfo.length && !store.loading"
-        class="pa-6 text-center"
-      >
+  <div
+    class="page page--max accounts-page"
+    :class="!smAndUp && ['page--flush', store.isWeb ? 'touch' : 'panel']"
+  >
+    <div
+      v-if="!store.acctInfo.length && !store.loading"
+      class="empty-state text-center"
+    >
+      <div class="title-page">Accounts</div>
+      <p class="text-muted">
         Lute is an Algorand (AVM) wallet. To get started, add an account to your
-        wallet.
-        <div>
-          Rekeyed accounts will import automatically as sub-accounts under the
-          address they are rekeyed to.
+        wallet. Rekeyed accounts will import automatically as sub-accounts under
+        the address they are rekeyed to.
+      </p>
+      <v-btn variant="flat" text="Add an account" @click="addAccount()" />
+    </div>
+    <template v-else>
+      <div class="page-header">
+        <div :class="smAndUp || store.isWeb ? 'title-page' : 'title-panel'">
+          Accounts
         </div>
-      </v-card-text>
-      <v-container v-else>
-        <v-data-table
-          :loading="!!store.loading"
-          loading-text="Loading Accounts..."
-          :headers="headers"
-          :items="store.acctInfo"
-          class="no-select"
-          items-per-page="-1"
-          @click:row="acctDetails"
-          hover
-        >
-          <template #headers />
-          <template #bottom />
-          <template #[`item.addr`]="{ item }">
-            <v-row
-              no-gutters
-              align="center"
-              class="flex-nowrap ml-1"
-              :class="item.subType && (smAndUp ? 'ml-6' : 'ml-3')"
+        <div v-if="smAndUp" class="d-flex ga-2">
+          <v-btn
+            v-show="store.acctInfo.length"
+            variant="outlined"
+            text="Refresh"
+            :disabled="!!store.loading"
+            @click="store.refresh++"
+          />
+          <v-btn variant="flat" text="Add an account" @click="addAccount()" />
+        </div>
+        <div v-else class="d-flex ga-2">
+          <v-btn
+            v-show="store.acctInfo.length"
+            variant="outlined"
+            :icon="mdiRefresh"
+            class="square-btn"
+            aria-label="Refresh"
+            :disabled="!!store.loading"
+            @click="store.refresh++"
+          />
+          <v-btn
+            variant="flat"
+            :icon="mdiPlus"
+            class="square-btn"
+            aria-label="Add an account"
+            @click="addAccount()"
+          />
+        </div>
+      </div>
+      <div v-if="upgradeCount || noPassword" class="page-alerts">
+        <v-alert v-if="upgradeCount" type="info" closable>
+          {{ upgradeCount }} account{{ upgradeCount > 1 ? "s were" : " was" }}
+          added before Lute could show mnemonics. To make
+          {{ upgradeCount > 1 ? "them" : "it" }} exportable, choose
+          <b>Upgrade account</b> from the account menu and re-enter the
+          mnemonic.
+        </v-alert>
+        <v-alert v-if="noPassword" type="warning" closable>
+          This wallet has no password. Anyone with access to this browser
+          profile can sign with its accounts. Set one in Settings.
+        </v-alert>
+      </div>
+      <v-data-table
+        :loading="!!store.loading"
+        :headers="headers"
+        :items="store.acctInfo"
+        class="no-select accounts-table"
+        items-per-page="-1"
+        @click:row="acctDetails"
+        hover
+      >
+        <template #headers />
+        <template #bottom />
+        <!-- Only before the first load: a loading slot replaces existing rows. -->
+        <template v-if="!store.acctInfo.length" #loading>
+          <v-skeleton-loader type="table-row@3" />
+        </template>
+        <template #[`item.addr`]="{ item }">
+          <div class="acct-cell" :class="item.subType && 'acct-cell--sub'">
+            <v-text-field
+              v-if="rename?.addr === item.addr"
+              v-model="rename.name"
+              variant="underlined"
+              density="compact"
+              hide-details
+              :append-inner-icon="mdiContentSave"
+              autofocus
+              @click:append-inner="renameAccount()"
+              @keyup.enter="renameAccount()"
+              @click.stop
+            />
+            <div v-else class="acct-name">
+              <span v-if="item.subType" class="text-icon">↳</span>
+              <span class="ellipsis">
+                {{ item.name || item.ns?.name || item.title }}
+              </span>
+              <span
+                v-if="isUpgradeable(item.secret) && !item.subType"
+                class="dot"
+              >
+                <v-tooltip
+                  activator="parent"
+                  location="top"
+                  text="Upgrade account from the menu"
+                />
+              </span>
+              <expire-chip :ns="item.ns" />
+            </div>
+            <div
+              v-if="!mdAndUp || item.name || item.ns?.name"
+              class="acct-sub ellipsis"
             >
-              <v-col cols="auto" class="pr-1">
-                <account-icon :item />
-              </v-col>
-              <v-col cols="auto">
-                <div :class="xxs && 'truncate'">
-                  <v-text-field
-                    v-if="rename?.addr === item.addr"
-                    v-model="rename.name"
-                    variant="underlined"
-                    density="compact"
-                    hide-details
-                    :append-inner-icon="mdiContentSave"
-                    autofocus
-                    @click:append-inner="renameAccount()"
-                    @keyup.enter="renameAccount()"
-                    @click.stop
-                  />
-                  <span v-else :class="expireClass(item.ns?.timeExpires)">
-                    {{ item.name || item.ns?.name }}
-                    <expire-chip v-if="!xxs" class="ml-1" :ns="item.ns" />
-                  </span>
-                </div>
-                <span
-                  :class="
-                    rename?.addr === item.addr || item.name || item.ns?.name
-                      ? 'text-grey'
-                      : ''
-                  "
-                >
-                  {{ xxs ? item.title.substring(9, 0) : item.title }}
-                </span>
-              </v-col>
-            </v-row>
-          </template>
-          <template #[`item.info.assets`]="{ value }">
-            {{ value != null ? value.length : "-" }}
-            <div class="text-grey">Assets</div>
-          </template>
-          <template #[`item.info.amount`]="{ value }">
-            <span class="text-no-wrap">
-              <span v-if="store.isVoi" class="font-weight-bold">V</span>
-              <algo-icon v-else color="currentColor" :width="10" />
-              {{ value != null ? bigintToString(value, 6, false, 2) : "-" }}
-            </span>
-          </template>
-          <template #[`item.actions`]="{ item }">
+              <template v-if="!mdAndUp">
+                <account-icon :item plain />
+                <template v-if="item.name || item.ns?.name">
+                  · {{ item.title }}
+                </template>
+              </template>
+              <template v-else>{{ item.title }}</template>
+            </div>
+          </div>
+        </template>
+        <template #[`item.type`]="{ item }">
+          <account-icon :item />
+        </template>
+        <template #[`item.info.amount`]="{ value }">
+          <span class="amount">
+            <span v-if="store.isVoi" class="font-weight-bold">V </span>
+            <algo-icon
+              v-else
+              color="currentColor"
+              :width="10"
+              class="algo-glyph"
+            />
+            {{ value != null ? bigintToString(value, 6, false, 2) : "-" }}
+          </span>
+        </template>
+        <template #[`item.actions`]="{ item }">
+          <div class="d-flex justify-end">
             <v-btn
               v-show="smAndUp"
               size="small"
               icon
-              variant="plain"
-              color="currentColor"
+              variant="text"
+              :aria-label="'Copy address'"
               @click.stop="copyToClipboard(item.addr)"
             >
-              <v-icon :icon="mdiContentCopy" />
+              <v-icon :icon="mdiContentCopy" size="16" />
               <v-tooltip
                 activator="parent"
                 location="bottom"
-                text="Copy Address"
+                text="Copy address"
               />
             </v-btn>
-            <v-btn size="small" icon variant="plain" color="currentColor">
-              <v-icon :icon="mdiDotsHorizontal" size="x-large" />
-              <v-menu activator="parent" bottom>
-                <v-list density="compact">
+            <v-btn
+              :size="smAndUp ? 'small' : store.isWeb ? 'large' : 'small'"
+              icon
+              variant="text"
+              aria-label="Account menu"
+            >
+              <v-icon :icon="mdiDotsHorizontal" size="20" />
+              <v-menu activator="parent" location="bottom end">
+                <v-list
+                  density="compact"
+                  class="row-menu"
+                  :class="!smAndUp && store.isWeb && 'row-menu--touch'"
+                >
                   <v-list-item
                     v-show="!smAndUp"
-                    title="Copy Address"
-                    :prepend-icon="mdiContentCopy"
+                    title="Copy address"
                     @click="copyToClipboard(item.addr)"
                   />
                   <v-list-item
                     title="Details"
-                    :prepend-icon="mdiInformationOutline"
+                    :append-icon="mdiArrowTopRight"
                     :href="store.network.explorer + '/account/' + item.addr"
                     target="_blank"
                   />
                   <template v-if="!item.subType">
                     <v-list-item
                       title="Nickname"
-                      :prepend-icon="mdiPencil"
                       @click="
                         rename = store.accounts.find(
                           (a) => a.addr === item.addr
@@ -134,12 +190,11 @@
                     <v-list-item
                       v-if="store.accounts.length > 1"
                       title="Move"
-                      :append-icon="mdiMenuDown"
-                      :prepend-icon="mdiCursorMove"
+                      :append-icon="mdiChevronRight"
                       class="pointer"
                     >
-                      <v-menu activator="parent" bottom scrim>
-                        <v-list density="compact">
+                      <v-menu activator="parent" location="start" scrim>
+                        <v-list density="compact" class="row-menu">
                           <v-list-item
                             v-for="action in moveActions"
                             :key="action.name"
@@ -153,13 +208,17 @@
                     </v-list-item>
                     <v-list-item
                       v-if="!item.appId"
-                      title="Set Network"
-                      :prepend-icon="mdiSourceBranch"
-                      :append-icon="mdiMenuDown"
+                      title="Set network"
                       class="pointer"
                     >
-                      <v-menu activator="parent" bottom scrim>
-                        <v-list density="compact">
+                      <template #append>
+                        <span class="text-dim text-caption">
+                          {{ item.network || "All" }}
+                        </span>
+                        <v-icon :icon="mdiChevronRight" size="18" />
+                      </template>
+                      <v-menu activator="parent" location="start" scrim>
+                        <v-list density="compact" class="row-menu">
                           <v-list-item
                             v-for="network in networkNames"
                             :key="network"
@@ -175,124 +234,105 @@
                         </v-list>
                       </v-menu>
                     </v-list-item>
-                    <v-list-item
-                      v-if="item.seedId && getCredential(item.seedId)"
-                      title="Backup HD Seed"
-                      :prepend-icon="mdiFormatListNumbered"
-                      @click="getMnemonic(item.seedId)"
+                    <v-divider
+                      v-if="
+                        item.secret === 'keystore' ||
+                        item.secret === 'passkey' ||
+                        isUpgradeable(item.secret)
+                      "
+                      class="my-1"
                     />
+                    <v-list-item
+                      v-if="
+                        item.secret === 'keystore' || item.secret === 'passkey'
+                      "
+                      title="Export mnemonic"
+                      @click="exportAcct = item"
+                    />
+                    <v-list-item
+                      v-if="isUpgradeable(item.secret)"
+                      title="Upgrade account"
+                      base-color="info"
+                      @click="upgradeAcct = item"
+                    />
+                    <v-divider class="my-1" />
                   </template>
                   <v-list-item
-                    v-if="false /*item.seedId*/"
-                    title="Export Key"
-                    :prepend-icon="mdiKey"
-                    @click="exportChildKey(item)"
-                  />
-                  <v-list-item
                     v-if="!item.subType"
-                    title="Remove Account"
-                    :prepend-icon="mdiDelete"
+                    title="Remove account"
                     base-color="error"
                     @click="removeAccount(item.addr)"
                   />
                 </v-list>
               </v-menu>
             </v-btn>
-          </template>
-        </v-data-table>
-      </v-container>
-      <v-container class="text-center">
-        <v-btn text="Add an Account" @click="addAccount()" />
-      </v-container>
-    </v-card>
-  </v-container>
+          </div>
+        </template>
+      </v-data-table>
+    </template>
+  </div>
   <add-account-dialog :visible="showAdd" @close="showAdd = false" />
-  <v-dialog v-model="showMnemonic" max-width="600" persistent>
-    <v-card title="Seed Mnemonic:">
-      <v-container>
-        <v-row style="font-family: monospace">
-          <v-col v-for="n in 24" :key="n" cols="6" sm="4" class="py-0">
-            <v-text-field
-              :model-value="mnemonicArray[n - 1]"
-              variant="plain"
-              readonly
-              hide-details
-              density="compact"
-            >
-              <template #prepend>{{ n < 10 ? "&nbsp;" + n : n }}.</template>
-            </v-text-field>
-          </v-col>
-        </v-row>
-      </v-container>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Copy" @click="copyToClipboard(mnemonicArray.join(' '))" />
-        <v-btn text="Close" @click="closeMnemonic()" />
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
-  <password-confirm :visible="showPass" @close="handlePass" />
+  <export-mnemonic :account="exportAcct" @close="exportAcct = undefined" />
+  <upgrade-account :account="upgradeAcct" @close="upgradeAcct = undefined" />
 </template>
 
 <script lang="ts" setup>
 import { networks } from "@/data";
-import { del, set } from "@/dbLute";
+import { keystoreTx, set } from "@/dbLute";
 import router from "@/router";
-import HdWallet from "@/services/HdWallet";
-import Seed from "@/services/Seed";
-import type { AccountInfo, LuteAccount, SeedData } from "@/types";
-import {
-  bigintToString,
-  copyToClipboard,
-  deepClone,
-  expireDays,
-} from "@/utils";
+import { isHd, isLocalSecret, isUpgradeable } from "@/services/accountSecret";
+import type { AccountInfo, LuteAccount } from "@/types";
+import { bigintToString, copyToClipboard, deepClone } from "@/utils";
 import {
   mdiArrowDownThin,
+  mdiArrowTopRight,
   mdiArrowUpThin,
   mdiCheck,
+  mdiChevronRight,
   mdiContentCopy,
   mdiContentSave,
-  mdiCursorMove,
-  mdiDelete,
   mdiDotsHorizontal,
-  mdiFormatListNumbered,
   mdiFormatVerticalAlignBottom,
   mdiFormatVerticalAlignTop,
-  mdiInformationOutline,
-  mdiKey,
-  mdiMenuDown,
-  mdiPencil,
+  mdiPlus,
   mdiRefresh,
-  mdiSourceBranch,
 } from "@mdi/js";
 import { useDisplay } from "vuetify";
 
-const { smAndUp, width } = useDisplay();
-const xxs = computed(() => width.value < 450);
+const { smAndUp, mdAndUp } = useDisplay();
 const store = useAppStore();
 const showAdd = ref(false);
-const showPass = ref(false);
 const rename = ref<any>({});
+const exportAcct = ref<AccountInfo>();
+const upgradeAcct = ref<AccountInfo>();
+
+const upgradeCount = computed(
+  () =>
+    store.acctInfo.filter((a) => !a.subType && isUpgradeable(a.secret)).length
+);
+const noPassword = computed(
+  () =>
+    store.keystoreMode === "device" &&
+    store.acctInfo.some((a) => !a.subType && isLocalSecret(a.secret))
+);
+// Below md the type tag moves under the name, leaving the name room to show.
 const headers = computed(() => {
   const val: any[] = [{ key: "addr" }];
-  if (smAndUp.value) val.push({ key: "info.assets" });
+  if (mdAndUp.value)
+    val.push({ key: "type", width: 110, cellProps: { class: "col-type" } });
   val.push(
-    { key: "info.amount", align: "end" },
-    { key: "actions", align: "end" }
+    {
+      key: "info.amount",
+      align: "end",
+      width: smAndUp.value ? 150 : 1,
+      cellProps: { class: "col-amount" },
+    },
+    { key: "actions", align: "end", width: smAndUp.value ? 88 : 1 }
   );
   return val;
 });
 
 const networkNames = ["All"].concat(networks.map((n) => n.name));
-
-function expireClass(timeExpires: string | undefined) {
-  if (!xxs.value) return;
-  const expDays = expireDays(timeExpires);
-  if (expDays == null) return;
-  if (expDays <= 1) return "text-red";
-  if (expDays <= 30) return "text-warning";
-}
 
 async function addAccount() {
   if (store.isWeb) showAdd.value = true;
@@ -322,23 +362,38 @@ async function renameAccount() {
 }
 
 async function removeAccount(addr: string) {
-  if (
-    !confirm(
-      `If you remove this account it will still exist on the blockchain but you will not be able to access it in Lute.
-
-Are you sure you want to continue?`
-    )
-  )
-    return;
-  await del("keys", addr);
-  await del("falcon25-seeds", addr);
-  const ix = store.accounts.findIndex((a) => a.addr === addr);
-  if (ix !== -1) {
-    const newVal = deepClone(store.accounts.toSpliced(ix, 1));
-    await set("app", "accounts", newVal);
-    await store.getCache();
-    store.refresh++;
-  }
+  const acct = store.acctInfo.find((a) => a.addr === addr && !a.subType);
+  const local = !!acct && isLocalSecret(acct.secret);
+  const hd = !!acct && isHd(acct);
+  const notes = [
+    "If you remove this account it will still exist on the blockchain but you will not be able to access it in Lute.",
+  ];
+  if (local && !hd)
+    notes.push(
+      "Its key is deleted from this browser. Make sure you have its mnemonic."
+    );
+  if (hd)
+    notes.push(
+      "The HD seed stays in this browser, so the account can be added back from it."
+    );
+  notes.push("Are you sure you want to continue?");
+  if (!confirm(notes.join("\n\n"))) return;
+  // One transaction, reading the account list from the database rather than
+  // this page's cache, so a concurrent change in another window is kept.
+  await keystoreTx(async (tx) => {
+    const app = tx.objectStore("app");
+    const current: LuteAccount[] = (await app.get("accounts")) ?? [];
+    app.put(
+      current.filter((a) => a.addr !== addr),
+      "accounts"
+    );
+    tx.objectStore("keys").delete(addr);
+    tx.objectStore("falcon25-seeds").delete(addr);
+    tx.objectStore("keystore").delete(`algo25:${addr}`);
+    tx.objectStore("keystore").delete(`falcon25:${addr}`);
+  });
+  await store.getCache();
+  store.refresh++;
 }
 
 function acctDetails(_event: any, row: any) {
@@ -420,50 +475,136 @@ async function setAcctNetwork(acct: LuteAccount, network: string) {
   await set("app", "accounts", accts);
   await store.getCache();
   store.refresh++;
-  store.setSnackbar("Account Network Set", "success");
-}
-
-function getCredential(seedId: number) {
-  return store.seeds.find((s) => s.id === seedId)?.credentialId;
-}
-
-const showMnemonic = ref(false);
-const mnemonicArray = ref<string[]>([]);
-
-async function getMnemonic(seedId: number) {
-  const { mn } = await Seed.getPasskeyMnemonic(getCredential(seedId));
-  mnemonicArray.value = mn.split(" ");
-  showMnemonic.value = true;
-  store.snackbar.display = false;
-}
-
-let acctInfo: AccountInfo;
-let seedData: SeedData | undefined;
-async function exportChildKey(ai: AccountInfo) {
-  acctInfo = ai;
-  seedData = store.seeds.find((s) => s.id === acctInfo.seedId);
-  if (!seedData) throw Error("Invalid Seed");
-  if (seedData.data) showPass.value = true;
-}
-
-async function handlePass(success: boolean, pass: string) {
-  showPass.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-  } else {
-    const backupKey = await HdWallet.deriveChildKey(pass, acctInfo, seedData);
-    console.log(backupKey);
-  }
-}
-
-function closeMnemonic() {
-  showMnemonic.value = false;
-  mnemonicArray.value = [];
+  store.setSnackbar("Account network set", "success");
 }
 </script>
 
-<style>
-.v-table > .v-table__wrapper > table > tbody > tr > td {
-  padding: 0 4px;
+<style scoped>
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.page-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: 460px;
+  margin: 12vh auto 0;
+  padding: 0 20px;
+  line-height: 1.6;
+}
+/* The name column takes the free width, so long names truncate. */
+.accounts-table :deep(td:first-child) {
+  width: 100%;
+  max-width: 0;
+}
+.accounts-table :deep(td:not(:first-child)) {
+  white-space: nowrap;
+}
+.accounts-page:not(.page--flush) .accounts-table :deep(.col-type) {
+  width: 110px;
+  min-width: 110px;
+}
+.accounts-page:not(.page--flush) .accounts-table :deep(.col-amount) {
+  width: 150px;
+  min-width: 150px;
+}
+.accounts-table :deep(td) {
+  padding: 0 14px !important;
+}
+.accounts-table :deep(td:last-child) {
+  padding-inline: 0 6px !important;
+}
+.acct-cell {
+  min-width: 0;
+  padding-block: 6px;
+}
+.acct-cell--sub {
+  padding-left: 20px;
+}
+.acct-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.acct-sub {
+  margin-top: 2px;
+  font: 12px/1.3 var(--font-mono);
+  color: rgb(var(--v-theme-text-dim));
+}
+.square-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+}
+.page--flush .page-header {
+  padding: 6px 16px 14px;
+  margin: 0;
+}
+.page--flush .page-alerts {
+  margin: 0 12px 8px;
+}
+.page--flush .accounts-table {
+  border-top: 1px solid rgb(var(--v-theme-border));
+}
+.page--flush .accounts-table :deep(td) {
+  padding: 0 4px 0 16px !important;
+}
+.page--flush .accounts-table :deep(td:last-child) {
+  padding: 0 6px 0 0 !important;
+}
+.panel :deep(tbody tr) {
+  height: 52px;
+}
+.panel .acct-name {
+  font-size: 13.5px;
+}
+.panel .acct-sub {
+  font-size: 11px;
+}
+.panel .amount {
+  font-size: 13px;
+}
+.touch :deep(tbody tr) {
+  height: 58px;
+}
+.touch .acct-name {
+  font-size: 14.5px;
+}
+.touch .acct-sub {
+  font-size: 11.5px;
+}
+.touch .square-btn {
+  width: 40px !important;
+  height: 40px !important;
+}
+.v-theme--light .accounts-page:not(.page--flush) .accounts-table {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgb(var(--v-theme-border));
+  border-radius: 10px;
+  overflow: hidden;
+}
+.row-menu :deep(.v-list-item) {
+  min-height: 34px;
+}
+.row-menu--touch :deep(.v-list-item) {
+  min-height: 44px;
+}
+.row-menu--touch :deep(.v-list-item-title) {
+  font-size: 14px;
 }
 </style>

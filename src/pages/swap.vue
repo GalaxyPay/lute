@@ -1,14 +1,14 @@
 <template>
-  <v-container class="pt-0">
+  <v-container class="page">
     <v-card :loading="loading">
-      <v-card-title>Atomic Swap</v-card-title>
+      <v-card-title>Atomic swap</v-card-title>
       <v-card-subtitle>
         Swap assets directly with another party - no middle-man or smart
         contract
       </v-card-subtitle>
       <v-container v-if="reviewTxns">
         <v-container class="text-center">
-          <div style="font-family: monospace">
+          <div class="font-mono">
             {{ reviewTxns[0]?.sender }}
           </div>
           is proposing a swap. They would like to send you
@@ -20,11 +20,16 @@
           </div>
         </v-container>
         <v-container class="text-center">
-          <v-btn text="Copy Link" @click="copyLink()" />
-          <v-btn text="Review & Sign" @click="accept()" />
+          <v-btn variant="outlined" text="Copy link" @click="copyLink()" />
+          <v-btn
+            variant="flat"
+            class="ml-2"
+            text="Review & Sign"
+            @click="accept()"
+          />
           <v-row v-if="extensionDetected">
             <v-col class="pb-0">
-              <v-btn text="Open in Extension" @click="openExtension()" />
+              <v-btn text="Open in extension" @click="openExtension()" />
             </v-col>
           </v-row>
         </v-container>
@@ -37,8 +42,10 @@
 import router from "@/router";
 import Algo from "@/services/Algo";
 import { bigintToString, copyToClipboard, send } from "@/utils";
-import { luteSigner } from "@/utils/signers";
-import algosdk, { modelsv2, Transaction } from "algosdk";
+import { findNetwork } from "@/utils/networks";
+import { luteSigner, reportSignError } from "@/utils/signers";
+import { parseSwap } from "@/utils/swap";
+import { modelsv2, Transaction } from "algosdk";
 
 const store = useAppStore();
 
@@ -65,39 +72,13 @@ onMounted(async () => {
     }
     if (!store.isWeb) browser.runtime.connect({ name: "luteSidepanel" });
     loading.value = true;
-    stxn1 = Uint8Array.fromBase64(tx1, { alphabet: "base64url" });
-    const txn1 = algosdk.decodeSignedTransaction(stxn1).txn;
-    const txn2 = algosdk.decodeUnsignedTransaction(
-      Uint8Array.fromBase64(tx2, { alphabet: "base64url" })
-    );
-    // check group
-    if (
-      !txn1.group ||
-      !txn2.group ||
-      txn1.group.toString() !== txn2.group.toString()
-    )
-      throw Error("Invalid Group");
-    // check swap addresses
-    const receiver1 = txn1.payment?.receiver ?? txn1.assetTransfer?.receiver;
-    const receiver2 = txn2.payment?.receiver ?? txn2.assetTransfer?.receiver;
-    if (
-      !receiver1 ||
-      !receiver2 ||
-      txn1.sender.toString() !== receiver2.toString() ||
-      txn2.sender.toString() !== receiver1.toString()
-    )
-      throw Error("Invalid Swap");
-    // check network and switch
-    if (!txn1.genesisHash || !txn2.genesisHash)
-      throw Error("Missing Genesis Hash");
-    const genHash1 = txn1.genesisHash.toBase64();
-    const genHash2 = txn2.genesisHash.toBase64();
-    if (genHash1 !== genHash2) throw Error("Network Mismatch");
-    const network = store.allNetworks.find(
-      (n) =>
-        n.genesisID ===
-          (txn1.genesisID === "sandnet-v1" ? "dockernet-v1" : txn1.genesisID) &&
-        (n.genesisHash === genHash1 || !n.genesisHash)
+    const parsed = parseSwap(tx1, tx2);
+    stxn1 = parsed.stxn1;
+    const { txn1, txn2 } = parsed;
+    const network = findNetwork(
+      store.allNetworks,
+      txn1.genesisID,
+      txn1.genesisHash!.toBase64()
     )?.name;
     if (!network) throw Error("Unknown Network");
     store.networkName = network;
@@ -141,11 +122,10 @@ async function accept() {
   try {
     if (!stxn1 || !reviewTxns.value) throw Error("Invalid Transactions");
     const resp = await luteSigner(reviewTxns.value, [1]);
-    await send([stxn1, resp[1]!], "Swap Completed");
+    await send([stxn1, resp[1]!], "Swap completed");
     router.replace("/");
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
 }
 
@@ -186,7 +166,7 @@ function openExtension() {
       detail: { action: "swap", tx1, tx2 },
     })
   );
-  store.setSnackbar("Opened in Extension", "info");
+  store.setSnackbar("Opened in extension", "info");
   router.replace("/");
 }
 </script>

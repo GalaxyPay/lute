@@ -225,6 +225,8 @@ export interface AccountHD extends modelsv2.Account {
 }
 
 export interface LuteAccount {
+  // 2 from Lute 2.0; absent on 1.x records until the IndexedDB v4 upgrade stamps them.
+  v?: number;
   addr: Address;
   name?: string;
   slot?: number;
@@ -233,13 +235,36 @@ export interface LuteAccount {
   seedId?: number;
   xpub?: string;
   idxs?: number[];
+  /**
+   * Base64. Stored like xpub so dapps get the empty signature without an unlock.
+   * Missing on older accounts until the seed next signs.
+   */
+  falconPk?: string;
 }
+
+/**
+ * Where an account's signing secret lives. Derived on every cache load, never
+ * persisted, so it cannot drift from the stores.
+ * - none: watch, multisig, or a missing seed record
+ * - keystore-opaque: one-way 1.x material; mnemonic must be re-entered to export
+ * - legacy-seed: 1.x seed that did not decrypt under the wallet password
+ * - legacy-key: 1.x non-extractable Algo25 CryptoKey
+ */
+export type SecretStatus =
+  | "none"
+  | "ledger"
+  | "passkey"
+  | "keystore"
+  | "keystore-opaque"
+  | "legacy-seed"
+  | "legacy-key";
 
 export interface AccountInfo extends LuteAccount {
   title: string;
   isHot: boolean;
   isFalcon25: boolean;
   canSign: boolean;
+  secret: SecretStatus;
   subType?: "rekey" | "hd";
   info?: AccountHD;
   globalIdx: number;
@@ -353,6 +378,68 @@ export interface FalconSeedData extends Omit<SeedData, "id" | "credentialId"> {
 
 export type AnySeedData = SeedData | FalconSeedData;
 
+export interface SeedRow {
+  id: number;
+  credentialId?: string;
+  exportable?: boolean;
+  // @legacy-read A 1.x seed still under its own password.
+  legacy?: SeedData;
+}
+
+export type KeystoreKind = "bip39" | "algo25" | "falcon25";
+
+/**
+ * Keystore record plaintext:
+ * - entropy (bip39): mnemonic entropy ‖ 64-byte seed
+ * - seed (bip39): 64-byte seed only, from 1.x
+ * - seed (algo25): 32-byte ed25519 seed
+ * - seed (falcon25): 32-byte 25-word seed ‖ 32-byte falcon key seed
+ * - hash (falcon25): 32-byte falcon key seed only, from 1.x
+ */
+export type KeystoreForm = "entropy" | "seed" | "hash";
+
+export interface KeystoreRecord {
+  id: string;
+  kind: KeystoreKind;
+  form: KeystoreForm;
+  iv: Uint8Array;
+  data: ArrayBuffer;
+}
+
+export type KeystoreMeta = Pick<KeystoreRecord, "id" | "kind" | "form">;
+
+interface KeystoreHeaderBase {
+  v: 2;
+  // Master key identity: survives a password change, replaced on a mode switch.
+  id: string;
+  // Bumped on every header write so a stale writer can be detected.
+  gen: number;
+}
+
+export interface PasswordKeystoreHeader extends KeystoreHeaderBase {
+  mode: "password";
+  kdf: string;
+  iterations: number;
+  salt: Uint8Array;
+  wrapIv: Uint8Array;
+  wrappedMk: ArrayBuffer;
+}
+
+export interface DeviceKeystoreHeader extends KeystoreHeaderBase {
+  mode: "device";
+  mk: CryptoKey;
+}
+
+export type KeystoreHeader = PasswordKeystoreHeader | DeviceKeystoreHeader;
+
+export type KeystoreMode = KeystoreHeader["mode"];
+
+/** `id` is the keystore header id the key belongs to. */
+export interface MasterKey {
+  key: CryptoKey;
+  id: string;
+}
+
 export interface MsgpackHD {
   hd: {
     sibling?: string;
@@ -374,7 +461,7 @@ export interface Siwa {
   "request-id"?: string;
   chain_id: string;
   resources?: string[];
-  type: "ed25519";
+  type: "ed25519" | "falcon1024";
 }
 
 export interface SignDataSafe extends StdSignData {
@@ -386,4 +473,15 @@ export interface SignDataResponseSafe extends StdSignDataResponse {
   signer: string;
   authenticatorData: string;
   signature: string;
+}
+
+/** Exposed by KeystoreUnlock through its template ref. */
+export interface Unlocker {
+  /**
+   * `fresh` ignores the session unlock and always prompts. Rejects with
+   * UserCancelled when the prompt is closed.
+   */
+  ensureMk(opts?: { fresh?: boolean }): Promise<MasterKey>;
+  /** Close an open prompt as if the user had. */
+  cancel(): void;
 }

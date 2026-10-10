@@ -18,7 +18,7 @@
 
 <template>
   <v-app>
-    <AppBar />
+    <AppBar v-if="showAppBar" />
     <AppNav />
     <v-main>
       <router-view />
@@ -36,9 +36,15 @@ import Unlock from "@/services/Unlock";
 import { fetchAsync, refresh } from "@/utils";
 import { decodeMsgpack, modelsv2 } from "algosdk";
 import { useRoute } from "vue-router";
+import { useDisplay } from "vuetify";
 
 const store = useAppStore();
 const route = useRoute();
+const { mdAndUp } = useDisplay();
+// On wide web layouts the logo sits in the permanent drawer instead.
+const showAppBar = computed(
+  () => !(store.isWeb && mdAndUp.value && !route.meta.modal)
+);
 
 function optionsRefreshListener() {
   browser.runtime.onMessage.addListener(async (message: any) => {

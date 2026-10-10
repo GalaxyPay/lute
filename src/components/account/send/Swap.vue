@@ -1,13 +1,13 @@
 <template>
   <v-form v-if="!reviewTxns" ref="form" @submit.prevent="propose()">
-    <v-container class="px-0 pt-6">
+    <v-container class="send-form">
       <v-row justify="center">
         <v-col cols="12" sm="6">
           <v-autocomplete
             v-model="senderAsset"
             :items="senderAssets"
             :item-props="assetProps"
-            label="Your Asset"
+            label="Your asset"
             :rules="[required]"
             persistent-hint
             autocomplete="off"
@@ -18,7 +18,7 @@
           <v-text-field
             v-model="sendAmount"
             type="number"
-            label="Your Amount"
+            label="Your amount"
             autocomplete="off"
             :rules="[required]"
           />
@@ -30,7 +30,7 @@
             :items="nsLookups"
             :item-props="receiverProps"
             :return-object="false"
-            label="Their Account"
+            label="Their account"
             :placeholder="`Address${ns}`"
             persistent-placeholder
             spellcheck="false"
@@ -44,7 +44,7 @@
             v-model="receiverAsset"
             :items="receiverAssets"
             :item-props="assetProps"
-            label="Their Asset"
+            label="Their asset"
             :rules="[required]"
             persistent-hint
             variant="outlined"
@@ -56,7 +56,7 @@
             :class="theirClass"
             v-model="receiveAmount"
             type="number"
-            label="Their Amount"
+            label="Their amount"
             :rules="[required]"
             autocomplete="off"
           />
@@ -64,15 +64,14 @@
       </v-row>
     </v-container>
     <v-container class="text-center">
-      <div class="text-caption text-grey">
+      <div class="text-caption text-muted">
         To propose a swap you'll sign the first transaction - this transaction
         will not be valid unless the second transaction is signed by the
         receiver
       </div>
     </v-container>
-    <v-card-actions>
-      <v-spacer />
-      <v-btn text="Propose Swap" type="submit" />
+    <v-card-actions class="card-footer">
+      <v-btn variant="flat" text="Propose swap" type="submit" />
     </v-card-actions>
   </v-form>
 </template>
@@ -83,7 +82,7 @@ import Algo from "@/services/Algo";
 import NameService from "@/services/NameService";
 import type { AccountInfo, NsLookup } from "@/types";
 import { b64url, getAssetInfo, probeFee, stringToBigint } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { luteSigner, reportSignError } from "@/utils/signers";
 import algosdk, { modelsv2, Transaction } from "algosdk";
 
 const props = defineProps<{ sender: AccountInfo }>();
@@ -95,14 +94,12 @@ const ns = store.network.nfdUrl
     ? " or EnVoi"
     : "";
 
-const theirClass = computed(
-  () => `text-blue-${store.theme == "light" ? "darken-2" : "lighten-2"}`
-);
+const theirClass = "text-info";
 
 const form = ref();
 const required = (v: any) => !!v || v === 0 || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 
 const receiver = ref<string>();
 const nsLookups = ref<NsLookup[]>();
@@ -238,9 +235,14 @@ async function propose() {
     form.value?.reset();
     await router.push({ path: "/swap", query });
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
   store.overlay = false;
 }
 </script>
+
+<style scoped>
+.send-form {
+  padding: 8px 18px 12px;
+}
+</style>

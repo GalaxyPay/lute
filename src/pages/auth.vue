@@ -8,18 +8,16 @@
             {{ luteData.stdSignData.domain }} wants you to sign in with your
             Algorand account:
           </div>
-          <div style="font-size: 0.79em; font-family: monospace">
+          <div class="font-mono text-caption">
             {{ luteData.siwa.account_address }}
           </div>
           <v-chip
             size="x-small"
             @click="viewRaw = !viewRaw"
-            :text="viewRaw ? 'View Summary' : 'View Raw'"
+            :text="viewRaw ? 'View summary' : 'View raw'"
           />
           <v-container v-show="viewRaw" class="px-0">
-            <pre style="overflow: auto; font-size: 0.75em">{{
-              luteData.siwa
-            }}</pre>
+            <pre>{{ luteData.siwa }}</pre>
           </v-container>
           <v-container v-show="!viewRaw" class="px-0">
             <v-row v-if="luteData.siwa.statement">
@@ -29,26 +27,32 @@
             </v-row>
             <v-row>
               <v-col>
-                <pre style="overflow: auto; font-size: 0.75em">{{ msg }}</pre>
+                <pre>{{ msg }}</pre>
               </v-col>
             </v-row>
           </v-container>
           <v-row class="text-center">
             <v-col>
-              <v-btn text="Sign" @click="passwordCheck()" :disabled="signing" />
+              <v-btn
+                variant="flat"
+                size="large"
+                text="Sign"
+                @click="passwordCheck()"
+                :disabled="signing"
+              />
             </v-col>
           </v-row>
         </v-container>
       </template>
     </v-card>
   </v-container>
-  <password-confirm :visible="showPass" :verify="false" @close="handlePass" />
+  <password-confirm :visible="showPass" @close="handlePass" />
 </template>
 
 <script lang="ts" setup>
 import LuteData from "@/classes/LuteData";
 import LuteDataOld from "@/classes/LuteData.old";
-import Unlock from "@/services/Unlock";
+import Signer from "@/services/Signer";
 import {
   isFromOpener,
   postReady,
@@ -142,17 +146,15 @@ async function trySign(pass?: string) {
 async function passwordCheck() {
   try {
     signing.value = true;
-    const acct = store.accounts.find(
-      (a) => a.addr === luteData.value!.siwa!.account_address
+    // Includes HD sibling rows, which carry their parent's seed.
+    const acct = store.acctInfo.find(
+      (a) =>
+        a.addr === luteData.value!.siwa!.account_address &&
+        a.subType !== "rekey"
     );
-    if (acct?.seedId && acct.slot != null) {
-      const seedData = store.seeds.find((s) => s.id === acct.seedId);
-      if (!seedData) throw Error("Invalid Seed");
-      if (seedData.data && !(await Unlock.isUnlocked())) showPass.value = true;
-    }
-    if (!showPass.value) {
-      await trySign();
-    }
+    if ((await Signer.gate(acct ? [acct] : [])) === "password")
+      showPass.value = true;
+    else await trySign();
   } catch (err: any) {
     luteData.value?.handleError(err);
   }
@@ -161,10 +163,7 @@ async function passwordCheck() {
 
 async function handlePass(success: boolean, pass: string) {
   showPass.value = false;
-  if (!success) {
-    store.setSnackbar("Incorrect Password", "error");
-    return;
-  }
+  if (!success) return;
   await trySign(pass);
 }
 
