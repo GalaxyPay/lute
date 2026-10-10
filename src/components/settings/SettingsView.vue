@@ -1,5 +1,5 @@
 <template>
-  <div class="page settings" :class="narrow && 'settings--narrow'">
+  <div class="page page--max settings" :class="narrow && 'settings--narrow'">
     <div class="settings-header">
       <span :class="narrow ? 'title-panel' : 'title-page'">Settings</span>
       <span v-if="xs || !store.isWeb" class="font-mono text-dim text-caption">
@@ -461,7 +461,7 @@ async function setRouter() {
   display: flex;
   flex-direction: column;
   gap: 22px;
-  max-width: 820px;
+  --page-max: 820px;
 }
 .settings-header {
   display: flex;

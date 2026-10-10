@@ -48,6 +48,12 @@ a:not(.v-list-item, .v-btn, .v-chip) {
 .page--flush {
   padding: 0 0 16px;
 }
+/* Cap line length on wide viewports so data and actions stay aligned. */
+.page--max {
+  width: 100%;
+  max-width: var(--page-max, 1150px);
+  margin-inline: auto;
+}
 @media (max-width: 599.98px) {
   .page:not(.page--flush) {
     padding: 16px;

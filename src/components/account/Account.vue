@@ -1,5 +1,9 @@
 <template>
-  <div v-if="acct?.info" class="page detail-page" :class="xs && 'page--flush'">
+  <div
+    v-if="acct?.info"
+    class="page page--max detail-page"
+    :class="xs && 'page--flush'"
+  >
     <div class="stat-grid" :style="{ '--chars': amountChars }">
       <v-card class="stat-card stat-card--address">
         <div class="stat-label">

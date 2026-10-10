@@ -1,6 +1,6 @@
 <template>
   <div
-    class="page accounts-page"
+    class="page page--max accounts-page"
     :class="!smAndUp && ['page--flush', store.isWeb ? 'touch' : 'panel']"
   >
     <div

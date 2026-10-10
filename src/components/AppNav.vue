@@ -31,7 +31,8 @@
     class="app-drawer"
     :class="xs && 'app-drawer--touch'"
   >
-    <div class="drawer-logo">
+    <!-- Otherwise the app bar shows the logo and network chip. -->
+    <div v-if="store.isWeb && mdAndUp" class="drawer-logo">
       <lute-logo
         :color="store.theme === 'gold' ? 'url(#gradient)' : 'currentColor'"
         :width="99"
