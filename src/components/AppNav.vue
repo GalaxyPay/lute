@@ -233,12 +233,12 @@ const network = computed({
 .drawer-footer {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 14px;
   padding: 0 18px 18px;
   font-size: 11px;
 }
 .store-badge {
-  align-self: flex-start;
   line-height: 0;
 }
 .store-badge img {
