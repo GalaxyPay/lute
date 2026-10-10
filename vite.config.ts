@@ -156,6 +156,8 @@ export default defineConfig({
       "@ledgerhq/hw-transport-webhid",
       "@ledgerhq/hw-transport-webusb",
       "@scure/bip32",
+      "@scure/bip39",
+      "@scure/bip39/wordlists/english.js",
       "ledger-algorand-js",
       "micro-key-producer/slip10.js",
       "vite-plugin-node-polyfills/shims/buffer",
