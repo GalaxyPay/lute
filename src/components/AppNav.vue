@@ -217,12 +217,8 @@ const network = computed({
   font-size: 15px;
 }
 .drawer-network {
-  margin-top: auto;
-  padding: 0 4px 14px;
-}
-.app-drawer--touch .drawer-network,
-.v-navigation-drawer--temporary .drawer-network {
   margin-top: 20px;
+  padding: 0 4px 14px;
 }
 .drawer-network :deep(.v-field__input) {
   font-size: 13px;
