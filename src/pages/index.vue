@@ -125,10 +125,6 @@
         <template #[`item.type`]="{ item }">
           <account-icon :item />
         </template>
-        <template #[`item.info.assets`]="{ value }">
-          <div class="font-mono">{{ value != null ? value.length : "-" }}</div>
-          <div class="text-dim text-caption">Assets</div>
-        </template>
         <template #[`item.info.amount`]="{ value }">
           <span class="amount">
             <span v-if="store.isVoi" class="font-weight-bold">V </span>
@@ -324,13 +320,6 @@ const headers = computed(() => {
   const val: any[] = [{ key: "addr" }];
   if (mdAndUp.value)
     val.push({ key: "type", width: 110, cellProps: { class: "col-type" } });
-  if (smAndUp.value)
-    val.push({
-      key: "info.assets",
-      align: "end",
-      width: 80,
-      cellProps: { class: "col-assets" },
-    });
   val.push(
     {
       key: "info.amount",
@@ -525,10 +514,6 @@ async function setAcctNetwork(acct: LuteAccount, network: string) {
 .accounts-page:not(.page--flush) .accounts-table :deep(.col-type) {
   width: 110px;
   min-width: 110px;
-}
-.accounts-page:not(.page--flush) .accounts-table :deep(.col-assets) {
-  width: 80px;
-  min-width: 80px;
 }
 .accounts-page:not(.page--flush) .accounts-table :deep(.col-amount) {
   width: 150px;
