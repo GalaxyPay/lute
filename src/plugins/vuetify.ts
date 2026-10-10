@@ -21,25 +21,25 @@ import { createVuetify, type ThemeDefinition } from "vuetify";
 const dark: ThemeDefinition = {
   dark: true,
   colors: {
-    background: "#100c14", // oklch(0.165 0.016 310)
-    surface: "#16121a", // oklch(0.192 0.016 310)
-    "surface-bright": "#1b171e", // oklch(0.211 0.016 310)
-    "surface-light": "#252128", // = surface-selected
-    "surface-variant": "#1e1a21", // oklch(0.224 0.016 310)
-    "surface-selected": "#252128", // oklch(0.254 0.016 310)
-    "border-subtle": "#1b161e", // oklch(0.210 0.016 310)
-    border: "#221d25", // oklch(0.241 0.016 310)
-    "border-strong": "#29252d", // oklch(0.271 0.016 310)
-    "border-input": "#66616a", // oklch(0.500 0.016 310)
-    "on-background": "#eeebf2",
-    "on-surface": "#eeebf2", // oklch(0.944 0.010 310)
-    "on-surface-variant": "#eeebf2",
-    "text-body": "#cac1d1", // oklch(0.822 0.025 310)
-    "text-muted": "#918898", // oklch(0.640 0.025 310)
-    "text-dim": "#8f8796", // oklch(0.635 0.025 310)
-    "text-placeholder": "#827989", // oklch(0.590 0.025 310)
-    "text-disabled": "#5a5261", // oklch(0.453 0.025 310)
-    icon: "#756c7b", // oklch(0.545 0.025 310)
+    background: "#0c0b0d", // oklch(0.150 0.005 310)
+    surface: "#121113", // oklch(0.178 0.005 310)
+    "surface-bright": "#161517", // oklch(0.197 0.005 310)
+    "surface-light": "#201f21", // = surface-selected
+    "surface-variant": "#19181a", // oklch(0.210 0.005 310)
+    "surface-selected": "#201f21", // oklch(0.240 0.005 310)
+    "border-subtle": "#161517", // oklch(0.196 0.005 310)
+    border: "#1d1c1e", // oklch(0.227 0.005 310)
+    "border-strong": "#242325", // oklch(0.257 0.005 310)
+    "border-input": "#646266", // oklch(0.500 0.006 310)
+    "on-background": "#edecee",
+    "on-surface": "#edecee", // oklch(0.944 0.004 310)
+    "on-surface-variant": "#edecee",
+    "text-body": "#c6c3c9", // oklch(0.822 0.008 310)
+    "text-muted": "#8e8b90", // oklch(0.640 0.008 310)
+    "text-dim": "#8c898e", // oklch(0.635 0.008 310)
+    "text-placeholder": "#7f7c81", // oklch(0.590 0.008 310)
+    "text-disabled": "#575559", // oklch(0.453 0.008 310)
+    icon: "#716f74", // oklch(0.545 0.008 310)
     primary: "#a645c2", // oklch(0.570 0.200 318)
     "primary-hover": "#9634b1", // oklch(0.520 0.200 318)
     "on-primary": "#fffdff", // oklch(1.000 0.010 310)
@@ -51,13 +51,13 @@ const dark: ThemeDefinition = {
     warning: "#e6b37b", // oklch(0.800 0.093 68)
     success: "#71c1a3", // oklch(0.750 0.090 168)
     info: "#d6a9f1", // oklch(0.800 0.110 312)
-    "on-error": "#100c14",
-    "on-warning": "#100c14",
-    "on-success": "#100c14",
-    "on-info": "#100c14",
+    "on-error": "#0c0b0d",
+    "on-warning": "#0c0b0d",
+    "on-success": "#0c0b0d",
+    "on-info": "#0c0b0d",
   },
   variables: {
-    "border-color": "#221d25",
+    "border-color": "#1d1c1e",
     "border-opacity": 1,
   },
 };
