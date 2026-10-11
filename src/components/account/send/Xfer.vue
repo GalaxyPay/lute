@@ -173,7 +173,13 @@ const required = (v: any) => !!v || v === 0 || "Required";
 const validAddress = (v: string) =>
   algosdk.isValidAddress(v) || "Invalid address";
 const ns = computed(() =>
-  store.network.nfdUrl ? " or NFD" : store.network.envoiUrl ? " or EnVoi" : ""
+  !store.nsSend
+    ? ""
+    : store.network.nfdUrl
+      ? " or NFD"
+      : store.network.envoiUrl
+        ? " or EnVoi"
+        : ""
 );
 const to = ref();
 const amount = ref();
@@ -252,7 +258,7 @@ let nsTimeout: number;
 async function lookupNs(q: string) {
   window.clearTimeout(nsTimeout);
   nsTimeout = window.setTimeout(async () => {
-    const nsLookups = q ? await NameService.search(q) : [];
+    const nsLookups = q && store.nsSend ? await NameService.search(q) : [];
     toAuto.value = addrs.value.concat(nsLookups);
     rekeyToAuto.value = addrs.value.concat(nsLookups);
   }, 500);

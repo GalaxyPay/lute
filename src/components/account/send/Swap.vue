@@ -30,8 +30,7 @@
             :items="nsLookups"
             :item-props="receiverProps"
             :return-object="false"
-            label="Their account"
-            :placeholder="`Address${ns}`"
+            :label="`Their address${ns}`"
             persistent-placeholder
             spellcheck="false"
             @keyup="lookupNs(receiver)"
@@ -88,11 +87,15 @@ import algosdk, { modelsv2, Transaction } from "algosdk";
 const props = defineProps<{ sender: AccountInfo }>();
 
 const store = useAppStore();
-const ns = store.network.nfdUrl
-  ? " or NFD"
-  : store.network.envoiUrl
-    ? " or EnVoi"
-    : "";
+const ns = computed(() =>
+  !store.nsSend
+    ? ""
+    : store.network.nfdUrl
+      ? " or NFD"
+      : store.network.envoiUrl
+        ? " or EnVoi"
+        : ""
+);
 
 const theirClass = "text-info";
 
@@ -172,7 +175,7 @@ let nsTimeout: number;
 async function lookupNs(q: string | undefined) {
   window.clearTimeout(nsTimeout);
   nsTimeout = window.setTimeout(async () => {
-    nsLookups.value = q ? await NameService.search(q) : [];
+    nsLookups.value = q && store.nsSend ? await NameService.search(q) : [];
   }, 500);
 }
 

@@ -1,7 +1,5 @@
 allowBuilds:
-  '@parcel/watcher': false
+  "@parcel/watcher": false
   core-js: false
   esbuild: true
 minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  - algosdk@3.7.0

@@ -193,6 +193,20 @@
             />
           </div>
         </div>
+        <div class="set-row">
+          <div class="set-title">Name lookup when sending</div>
+          <div class="set-desc">
+            Disable to only suggest addresses added to your wallet
+          </div>
+          <div class="set-actions">
+            <v-switch
+              :model-value="store.nsSend"
+              :label="store.nsSend ? 'Enabled' : 'Disabled'"
+              hide-details
+              @click.prevent="setNsSend()"
+            />
+          </div>
+        </div>
       </div>
     </section>
 
@@ -407,6 +421,11 @@ async function setDebug() {
 
 async function setSnoop() {
   await set("app", "snoop", !store.snoop);
+  await store.getCache();
+}
+
+async function setNsSend() {
+  await set("app", "nsSend", !store.nsSend);
   await store.getCache();
 }
 
