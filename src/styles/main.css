@@ -745,20 +745,20 @@ pre {
   color: rgb(var(--v-theme-error-text)) !important;
 }
 
-/* ---- Tabs: 13px, 2px primary underline ---- */
+/* ---- Tabs: 14px, primary-text selected, 2px primary underline ---- */
 .v-tabs {
   border-bottom: 1px solid rgb(var(--v-theme-border));
 }
 .v-tab.v-btn {
-  font-size: 13px;
-  font-weight: 400;
+  font-size: 14px;
+  font-weight: 500;
   padding-inline: 12px;
   min-width: 0;
   color: rgb(var(--v-theme-text-muted)) !important;
 }
 .v-tab.v-btn.v-tab--selected {
-  color: rgb(var(--v-theme-on-surface)) !important;
-  font-weight: 500;
+  color: rgb(var(--v-theme-primary-text)) !important;
+  font-weight: 600;
 }
 .v-tab .v-tab__slider {
   background: rgb(var(--v-theme-primary)) !important;

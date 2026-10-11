@@ -71,7 +71,7 @@ const luteData = ref<LuteData>();
 
 let referrer: string;
 let tabId: number | undefined;
-let msg: string;
+let msg = "";
 
 onMounted(() => whenLoaded(ready));
 

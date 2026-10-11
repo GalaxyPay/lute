@@ -104,6 +104,9 @@
         <v-window-item v-if="acct" :value="SEND">
           <send :acct="acct" />
         </v-window-item>
+        <v-window-item v-if="acct.xpub" :value="HD">
+          <h-d-address-table :acct="acct" />
+        </v-window-item>
         <v-window-item v-if="acct" :value="VAULT">
           <vault :acct="acct" @complete="tab = ASSETS" />
         </v-window-item>
@@ -115,10 +118,6 @@
           />
         </v-window-item>
       </v-window>
-    </v-card>
-    <v-card v-if="acct.xpub" class="hd-card">
-      <div class="card-header">HD addresses</div>
-      <h-d-address-table :acct="acct" />
     </v-card>
   </div>
 </template>
@@ -136,6 +135,7 @@ const MSIG = "Multi-sig";
 const TXNS = "Transactions";
 const INBOX = "Inbox";
 const VAULT = "Vault";
+const HD = "HD";
 
 const MBR_TIP = `Your MBR increases with each asset and/or application you opt into.
 You can decrease your MBR by closing out of assets and applications.`;
@@ -167,6 +167,7 @@ const tabs = computed(() => {
   const val = [];
   if (acct.value?.appId) val.push(MSIG);
   val.push(ASSETS, TXNS);
+  if (acct.value?.xpub) val.push(HD);
   if (acct.value?.canSign || acct.value?.appId) {
     val.push(SEND);
     if (acct.value?.ns?.appID) val.push(VAULT);
@@ -256,12 +257,6 @@ watch(
 .detail-tabs {
   padding: 6px 8px 0;
 }
-.card-header {
-  padding: 12px 18px;
-  font-size: 13px;
-  font-weight: 500;
-  border-bottom: 1px solid rgb(var(--v-theme-border));
-}
 @media (max-width: 1279.98px) {
   .stat-grid {
     grid-template-columns: 1fr 1fr;
@@ -290,15 +285,10 @@ watch(
   --max: 19px;
   --glyph: 13px;
 }
-.page--flush .tabs-card,
-.page--flush .hd-card {
+.page--flush .tabs-card {
   border: none;
   border-radius: 0;
   background: transparent;
   margin-bottom: 0;
-}
-.page--flush .hd-card {
-  border-top: 1px solid rgb(var(--v-theme-border));
-  margin-top: 12px;
 }
 </style>
