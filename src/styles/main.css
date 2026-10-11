@@ -51,7 +51,7 @@ a:not(.v-list-item, .v-btn, .v-chip) {
 /* Cap line length on wide viewports so data and actions stay aligned. */
 .page--max {
   width: 100%;
-  max-width: var(--page-max, 1150px);
+  max-width: var(--page-max, 1080px);
   margin-inline: auto;
 }
 @media (max-width: 599.98px) {

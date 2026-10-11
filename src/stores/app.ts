@@ -61,6 +61,8 @@ export const useAppStore = defineStore("app", {
     sandboxRouter: undefined as number | undefined,
     isWeb: document.location.protocol.startsWith("http"),
     customNetworks: [] as Network[],
+    // Favorite asset ids, keyed by favoritesKey(): per network and account.
+    favoriteAssets: {} as Record<string, number[]>,
     signingData: false,
     luteTxns: undefined as LuteTxns | undefined,
     fallback: false,
@@ -223,6 +225,7 @@ export const useAppStore = defineStore("app", {
       this.networkName =
         this.allNetworks.find((n) => n.name === nn)?.name || networks[0]!.name;
       this.sandboxRouter = await get("app", "sandboxRouter");
+      this.favoriteAssets = (await get("app", "favoriteAssets")) || {};
       const header: KeystoreHeader | undefined = await get("app", "keystore");
       this.legacyVerifier = !!(await get("app", "password"));
       this.hasKeystore = !!header;
@@ -241,6 +244,20 @@ export const useAppStore = defineStore("app", {
       this.keystore = ((await getAll("keystore")) as KeystoreRecord[]).map(
         ({ id, kind, form }) => ({ id, kind, form })
       );
+    },
+    favoritesKey(addr: string) {
+      return `${this.network.genesisID}/${addr}`;
+    },
+    async toggleFavoriteAsset(addr: string, assetId: number) {
+      const key = this.favoritesKey(addr);
+      const ids = this.favoriteAssets[key] || [];
+      const next = ids.includes(assetId)
+        ? ids.filter((id) => id !== assetId)
+        : [...ids, assetId];
+      const all = { ...this.favoriteAssets, [key]: next };
+      if (!next.length) delete all[key];
+      this.favoriteAssets = all;
+      await set("app", "favoriteAssets", deepClone(all));
     },
     async setTheme(name: string | null) {
       await set("app", "theme", name || "dark");

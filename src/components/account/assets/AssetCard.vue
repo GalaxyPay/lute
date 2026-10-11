@@ -23,6 +23,16 @@
       </div>
     </div>
     <v-btn
+      :icon="favorite ? mdiStar : mdiStarOutline"
+      :color="favorite ? 'warning' : undefined"
+      :class="!favorite && 'text-icon'"
+      variant="text"
+      size="small"
+      :aria-label="favorite ? 'Remove from favorites' : 'Add to favorites'"
+      :aria-pressed="favorite"
+      @click="emit('toggleFavorite')"
+    />
+    <v-btn
       v-show="optOut"
       :icon="mdiClose"
       color="error"
@@ -68,15 +78,14 @@
 <script lang="ts" setup>
 import Algo from "@/services/Algo";
 import type { AccountInfo } from "@/types";
-import {
-  bigintToString,
-  getAssetInfo,
-  priceTxns,
-  resolveProtocol,
-  send,
-} from "@/utils";
+import { bigintToString, priceTxns, resolveProtocol, send } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
-import { mdiClose, mdiInformationOutline } from "@mdi/js";
+import {
+  mdiClose,
+  mdiInformationOutline,
+  mdiStar,
+  mdiStarOutline,
+} from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 
 const store = useAppStore();
@@ -86,10 +95,12 @@ const props = defineProps({
     type: Object as PropType<modelsv2.AssetHolding>,
     required: true,
   },
+  assetInfo: { type: Object as PropType<modelsv2.Asset> },
+  favorite: { type: Boolean },
   optOut: { type: Boolean },
 });
+const emit = defineEmits<{ toggleFavorite: [] }>();
 
-const assetInfo = ref<modelsv2.Asset>();
 const image = ref();
 const form = ref();
 const required = (v: string) => !!v || "Required";
@@ -101,28 +112,28 @@ const creator = ref(false);
 
 watch(
   creator,
-  (val) => (receiver.value = val ? assetInfo.value?.params?.creator : undefined)
+  (val) => (receiver.value = val ? props.assetInfo?.params?.creator : undefined)
 );
 
-onMounted(async () => {
-  assetInfo.value = await getAssetInfo(props.asset.assetId);
-  if (assetInfo.value?.params?.url) {
-    image.value = await resolveProtocol(
-      assetInfo.value.params.url,
-      assetInfo.value.params.reserve || ""
-    );
-  }
-});
+watch(
+  () => props.assetInfo,
+  async (info) => {
+    image.value = info?.params?.url
+      ? await resolveProtocol(info.params.url, info.params.reserve || "")
+      : undefined;
+  },
+  { immediate: true }
+);
 
 const initials = computed(() =>
-  (assetInfo.value?.params?.unitName || assetInfo.value?.params?.name || "")
+  (props.assetInfo?.params?.unitName || props.assetInfo?.params?.name || "")
     .slice(0, 2)
     .toUpperCase()
 );
 
 function formatAmount() {
-  return assetInfo.value?.params
-    ? bigintToString(props.asset.amount, assetInfo.value.params.decimals)
+  return props.assetInfo?.params
+    ? bigintToString(props.asset.amount, props.assetInfo.params.decimals)
     : "-";
 }
 
