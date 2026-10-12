@@ -565,6 +565,14 @@ pre {
   font-size: 13.5px;
   line-height: 1.5;
 }
+/* iOS zooms into focused fields under 16px and stays zoomed after blur. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
 /* 40px fields; the center-affix paddings are tuned for 56px. */
 .v-field .v-field__input {
   min-height: 40px;
