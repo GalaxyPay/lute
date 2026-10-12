@@ -16,7 +16,8 @@ import { createVuetify, type ThemeDefinition } from "vuetify";
  * needs hex. Besides Vuetify's own keys, every theme has:
  * surface-selected, border-subtle, border, border-strong, border-input,
  * text-body, text-muted, text-dim, text-placeholder, text-disabled, icon,
- * primary-hover, primary-text, error-text and danger-fill.
+ * primary-hover, primary-fill, primary-fill-hover, primary-text, error-text
+ * and danger-fill. primary-fill is the background of flat primary buttons.
  */
 const dark: ThemeDefinition = {
   dark: true,
@@ -42,6 +43,8 @@ const dark: ThemeDefinition = {
     icon: "#716f74", // oklch(0.545 0.008 310)
     primary: "#a645c2", // oklch(0.570 0.200 318)
     "primary-hover": "#9634b1", // oklch(0.520 0.200 318)
+    "primary-fill": "#813897", // oklch(0.480 0.160 318), toned down vs primary
+    "primary-fill-hover": "#732f87", // oklch(0.440 0.150 318)
     "on-primary": "#fffdff", // oklch(1.000 0.010 310)
     "primary-text": "#dea5f0", // oklch(0.800 0.120 318)
     error: "#f46a82", // oklch(0.700 0.170 12)
@@ -86,6 +89,8 @@ const light: ThemeDefinition = {
     icon: "#89868c", // oklch(0.625 0.010 310)
     primary: "#a840c5", // oklch(0.570 0.211 318)
     "primary-hover": "#982eb5", // derived: oklch(0.520 0.211 318)
+    "primary-fill": "#a840c5", // = primary
+    "primary-fill-hover": "#982eb5", // = primary-hover
     "on-primary": "#ffffff",
     "primary-text": "#a840c5", // same as primary in light
     error: "#c2003c", // oklch(0.510 0.215 15)
@@ -130,6 +135,8 @@ const gold: ThemeDefinition = {
     icon: "#6b6865", // oklch(0.520 0.006 75)
     primary: "#ebb159",
     "primary-hover": "#daa148", // derived: primary at L - 0.05
+    "primary-fill": "#ebb159", // = primary
+    "primary-fill-hover": "#daa148", // = primary-hover
     "on-primary": "#191716", // oklch(0.207 0.004 75)
     "primary-text": "#f3cf8a",
     error: "#f06f7e", // oklch(0.700 0.159 15)

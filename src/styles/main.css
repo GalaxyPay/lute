@@ -247,8 +247,11 @@ pre {
   opacity: 1;
 }
 /* Primary */
+.v-btn.v-btn--variant-flat.bg-primary {
+  background-color: rgb(var(--v-theme-primary-fill)) !important;
+}
 .v-btn.v-btn--variant-flat.bg-primary:hover {
-  background-color: rgb(var(--v-theme-primary-hover)) !important;
+  background-color: rgb(var(--v-theme-primary-fill-hover)) !important;
 }
 .v-btn.v-btn--variant-flat > .v-btn__overlay {
   display: none;
@@ -276,7 +279,7 @@ pre {
   opacity: 0;
 }
 .v-btn--loading.v-btn--variant-flat.bg-primary {
-  background: rgba(var(--v-theme-primary), 0.6) !important;
+  background: rgba(var(--v-theme-primary-fill), 0.6) !important;
 }
 /* Icon buttons: glyphs in the icon color unless another color is set */
 .v-btn.v-btn--icon.v-btn--variant-plain:not([class*="text-"]),
@@ -756,6 +759,12 @@ pre {
 /* ---- Tabs: 14px, primary-text selected, 2px primary underline ---- */
 .v-tabs {
   border-bottom: 1px solid rgb(var(--v-theme-border));
+  /* Dialog cards are flex columns; without this, tall content squeezes the tabs */
+  flex-shrink: 0;
+}
+/* Same for the window below them: let the card scroll instead of clipping */
+.v-dialog .v-card > .v-window {
+  flex-shrink: 0;
 }
 .v-tab.v-btn {
   font-size: 14px;
