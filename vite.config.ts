@@ -7,10 +7,15 @@ import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import { VitePWA } from "vite-plugin-pwa";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import sri from "vite-plugin-sri-gen";
+import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback";
 
 // Utilities
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
+
+const vuetifySettings = fileURLToPath(
+  new URL("./src/styles/settings.scss", import.meta.url)
+);
 
 const connect = [
   "'self'",
@@ -66,12 +71,9 @@ export default defineConfig({
     // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
     Vuetify({
       autoImport: true,
-      styles: {
-        configFile: fileURLToPath(
-          new URL("./src/styles/settings.scss", import.meta.url)
-        ),
-      },
+      styles: { configFile: vuetifySettings },
     }),
+    vuetifyStylesFallback(vuetifySettings),
     nodePolyfills(),
     VitePWA({
       registerType: "autoUpdate",

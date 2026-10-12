@@ -9,6 +9,7 @@ import packageJson from "./package.json" with { type: "json" };
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import VueRouter from "vue-router/vite";
+import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.js";
 
 export const sharedConfig: UserConfig = {
   root: r("src"),
@@ -35,6 +36,7 @@ export const sharedConfig: UserConfig = {
       autoImport: true,
       styles: { configFile: r("src/styles/settings.scss") },
     }),
+    vuetifyStylesFallback(r("src/styles/settings.scss")),
 
     AutoImport({
       imports: [
