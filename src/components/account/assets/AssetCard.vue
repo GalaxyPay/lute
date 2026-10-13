@@ -1,9 +1,9 @@
 <template>
   <div class="asset-row">
-    <v-avatar size="28" color="surface-selected" class="asset-avatar">
-      <v-img v-if="image" :src="image" />
+    <div class="asset-image">
+      <v-img v-if="image" contain :src="image" width="100%" height="100%" />
       <span v-else>{{ initials }}</span>
-    </v-avatar>
+    </div>
     <div class="flex-grow-1 min-w-0">
       <div class="asset-name">
         <span class="ellipsis">
@@ -21,6 +21,10 @@
         {{ formatAmount() }}
         {{ assetInfo?.params?.unitName }}
       </div>
+    </div>
+    <div v-if="value !== undefined" class="amount asset-value">
+      <algo-icon color="currentColor" :width="9" class="algo-glyph" />
+      {{ formatAlgoValue(value) }}
     </div>
     <v-btn
       :icon="favorite ? mdiStar : mdiStarOutline"
@@ -77,6 +81,7 @@
 
 <script lang="ts" setup>
 import Algo from "@/services/Algo";
+import { algoValue, formatAlgoValue } from "@/services/Prices";
 import type { AccountInfo } from "@/types";
 import { bigintToString, priceTxns, resolveProtocol, send } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
@@ -129,6 +134,12 @@ const initials = computed(() =>
   (props.assetInfo?.params?.unitName || props.assetInfo?.params?.name || "")
     .slice(0, 2)
     .toUpperCase()
+);
+
+const value = computed(() =>
+  props.asset.amount
+    ? algoValue(props.asset.assetId, props.asset.amount)
+    : undefined
 );
 
 function formatAmount() {
@@ -184,7 +195,16 @@ async function closeOut() {
   padding: 8px 18px;
   border-bottom: 1px solid rgb(var(--v-theme-border-subtle));
 }
-.asset-avatar {
+.asset-image {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgb(var(--v-theme-surface-variant));
+  overflow: hidden;
   font-size: 10px;
   font-weight: 600;
   color: rgb(var(--v-theme-text-body));
@@ -196,6 +216,10 @@ async function closeOut() {
   min-width: 0;
   font-size: 14px;
   font-weight: 500;
+}
+.asset-value {
+  font-size: 13px;
+  color: rgb(var(--v-theme-text-body));
 }
 .min-w-0 {
   min-width: 0;

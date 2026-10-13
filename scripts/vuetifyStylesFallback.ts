@@ -12,6 +12,16 @@ const VIRTUAL_ID = /^virtual:plugin-vuetify:(.*?)(\?.*)?$/;
 // branch switch — that lookup misses and Vite reports "Failed to load url
 // virtual:plugin-vuetify:... Does the file exist?". Rebuild the module from
 // the id instead. Must be listed after Vuetify() so its load runs first.
+// Paths written the way @vuetify/loader-shared writes them. Sass reads a bare
+// `C:/...` as a URL with scheme `c:`, so the component's relative
+// `@use "../../styles/settings"` would load a second, unconfigured copy of
+// Vuetify's settings and compile with its defaults (uppercase buttons,
+// Roboto) instead of settings.scss.
+function sassPath(p: string) {
+  const n = normalizePath(p);
+  return /^[a-z]:\//i.test(n) ? "/" + n : n;
+}
+
 export function vuetifyStylesFallback(configFile: string): Plugin {
   const require = createRequire(import.meta.url);
   const lib = path.join(
@@ -32,7 +42,7 @@ export function vuetifyStylesFallback(configFile: string): Plugin {
         return null;
       }
       const suffix = target.endsWith(".scss") ? ";\n" : "\n";
-      return `@use "${normalizePath(configFile)}"${suffix}@use "${normalizePath(target)}"${suffix}`;
+      return `@use "${sassPath(configFile)}"${suffix}@use "${sassPath(target)}"${suffix}`;
     },
   };
 }

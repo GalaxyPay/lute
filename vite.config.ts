@@ -7,7 +7,7 @@ import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import { VitePWA } from "vite-plugin-pwa";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import sri from "vite-plugin-sri-gen";
-import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback";
+import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.ts";
 
 // Utilities
 import { defineConfig } from "vite";
@@ -23,6 +23,7 @@ const connect = [
   "api.envoi.sh",
   "ipfs.algonode.dev",
   "asa-list.tinyman.org",
+  "api.vestigelabs.org",
   "*.lute.app",
   "*.nodely.dev",
   "*.nodely.io",

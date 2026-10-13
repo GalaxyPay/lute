@@ -56,6 +56,7 @@ export const useAppStore = defineStore("app", {
     snoop: false,
     ledgerSelect: false,
     nsSend: true,
+    hideBalances: false,
     autoLockMinutes: 0,
     unlocked: false,
     tinyman: undefined as TinyAsset[] | undefined,
@@ -238,6 +239,8 @@ export const useAppStore = defineStore("app", {
       this.ledgerSelect =
         (await get("app", "ledgerSelect")) ?? this.ledgerSelect;
       this.nsSend = (await get("app", "nsSend")) ?? this.nsSend;
+      this.hideBalances =
+        (await get("app", "hideBalances")) ?? this.hideBalances;
       this.autoLockMinutes =
         (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
       this.keys = (await keys("keys")) as string[];

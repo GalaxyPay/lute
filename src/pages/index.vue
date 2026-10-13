@@ -24,6 +24,18 @@
           <v-btn
             v-show="store.acctInfo.length"
             variant="outlined"
+            icon
+            class="square-btn"
+            :aria-label="hideLabel"
+            :aria-pressed="store.hideBalances"
+            @click="toggleHidden()"
+          >
+            <v-icon :icon="store.hideBalances ? mdiEyeOff : mdiEye" />
+            <v-tooltip activator="parent" location="bottom" :text="hideLabel" />
+          </v-btn>
+          <v-btn
+            v-show="store.acctInfo.length"
+            variant="outlined"
             text="Refresh"
             :disabled="!!store.loading"
             @click="store.refresh++"
@@ -31,6 +43,18 @@
           <v-btn variant="flat" text="Add an account" @click="addAccount()" />
         </div>
         <div v-else class="d-flex ga-2">
+          <v-btn
+            v-show="store.acctInfo.length"
+            variant="outlined"
+            icon
+            class="square-btn"
+            :aria-label="hideLabel"
+            :aria-pressed="store.hideBalances"
+            @click="toggleHidden()"
+          >
+            <v-icon :icon="store.hideBalances ? mdiEyeOff : mdiEye" />
+            <v-tooltip activator="parent" location="bottom" :text="hideLabel" />
+          </v-btn>
           <v-btn
             v-show="store.acctInfo.length"
             variant="outlined"
@@ -62,6 +86,7 @@
           profile can sign with its accounts. Set one in Settings.
         </v-alert>
       </div>
+      <accounts-overview v-if="store.acctInfo.length" />
       <v-data-table
         :loading="!!store.loading"
         :headers="headers"
@@ -134,7 +159,9 @@
               :width="10"
               class="algo-glyph"
             />
-            {{ value != null ? bigintToString(value, 6, false, 2) : "-" }}
+            <masked-value
+              :text="value != null ? bigintToString(value, 6, false, 2) : '-'"
+            />
           </span>
         </template>
         <template #[`item.actions`]="{ item }">
@@ -292,6 +319,8 @@ import {
   mdiContentCopy,
   mdiContentSave,
   mdiDotsHorizontal,
+  mdiEye,
+  mdiEyeOff,
   mdiFormatVerticalAlignBottom,
   mdiFormatVerticalAlignTop,
   mdiPlus,
@@ -331,6 +360,15 @@ const headers = computed(() => {
   );
   return val;
 });
+
+const hideLabel = computed(() =>
+  store.hideBalances ? "Show balances" : "Hide balances"
+);
+
+async function toggleHidden() {
+  store.hideBalances = !store.hideBalances;
+  await set("app", "hideBalances", store.hideBalances);
+}
 
 const networkNames = ["All"].concat(networks.map((n) => n.name));
 

@@ -4,7 +4,11 @@
     class="page page--max detail-page"
     :class="xs && 'page--flush'"
   >
-    <div class="stat-grid" :style="{ '--chars': amountChars }">
+    <div
+      class="stat-grid"
+      :class="assetValue !== undefined && 'stat-grid--assets'"
+      :style="{ '--chars': amountChars }"
+    >
       <v-card class="stat-card stat-card--address">
         <div class="stat-label">
           Address
@@ -49,7 +53,7 @@
           {{ `44'/283'/${acct.slot}'/0/${acct.info.addrIdx || 0}` }}
         </div>
       </v-card>
-      <v-card class="stat-card">
+      <v-card class="stat-card stat-card--balance">
         <div class="stat-label">Balance</div>
         <div class="stat-value">
           <span v-if="store.isVoi" class="font-weight-bold">V </span>
@@ -61,24 +65,31 @@
           />
           {{ balance }}
         </div>
-      </v-card>
-      <v-card class="stat-card">
-        <div class="stat-label">
-          Min balance
-          <span class="d-inline-flex">
-            <v-icon size="14" class="text-icon" :icon="mdiInformationOutline" />
-            <v-tooltip activator="parent" location="top" :text="MBR_TIP" />
-          </span>
-        </div>
-        <div class="stat-value text-text-body">
-          <span v-if="store.isVoi" class="font-weight-bold">V </span>
+        <span class="stat-sub">
+          Min
+          <span v-if="store.isVoi" class="font-weight-bold">V</span>
           <algo-icon
             v-else
+            color="currentColor"
+            :width="9"
+            class="algo-glyph"
+          />
+          <span class="font-mono">{{ minBalance }}</span>
+          <span class="d-inline-flex align-self-center">
+            <v-icon size="13" class="text-icon" :icon="mdiInformationOutline" />
+            <v-tooltip activator="parent" location="top" :text="MBR_TIP" />
+          </span>
+        </span>
+      </v-card>
+      <v-card v-if="assetValue !== undefined" class="stat-card">
+        <div class="stat-label">Asset Value</div>
+        <div class="stat-value">
+          <algo-icon
             color="currentColor"
             :width="xs ? 13 : 18"
             class="algo-glyph"
           />
-          {{ minBalance }}
+          {{ assetText }}
         </div>
       </v-card>
     </div>
@@ -124,6 +135,7 @@
 
 <script lang="ts" setup>
 import Algo from "@/services/Algo";
+import { algoValue, formatAlgoValue } from "@/services/Prices";
 import { bigintToString } from "@/utils";
 import { mdiInformationOutline, mdiKey, mdiRefresh } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
@@ -154,10 +166,22 @@ const minBalance = computed(() =>
     ? bigintToString(acct.value.info.minBalance, 6)
     : "-"
 );
+// Only from prices the Accounts overview has already loaded.
+const assetValue = computed(() => {
+  let total: number | undefined;
+  for (const h of acct.value?.info?.assets ?? []) {
+    const v = h.amount ? algoValue(h.assetId, h.amount) : undefined;
+    if (v !== undefined) total = (total ?? 0) + v;
+  }
+  return total;
+});
+const assetText = computed(() =>
+  assetValue.value === undefined ? "" : formatAlgoValue(assetValue.value)
+);
 // Both amounts share one size; Voi's "V" prefix takes a character too.
 const amountChars = computed(
   () =>
-    Math.max(balance.value.length, minBalance.value.length) +
+    Math.max(balance.value.length, assetText.value.length) +
     (store.isVoi ? 1 : 0)
 );
 const showRekeyTip = ref(false);
@@ -206,9 +230,12 @@ watch(
 <style scoped>
 .stat-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 12px;
   margin-bottom: 18px;
+}
+.stat-grid--assets {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
 }
 .stat-card {
   container-type: inline-size;
@@ -232,6 +259,32 @@ watch(
   font: 13px/1.5 var(--font-mono);
   color: rgb(var(--v-theme-on-surface));
   word-break: break-all;
+}
+.stat-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 20px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: rgb(var(--v-theme-text-dim));
+}
+/* Above xs, min balance rides on the label row so it adds no height; on xs
+   it stays under the balance. */
+.detail-page:not(.page--flush) .stat-card--balance {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label sub" "value value";
+  gap: 8px 6px;
+}
+.detail-page:not(.page--flush) .stat-card--balance .stat-label {
+  grid-area: label;
+}
+.detail-page:not(.page--flush) .stat-card--balance .stat-sub {
+  grid-area: sub;
+}
+.detail-page:not(.page--flush) .stat-card--balance .stat-value {
+  grid-area: value;
 }
 /* Long amounts shrink to fit the card. Each mono character takes 0.6em
    (the -0.02em tracking leaves slack for rounding); the glyph and the 0.35em
@@ -259,10 +312,13 @@ watch(
 }
 @media (max-width: 1279.98px) {
   .stat-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .stat-card--address {
     grid-column: 1 / -1;
+  }
+  .stat-grid--assets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .page--flush .stat-grid {
