@@ -3,10 +3,9 @@
     <v-bottom-navigation
       v-if="notModal"
       grow
-      :height="store.isWeb ? 64 : 54"
+      :height="54"
       :disabled="!!store.loading"
       class="bottom-nav"
-      :class="store.isWeb && 'bottom-nav--safe'"
     >
       <v-btn
         v-for="btn in items"
@@ -260,8 +259,5 @@ const network = computed({
 }
 .bottom-nav :deep(.v-btn__overlay) {
   opacity: 0 !important;
-}
-.bottom-nav--safe {
-  padding-bottom: 16px;
 }
 </style>
