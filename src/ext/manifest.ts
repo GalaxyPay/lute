@@ -76,7 +76,11 @@ export async function getManifest() {
     content_security_policy: {
       extension_pages: csp,
     },
-    host_permissions: ["*://ipfs.algonode.dev/*", "*://*.4160.nodely.io/*"],
+    host_permissions: [
+      "*://ipfs.algonode.dev/*",
+      "*://*.4160.nodely.io/*",
+      "*://api.hay.app/*",
+    ],
   };
 
   // Lets lute.app open a sync port to the extension, with Chrome enforcing the origin.

@@ -1,33 +1,40 @@
-// Asset prices from Vestige (MainNet only). Prices are per whole unit; a
-// wallet can hold thousands of ASAs, so ids go out in batches of 100 (the API
-// maximum) with a few in flight, and results — including "no price" — are
-// cached so a refresh only asks for what has gone stale.
+// Asset prices from Haystack (MainNet only). Haystack prices are per whole
+// unit and come with decimals, so they are cached per base unit. A wallet can
+// hold thousands of ASAs and the API takes at most 10 ids per call, so ids go
+// out in batches with many in flight, and results — including "no price" —
+// are cached so a refresh only asks for what has gone stale.
 
 import { shallowRef } from "vue";
 
-const API = "https://api.vestigelabs.org/assets/price";
-const USDC = 31566704n;
-const BATCH = 100;
-const CONCURRENCY = 3;
+const API = "https://api.hay.app/api/assets";
+const KEY = "hay_pk_pknm6ujwuphntck4jt6qronh2u";
+const BATCH = 10;
+const CONCURRENCY = 8;
 const TTL = 5 * 60_000;
-// Below this Vestige is guessing from thin pools, which is where spam tokens
-// get absurd prices.
+// Below this the price comes from thin pools, which is where spam tokens get
+// absurd prices.
 const MIN_CONFIDENCE = 0.5;
 
-interface VestigePrice {
-  asset_id: number;
-  price: number;
-  confidence?: number;
+interface HayAsset {
+  id: string | number;
+  decimals: number;
+  price?: { price: number; usdPrice: number };
+  priceConfidence?: number;
+  moderation?: { flagged?: boolean };
 }
 
 const cache = new Map<bigint, { price?: number; ts: number }>();
 let usd: { price?: number; ts: number } | undefined;
 
-async function fetchBatch(ids: bigint[], denom: bigint) {
-  const url = `${API}?network_id=0&denominating_asset_id=${denom}&asset_ids=${ids.join(",")}`;
-  const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-  if (!resp.ok) throw Error(`Vestige ${resp.status}`);
-  return (await resp.json()) as VestigePrice[];
+async function fetchBatch(ids: bigint[]) {
+  const q = new URLSearchParams();
+  for (const id of ids) q.append("asset", String(id));
+  const resp = await fetch(`${API}?${q}`, {
+    headers: { "x-api-key": KEY },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!resp.ok) throw Error(`Haystack ${resp.status}`);
+  return ((await resp.json()) as { assets?: HayAsset[] }).assets ?? [];
 }
 
 /** Runs `fn` over `items` with at most `limit` calls in flight. */
@@ -50,9 +57,9 @@ export async function mapLimit<T, R>(
   return out;
 }
 
-/** ALGO price per whole unit for each id that has one. A failed batch is left
+/** ALGO per base unit for each id that has a price. A failed batch is left
  * out (and not cached) rather than failing the rest. */
-export async function getAlgoPrices(ids: bigint[]) {
+export async function getUnitPrices(ids: bigint[]) {
   const now = Date.now();
   const stale = [...new Set(ids)].filter(
     (id) => id !== 0n && !(now - (cache.get(id)?.ts ?? 0) < TTL)
@@ -62,12 +69,18 @@ export async function getAlgoPrices(ids: bigint[]) {
     batches.push(stale.slice(i, i + BATCH));
   await mapLimit(batches, CONCURRENCY, async (batch) => {
     try {
-      const prices = await fetchBatch(batch, 0n);
+      const assets = await fetchBatch(batch);
       const ts = Date.now();
       for (const id of batch) cache.set(id, { ts });
-      for (const p of prices)
-        if (p.price > 0 && (p.confidence ?? 1) >= MIN_CONFIDENCE)
-          cache.set(BigInt(p.asset_id), { price: p.price, ts });
+      for (const a of assets) {
+        const price = a.price?.price ?? 0;
+        if (
+          price > 0 &&
+          (a.priceConfidence ?? 1) >= MIN_CONFIDENCE &&
+          !a.moderation?.flagged
+        )
+          cache.set(BigInt(a.id), { price: price / 10 ** a.decimals, ts });
+      }
     } catch (err) {
       console.error(err);
     }
@@ -80,12 +93,12 @@ export async function getAlgoPrices(ids: bigint[]) {
   return result;
 }
 
-/** USD per ALGO, priced against USDC. */
+/** USD per ALGO; Haystack lists ALGO itself as asset 0. */
 export async function getAlgoUsd() {
   if (usd && Date.now() - usd.ts < TTL) return usd.price;
   try {
-    const [p] = await fetchBatch([0n], USDC);
-    usd = { price: p?.price, ts: Date.now() };
+    const [a] = await fetchBatch([0n]);
+    usd = { price: a?.price?.usdPrice, ts: Date.now() };
     return usd.price;
   } catch (err) {
     console.error(err);

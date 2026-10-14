@@ -43,12 +43,11 @@
 <script lang="ts" setup>
 import {
   formatAlgoValue,
-  getAlgoPrices,
   getAlgoUsd,
-  mapLimit,
+  getUnitPrices,
   unitPrices,
 } from "@/services/Prices";
-import { bigintToString, getAssetInfo } from "@/utils";
+import { bigintToString } from "@/utils";
 
 const store = useAppStore();
 const priced = computed(() => store.networkName === "MainNet");
@@ -91,23 +90,15 @@ watch(
     }
     loading.value = true;
     const held = holdings.value;
-    const [prices, usd] = await Promise.all([
-      getAlgoPrices([...held.keys()]),
+    const [units, usd] = await Promise.all([
+      getUnitPrices([...held.keys()]),
       getAlgoUsd(),
     ]);
-    // Decimals are only needed for assets with a price, which in a large
-    // wallet is a small share of what it holds.
-    const units = await mapLimit([...prices], 8, async ([assetId, price]) => {
-      const info = await getAssetInfo(assetId, true);
-      const dec = info?.params?.decimals;
-      if (dec === undefined) return undefined;
-      return [assetId, price / 10 ** dec] as const;
-    });
     if (id !== run) return;
-    const known = units
-      .filter((u) => u !== undefined)
-      .map(([assetId, unit]) => Number(held.get(assetId)) * unit);
-    unitPrices.value = new Map(units.filter((u) => u !== undefined));
+    const known = [...units].map(
+      ([assetId, unit]) => Number(held.get(assetId)) * unit
+    );
+    unitPrices.value = units;
     assetAlgo.value = known.reduce((a, b) => a + b, 0);
     pricedCount.value = known.length;
     algoUsd.value = usd;

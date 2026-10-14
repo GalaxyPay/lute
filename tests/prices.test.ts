@@ -1,34 +1,37 @@
 // Large wallets hold thousands of ASAs: prices must go out in batches the API
-// accepts, a few at a time, and a refresh must not ask again.
+// accepts, several at a time, and a refresh must not ask again.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearPriceCache,
-  getAlgoPrices,
   getAlgoUsd,
+  getUnitPrices,
   mapLimit,
 } from "@/services/Prices";
 
 let inFlight = 0;
 let maxInFlight = 0;
-const fetchMock = vi.fn(async (url: string) => {
+const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
   inFlight++;
   maxInFlight = Math.max(maxInFlight, inFlight);
   await new Promise((r) => setTimeout(r, 5));
   inFlight--;
-  const u = new URL(url);
-  const ids = u.searchParams.get("asset_ids")!.split(",").map(Number);
-  if (u.searchParams.get("denominating_asset_id") === "31566704")
-    return Response.json([{ asset_id: 0, price: 0.12 }]);
-  // Even ids are priced; id 2 is low confidence; odd ids have no market.
-  return Response.json(
-    ids
-      .filter((id) => id % 2 === 0)
-      .map((id) => ({
-        asset_id: id,
-        price: id,
-        confidence: id === 2 ? 0.1 : 0.99,
-      }))
-  );
+  const ids = new URL(url).searchParams.getAll("asset").map(Number);
+  // ALGO (id 0) is $0.125. Even ids are priced at id ALGO per whole unit; id 2
+  // is low confidence, id 8 is flagged, id 6 has 2 decimals; odd ids have no
+  // market.
+  return Response.json({
+    assets: ids.map((id) =>
+      id === 0
+        ? { id, decimals: 6, price: { price: 1, usdPrice: 0.125 } }
+        : {
+            id,
+            decimals: id === 6 ? 2 : 0,
+            price: id % 2 === 0 ? { price: id, usdPrice: id / 8 } : undefined,
+            priceConfidence: id === 2 ? 0.1 : 0.99,
+            moderation: { flagged: id === 8 },
+          }
+    ),
+  });
 });
 
 beforeEach(() => {
@@ -39,44 +42,53 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-describe("getAlgoPrices", () => {
-  it("batches by 100 with at most 3 in flight", async () => {
+describe("getUnitPrices", () => {
+  it("batches by 10 with at most 8 in flight", async () => {
     const ids = Array.from({ length: 1050 }, (_, i) => BigInt(i + 1));
-    const prices = await getAlgoPrices(ids);
-    expect(fetchMock).toHaveBeenCalledTimes(11);
-    for (const [url] of fetchMock.mock.calls)
+    const prices = await getUnitPrices(ids);
+    expect(fetchMock).toHaveBeenCalledTimes(105);
+    for (const [url, init] of fetchMock.mock.calls) {
       expect(
-        new URL(url).searchParams.get("asset_ids")!.split(",").length
-      ).toBeLessThanOrEqual(100);
-    expect(maxInFlight).toBe(3);
+        new URL(url).searchParams.getAll("asset").length
+      ).toBeLessThanOrEqual(10);
+      expect(
+        (init?.headers as Record<string, string>)["x-api-key"]
+      ).toBeTruthy();
+    }
+    expect(maxInFlight).toBe(8);
     expect(prices.get(4n)).toBe(4);
     expect(prices.has(3n)).toBe(false);
     expect(prices.has(2n)).toBe(false);
+    expect(prices.has(8n)).toBe(false);
+  });
+
+  it("prices per base unit", async () => {
+    expect((await getUnitPrices([6n])).get(6n)).toBe(0.06);
   });
 
   it("caches priced and unpriced ids", async () => {
-    await getAlgoPrices([3n, 4n]);
-    const prices = await getAlgoPrices([3n, 4n]);
+    await getUnitPrices([3n, 4n]);
+    const prices = await getUnitPrices([3n, 4n]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(prices.get(4n)).toBe(4);
   });
 
   it("drops a failed batch without caching it", async () => {
     fetchMock.mockRejectedValueOnce(Error("down"));
-    expect((await getAlgoPrices([4n])).size).toBe(0);
-    expect((await getAlgoPrices([4n])).get(4n)).toBe(4);
+    expect((await getUnitPrices([4n])).size).toBe(0);
+    expect((await getUnitPrices([4n])).get(4n)).toBe(4);
   });
 
   it("never asks for ALGO itself", async () => {
-    await getAlgoPrices([0n]);
+    await getUnitPrices([0n]);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
 describe("getAlgoUsd", () => {
-  it("prices ALGO in USDC and caches it", async () => {
-    expect(await getAlgoUsd()).toBe(0.12);
-    expect(await getAlgoUsd()).toBe(0.12);
+  it("reads ALGO's USD price and caches it", async () => {
+    expect(await getAlgoUsd()).toBe(0.125);
+    expect(await getAlgoUsd()).toBe(0.125);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

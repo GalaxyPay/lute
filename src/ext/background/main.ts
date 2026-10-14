@@ -174,7 +174,7 @@ onMessage("add-network-request", async (message) => {
   openSidePanel(path, message.sender.tabId);
 });
 
-// set referrer on algonode/nodely requests
+// set referrer on algonode/nodely/haystack requests
 browser.runtime.onInstalled.addListener(async () => {
   const rules: DeclarativeNetRequest.Rule[] = [
     {
@@ -192,7 +192,7 @@ browser.runtime.onInstalled.addListener(async () => {
       condition: {
         initiatorDomains: [browser.runtime.id],
         resourceTypes: ["image", "media", "xmlhttprequest"],
-        requestDomains: ["ipfs.algonode.dev", "4160.nodely.io"],
+        requestDomains: ["ipfs.algonode.dev", "4160.nodely.io", "api.hay.app"],
       },
     },
   ];

@@ -23,7 +23,7 @@ const connect = [
   "api.envoi.sh",
   "ipfs.algonode.dev",
   "asa-list.tinyman.org",
-  "api.vestigelabs.org",
+  "api.hay.app",
   "*.lute.app",
   "*.nodely.dev",
   "*.nodely.io",
