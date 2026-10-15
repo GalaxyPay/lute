@@ -18,19 +18,22 @@ const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
   const ids = new URL(url).searchParams.getAll("asset").map(Number);
   // ALGO (id 0) is $0.125. Even ids are priced at id ALGO per whole unit; id 2
   // is low confidence, id 8 is flagged, id 6 has 2 decimals; odd ids have no
-  // market.
+  // market and, like the real API, are left out.
   return Response.json({
-    assets: ids.map((id) =>
-      id === 0
-        ? { id, decimals: 6, price: { price: 1, usdPrice: 0.125 } }
-        : {
-            id,
-            decimals: id === 6 ? 2 : 0,
-            price: id % 2 === 0 ? { price: id, usdPrice: id / 8 } : undefined,
-            priceConfidence: id === 2 ? 0.1 : 0.99,
-            moderation: { flagged: id === 8 },
-          }
-    ),
+    prices: ids
+      .filter((id) => id % 2 === 0)
+      .map((id) =>
+        id === 0
+          ? { id, decimals: 6, price: 1, usdPrice: 0.125, priceConfidence: 1 }
+          : {
+              id,
+              decimals: id === 6 ? 2 : 0,
+              price: id,
+              usdPrice: id / 8,
+              priceConfidence: id === 2 ? 0.1 : 0.99,
+              ...(id === 8 && { moderation: { flagged: true } }),
+            }
+      ),
   });
 });
 
@@ -43,19 +46,19 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("getUnitPrices", () => {
-  it("batches by 10 with at most 8 in flight", async () => {
+  it("batches by 100 with at most 4 in flight", async () => {
     const ids = Array.from({ length: 1050 }, (_, i) => BigInt(i + 1));
     const prices = await getUnitPrices(ids);
-    expect(fetchMock).toHaveBeenCalledTimes(105);
+    expect(fetchMock).toHaveBeenCalledTimes(11);
     for (const [url, init] of fetchMock.mock.calls) {
       expect(
         new URL(url).searchParams.getAll("asset").length
-      ).toBeLessThanOrEqual(10);
+      ).toBeLessThanOrEqual(100);
       expect(
         (init?.headers as Record<string, string>)["x-api-key"]
       ).toBeTruthy();
     }
-    expect(maxInFlight).toBe(8);
+    expect(maxInFlight).toBe(4);
     expect(prices.get(4n)).toBe(4);
     expect(prices.has(3n)).toBe(false);
     expect(prices.has(2n)).toBe(false);

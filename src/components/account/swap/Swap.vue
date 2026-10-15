@@ -190,10 +190,6 @@ function itemProps(item: Item) {
 
 const fromId = ref<bigint>(props.from ?? 0n);
 const toId = ref<bigint>();
-watch(
-  () => props.from,
-  (id) => id != null && (fromId.value = id)
-);
 const fromItem = computed(
   () => held.value.find((i) => i.id === fromId.value) ?? ALGO
 );
@@ -260,6 +256,8 @@ async function fetchQuote() {
   if (toId.value == null || toId.value === fromId.value || !base.value || amountError.value) {
     quote.value = undefined;
     quoteError.value = undefined;
+    // A request this cancels no longer resets it.
+    quoting.value = false;
     return;
   }
   quoting.value = true;
@@ -314,6 +312,10 @@ const impactClass = computed(() =>
   impact.value > IMPACT_CONFIRM ? "text-error" : impact.value > IMPACT_WARN ? "text-warning" : ""
 );
 const impactOk = ref(false);
+// Acceptance covers the impact seen, not a worse one a refresh brings.
+watch(impact, (now, before) => {
+  if (now > before) impactOk.value = false;
+});
 const routeText = computed(() => {
   const entries = Object.entries(quote.value?.flattenedRoute ?? {});
   // Shares may come as fractions or percents.

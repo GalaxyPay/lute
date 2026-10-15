@@ -116,7 +116,14 @@
           <send :acct="acct" />
         </v-window-item>
         <v-window-item v-if="acct && showSwap" :value="SWAP">
-          <swap :acct="acct" :from="swapFrom" @complete="tab = ASSETS" />
+          <!-- Mounted only while shown, so it stops refreshing quotes and
+          picks up `from` each time. -->
+          <swap
+            v-if="tab === SWAP"
+            :acct="acct"
+            :from="swapFrom"
+            @complete="tab = ASSETS"
+          />
         </v-window-item>
         <v-window-item v-if="acct.xpub" :value="HD">
           <h-d-address-table :acct="acct" />
@@ -218,6 +225,10 @@ function openSwap(assetId: bigint) {
   swapFrom.value = assetId;
   tab.value = SWAP;
 }
+// Opening the tab directly starts from ALGO, not the last asset card.
+watch(tab, (t) => {
+  if (t !== SWAP) swapFrom.value = undefined;
+});
 
 async function getInbox() {
   if (!store.network.inboxRouter) return;

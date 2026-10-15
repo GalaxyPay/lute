@@ -106,6 +106,7 @@ export async function getAlgoUsd() {
   }
 }
 
+/** For tests: prices are MainNet-only, so the app never needs to clear them. */
 export function clearPriceCache() {
   cache.clear();
   usd = undefined;

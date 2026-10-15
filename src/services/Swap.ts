@@ -1,25 +1,22 @@
 // In-wallet swaps through Hay's router (Haystack Router, TxnLab), MainNet only.
 import { networks } from "@/data";
-import Algo from "@/services/Algo";
 import { send } from "@/utils/send";
 import { luteSigner } from "@/utils/signers";
-import { falconPlaceholderSigner, simulateFees } from "@/utils/simulateFees";
+import { priceTxns } from "@/utils/simulateFees";
 import { userIndexes, validateSwapGroup } from "@/utils/swap";
 import { RouterClient, type SwapQuote } from "@txnlab/haystack-router";
-import type { Transaction, TransactionSigner } from "algosdk";
+import type { TransactionSigner } from "algosdk";
 
 const ROUTER_KEY = "f537ea2c-3be6-46bd-879a-32ffd5a4b9c3";
 /** Receives 25% of the router fee. */
 const REFERRER = "LUTEAFDWOSZMPJNCG3RRLVSULS2T33KFMKFVEUVFNQYA5TY3ZE2E3BZKAY";
 /** Router fee charged to the user: 0.15%. */
 export const FEE_BPS = 15;
-/** Extra min fees a user txn may be raised by, e.g. for a Falcon signature. */
-const PRICE_HEADROOM = 10n;
 
 export type { SwapQuote };
 
 export function swapSupported() {
-  return !!ROUTER_KEY && useAppStore().networkName === "MainNet";
+  return useAppStore().networkName === "MainNet";
 }
 
 /**
@@ -78,30 +75,6 @@ export function getQuote(p: {
 }
 
 /**
- * Raise the fees of the user's txns to what algod requires once they are
- * signed by `acct` (the router prices for an ed25519 signer). The composer
- * holds these same txn objects and signs them later, router lsigs included,
- * so the regrouped txns are what gets signed.
- */
-async function priceSwapGroup(
-  group: Transaction[],
-  acct: { addr: string; isFalcon25?: boolean }
-) {
-  const sp = await Algo.algod.getTransactionParams().do();
-  const headroom = BigInt(sp.minFee) * PRICE_HEADROOM;
-  const simSigner = acct.isFalcon25 ? falconPlaceholderSigner : undefined;
-  const mine = userIndexes(group, acct.addr);
-  await simulateFees(
-    group.map((txn, idx) =>
-      mine.includes(idx)
-        ? { txn, maxFee: txn.fee + headroom, simSigner }
-        : { txn }
-    ),
-    { suggestedParams: sp }
-  );
-}
-
-/**
  * Build the swap from `quote`, price it for this signer, review and sign it
  * in the sign dialog (which shows `summary`) and send it.
  */
@@ -147,10 +120,10 @@ export async function executeSwap(p: {
     signer,
   });
   await composer.addSwapTransactions();
-  await priceSwapGroup(
-    composer.buildGroup().map((t) => t.txn),
-    p.acct
-  );
+  // The router prices for an ed25519 signer. The composer signs these same
+  // txn objects, so raising their fees here is what gets signed.
+  const group = composer.buildGroup().map((t) => t.txn);
+  await priceTxns(group, p.acct, userIndexes(group, p.acct.addr));
   const signed = await composer.sign();
   return send(signed, "Swap completed");
 }

@@ -8,6 +8,7 @@ import { signer } from "@/utils/signers";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
 
 const INVALID = { cause: 4300 };
+const MAX_SCANNED_ROUNDS = 4n;
 
 export default class LuteTxns {
   txns: WalletTransaction[];
@@ -281,11 +282,12 @@ export default class LuteTxns {
       try {
         const status = await Algo.algod.statusAfterBlock(round).do();
         // Several rounds can pass between polls; a signature in any of them
-        // counts, not only in the latest.
-        let touched = false;
-        for (let r = round + 1n; r <= status.lastRound; r++) {
+        // counts, not only in the latest. After a long gap (a throttled
+        // popup), one reload is cheaper than fetching every block.
+        let touched = status.lastRound - round > MAX_SCANNED_ROUNDS;
+        for (let r = round + 1n; !touched && r <= status.lastRound; r++) {
           const { block } = await Algo.algod.block(r).do();
-          touched ||= !!block.payset?.some(
+          touched = !!block.payset?.some(
             (txn) =>
               txn.signedTxn.signedTxn.txn.applicationCall?.appIndex === appId
           );
