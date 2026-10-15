@@ -27,6 +27,15 @@
       {{ formatAlgoValue(value) }}
     </div>
     <v-btn
+      v-if="tradable && asset.amount"
+      :icon="mdiSwapHorizontal"
+      class="text-icon"
+      variant="text"
+      size="small"
+      aria-label="Trade asset"
+      @click="emit('trade')"
+    />
+    <v-btn
       :icon="favorite ? mdiStar : mdiStarOutline"
       :color="favorite ? 'warning' : undefined"
       :class="!favorite && 'text-icon'"
@@ -90,6 +99,7 @@ import {
   mdiInformationOutline,
   mdiStar,
   mdiStarOutline,
+  mdiSwapHorizontal,
 } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 
@@ -103,8 +113,9 @@ const props = defineProps({
   assetInfo: { type: Object as PropType<modelsv2.Asset> },
   favorite: { type: Boolean },
   optOut: { type: Boolean },
+  tradable: { type: Boolean },
 });
-const emit = defineEmits<{ toggleFavorite: [] }>();
+const emit = defineEmits<{ toggleFavorite: []; trade: [] }>();
 
 const image = ref();
 const form = ref();

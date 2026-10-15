@@ -38,6 +38,8 @@
       :asset-info="infos[Number(asset.assetId)]"
       :favorite="favorites.includes(Number(asset.assetId))"
       :opt-out="optOut"
+      :tradable="tradable"
+      @trade="emit('trade', asset.assetId)"
       @toggle-favorite="
         store.toggleFavoriteAsset(acct.addr, Number(asset.assetId))
       "
@@ -74,6 +76,7 @@
 </template>
 <script lang="ts" setup>
 import Algo from "@/services/Algo";
+import { tradeSupported } from "@/services/Trade";
 import type { AccountInfo } from "@/types";
 import { getAssetInfo, priceTxns, send } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
@@ -83,8 +86,13 @@ import algosdk, { modelsv2 } from "algosdk";
 const props = defineProps({
   acct: { type: Object as PropType<AccountInfo>, required: true },
 });
+const emit = defineEmits<{ trade: [assetId: bigint] }>();
 
 const store = useAppStore();
+// Same rule as the account's Trade tab.
+const tradable = computed(
+  () => props.acct.canSign && !props.acct.appId && tradeSupported()
+);
 const show = ref(false);
 const optOut = ref(false);
 const filter = ref("");

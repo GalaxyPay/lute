@@ -151,21 +151,28 @@ async function ledgerSign(
 
 export async function luteSigner(
   txnGroup: Transaction[],
-  indexesToSign?: number[]
+  indexesToSign?: number[],
+  opts: { summary?: string } = {}
 ) {
   const walletTxns: WalletTransaction[] = txnGroup.map((tx, idx) => {
     const txn = tx.toByte().toBase64();
     if (!indexesToSign || indexesToSign.includes(idx)) return { txn };
     else return { txn, signers: [] };
   });
-  return luteSignerWT(walletTxns);
+  return luteSignerWT(walletTxns, opts.summary);
 }
 
-export async function luteSignerWT(walletTxns: WalletTransaction[]) {
+/** `summary` is a plain-language line the sign dialog shows above the txns. */
+export async function luteSignerWT(
+  walletTxns: WalletTransaction[],
+  summary?: string
+) {
   const store = useAppStore();
   store.setSnackbar("Awaiting Signatures...", "info", -1);
   const signedTxns = await new Promise<Uint8Array[]>((resolve, reject) => {
-    store.luteTxns = new LuteTxns(walletTxns);
+    const luteTxns = new LuteTxns(walletTxns);
+    luteTxns.summary = summary;
+    store.luteTxns = luteTxns;
     window.addEventListener("modal-signer", listener);
     function listener(message: any) {
       if (message.detail.debug) console.log("[Lute Debug]", message.detail);

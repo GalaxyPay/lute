@@ -80,6 +80,7 @@ export async function getManifest() {
       "*://ipfs.algonode.dev/*",
       "*://*.4160.nodely.io/*",
       "*://api.hay.app/*",
+      "*://hayrouter.txnlab.dev/*",
     ],
   };
 

@@ -192,7 +192,12 @@ browser.runtime.onInstalled.addListener(async () => {
       condition: {
         initiatorDomains: [browser.runtime.id],
         resourceTypes: ["image", "media", "xmlhttprequest"],
-        requestDomains: ["ipfs.algonode.dev", "4160.nodely.io", "api.hay.app"],
+        requestDomains: [
+          "ipfs.algonode.dev",
+          "4160.nodely.io",
+          "api.hay.app",
+          "hayrouter.txnlab.dev",
+        ],
       },
     },
   ];

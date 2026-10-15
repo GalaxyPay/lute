@@ -107,13 +107,16 @@
           <msig :appId="acct.appId" />
         </v-window-item>
         <v-window-item v-if="acct" :value="ASSETS">
-          <assets :acct="acct" />
+          <assets :acct="acct" @trade="openTrade" />
         </v-window-item>
         <v-window-item v-if="acct" :value="TXNS">
           <txn-table :acct="acct" />
         </v-window-item>
         <v-window-item v-if="acct" :value="SEND">
           <send :acct="acct" />
+        </v-window-item>
+        <v-window-item v-if="acct && showTrade" :value="TRADE">
+          <trade :acct="acct" :from="tradeFrom" @complete="tab = ASSETS" />
         </v-window-item>
         <v-window-item v-if="acct.xpub" :value="HD">
           <h-d-address-table :acct="acct" />
@@ -136,6 +139,7 @@
 <script lang="ts" setup>
 import Algo from "@/services/Algo";
 import { algoValue, formatAlgoValue } from "@/services/Prices";
+import { tradeSupported } from "@/services/Trade";
 import { bigintToString } from "@/utils";
 import { mdiInformationOutline, mdiKey, mdiRefresh } from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
@@ -148,6 +152,7 @@ const TXNS = "Transactions";
 const INBOX = "Inbox";
 const VAULT = "Vault";
 const HD = "HD";
+const TRADE = "Trade";
 
 const MBR_TIP = `Your MBR increases with each asset and/or application you opt into.
 You can decrease your MBR by closing out of assets and applications.`;
@@ -194,6 +199,7 @@ const tabs = computed(() => {
   if (acct.value?.xpub) val.push(HD);
   if (acct.value?.canSign || acct.value?.appId) {
     val.push(SEND);
+    if (showTrade.value) val.push(TRADE);
     if (acct.value?.ns?.appID) val.push(VAULT);
     if (inboxInfo.value?.assets?.length) val.push(INBOX);
   }
@@ -201,6 +207,17 @@ const tabs = computed(() => {
 });
 
 const inboxInfo = ref<modelsv2.Account>();
+
+// Msig accounts store txns for their members instead of signing, and a
+// trade's quote expires long before that.
+const showTrade = computed(
+  () => !!acct.value?.canSign && !acct.value.appId && tradeSupported()
+);
+const tradeFrom = ref<bigint>();
+function openTrade(assetId: bigint) {
+  tradeFrom.value = assetId;
+  tab.value = TRADE;
+}
 
 async function getInbox() {
   if (!store.network.inboxRouter) return;

@@ -24,6 +24,7 @@ const connect = [
   "ipfs.algonode.dev",
   "asa-list.tinyman.org",
   "api.hay.app",
+  "hayrouter.txnlab.dev",
   "*.lute.app",
   "*.nodely.dev",
   "*.nodely.io",

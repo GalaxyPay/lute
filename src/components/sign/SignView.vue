@@ -45,6 +45,14 @@
               for ${store.networkName}`
           }}
         </div>
+        <v-alert
+          v-if="luteTxns.summary"
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="sign-summary"
+          :text="luteTxns.summary"
+        />
         <div v-if="luteTxns.groupWarn" class="text-warning text-body-2 px-5">
           These transactions are NOT a single atomic group. Review carefully.
         </div>
@@ -268,6 +276,12 @@ window.onbeforeunload = () => {
   font-size: 17px;
   font-weight: 500;
   line-height: 1.35;
+}
+/* v-alert clips its overflow, so in the dialog's column it would shrink to
+   make room for a long txn list. */
+.sign-summary {
+  flex: none;
+  margin: 6px 18px 8px;
 }
 .sign-list {
   padding: 0 18px;

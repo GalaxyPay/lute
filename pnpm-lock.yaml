@@ -35,6 +35,9 @@ importers:
       '@scure/bip39':
         specifier: ^2.4.0
         version: 2.4.0
+      '@txnlab/haystack-router':
+        specifier: 2.0.5
+        version: 2.0.5(algosdk@3.8.0)
       algosdk:
         specifier: 3.8.0
         version: 3.8.0
@@ -1421,6 +1424,12 @@ packages:
 
   '@tsconfig/node22@22.0.6':
     resolution: {integrity: sha512-/5thavHAnWDZwH2H6eEn/T8pBEBhtuKaWGMslsj82kJfvzQgOgEMK7X4goBbIUjgVtAzPTtM9Ml64LA0uxO6Iw==}
+
+  '@txnlab/haystack-router@2.0.5':
+    resolution: {integrity: sha512-2d7nmf3Jfc2RyceewRsXhBB7pWN4+Zoj5Lw5iVCRmntCPL25oJb2hkv2xkkaoPcjMxFoqzP4qC+fp1eyRbFvZA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      algosdk: ^3.0.0
 
   '@types/bn.js@5.2.0':
     resolution: {integrity: sha512-DLbJ1BPqxvQhIGbeu8VbUC1DiAiahHtAYvA0ZEAa4P31F7IaArc8z3C3BRQdWX4mtLQuABG4yzp76ZrS02Ui1Q==}
@@ -5309,6 +5318,10 @@ snapshots:
       string.prototype.matchall: 4.0.12
 
   '@tsconfig/node22@22.0.6': {}
+
+  '@txnlab/haystack-router@2.0.5(algosdk@3.8.0)':
+    dependencies:
+      algosdk: 3.8.0
 
   '@types/bn.js@5.2.0':
     dependencies:
