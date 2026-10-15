@@ -1,24 +1,25 @@
 // Asset prices from Haystack (MainNet only). Haystack prices are per whole
 // unit and come with decimals, so they are cached per base unit. A wallet can
-// hold thousands of ASAs and the API takes at most 10 ids per call, so ids go
-// out in batches with many in flight, and results — including "no price" —
+// hold thousands of ASAs and the API takes at most 100 ids per call, so ids go
+// out in batches with a few in flight, and results — including "no price" —
 // are cached so a refresh only asks for what has gone stale.
 
 import { shallowRef } from "vue";
 
-const API = "https://api.hay.app/api/assets";
+const API = "https://api.hay.app/api/assets/prices";
 const KEY = "hay_pk_pknm6ujwuphntck4jt6qronh2u";
-const BATCH = 10;
-const CONCURRENCY = 8;
+const BATCH = 100;
+const CONCURRENCY = 4;
 const TTL = 5 * 60_000;
 // Below this the price comes from thin pools, which is where spam tokens get
 // absurd prices.
 const MIN_CONFIDENCE = 0.5;
 
-interface HayAsset {
+interface HayPrice {
   id: string | number;
   decimals: number;
-  price?: { price: number; usdPrice: number };
+  price?: number;
+  usdPrice?: number;
   priceConfidence?: number;
   moderation?: { flagged?: boolean };
 }
@@ -34,7 +35,7 @@ async function fetchBatch(ids: bigint[]) {
     signal: AbortSignal.timeout(10_000),
   });
   if (!resp.ok) throw Error(`Haystack ${resp.status}`);
-  return ((await resp.json()) as { assets?: HayAsset[] }).assets ?? [];
+  return ((await resp.json()) as { prices?: HayPrice[] }).prices ?? [];
 }
 
 /** Runs `fn` over `items` with at most `limit` calls in flight. */
@@ -69,11 +70,11 @@ export async function getUnitPrices(ids: bigint[]) {
     batches.push(stale.slice(i, i + BATCH));
   await mapLimit(batches, CONCURRENCY, async (batch) => {
     try {
-      const assets = await fetchBatch(batch);
+      const prices = await fetchBatch(batch);
       const ts = Date.now();
       for (const id of batch) cache.set(id, { ts });
-      for (const a of assets) {
-        const price = a.price?.price ?? 0;
+      for (const a of prices) {
+        const price = a.price ?? 0;
         if (
           price > 0 &&
           (a.priceConfidence ?? 1) >= MIN_CONFIDENCE &&
@@ -98,7 +99,7 @@ export async function getAlgoUsd() {
   if (usd && Date.now() - usd.ts < TTL) return usd.price;
   try {
     const [a] = await fetchBatch([0n]);
-    usd = { price: a?.price?.usdPrice, ts: Date.now() };
+    usd = { price: a?.usdPrice, ts: Date.now() };
     return usd.price;
   } catch (err) {
     console.error(err);
