@@ -1,5 +1,5 @@
 import type { StdSignData, StdSignMetadata } from "ledger-algorand-js";
-import LuteData from "./LuteData";
+import LuteData, { ERROR_BAD_JSON } from "./LuteData";
 import { Address } from "algosdk";
 import { createHash } from "crypto";
 import { sendOrPostMessage } from "@/utils";
@@ -12,14 +12,18 @@ export default class LuteDataOld extends LuteData {
     referrer: string,
     tabId?: number
   ) {
-    let siwa: Siwa;
-    let authenticatorData: Uint8Array;
+    let signData: StdSignData;
     try {
       const jsonString = new TextDecoder().decode(Uint8Array.fromBase64(data));
-      siwa = JSON.parse(jsonString);
-      authenticatorData = new Uint8Array(
-        createHash("sha256").update(referrer).digest()
-      );
+      const siwa: Siwa = JSON.parse(jsonString);
+      signData = {
+        data,
+        signer: Address.fromString(siwa.account_address).publicKey,
+        domain: siwa.domain,
+        authenticatorData: new Uint8Array(
+          createHash("sha256").update(referrer).digest()
+        ),
+      };
     } catch (err: any) {
       const store = useAppStore();
       console.error(err);
@@ -31,14 +35,9 @@ export default class LuteDataOld extends LuteData {
       };
       sendOrPostMessage(message, tabId);
       window.close();
-      return;
+      // A derived constructor cannot return without calling super().
+      throw ERROR_BAD_JSON;
     }
-    const signData: StdSignData = {
-      data,
-      signer: Address.fromString(siwa.account_address).publicKey,
-      domain: siwa.domain,
-      authenticatorData,
-    };
 
     super(signData, metadata, referrer, tabId);
   }

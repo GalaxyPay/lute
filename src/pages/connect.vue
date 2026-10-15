@@ -1,66 +1,93 @@
 <template>
-  <v-container class="pt-0">
-    <v-card v-if="!store.accounts.length" title="Set up your wallet">
-      <v-card-text>
+  <div class="ext-page">
+    <template v-if="!store.accounts.length">
+      <div class="ext-header">
+        <div class="title-panel">Set up your wallet</div>
+      </div>
+      <div class="ext-body text-text-body">
         Your wallet is not set up. Visit Lute to get started.
-      </v-card-text>
-      <v-container class="text-center">
-        <v-btn text="Lute Home" @click="home()" />
-      </v-container>
-    </v-card>
-    <v-card v-else>
-      <div class="text-h5 pa-4">Connect to {{ siteName }}</div>
-      <v-container>
-        <v-data-table
-          v-model="selected"
-          item-value="addr"
-          :loading="!!store.loading"
-          :items="store.snoop ? store.acctInfo : store.sendAcctInfo"
-          :headers="headers"
-          items-per-page="-1"
-          show-select
-        >
-          <template #headers />
-          <template #bottom />
-          <template #[`item.addr`]="{ item }">
-            <v-row no-gutters align="center" class="flex-nowrap">
-              <v-col cols="auto" class="pr-1">
-                <account-icon :item />
-              </v-col>
-              <v-col cols="auto">
-                <div :class="xxs && 'truncate'">
-                  {{ item.name || item.ns?.name }}
-                </div>
-                <span :class="item.name || item.ns?.name ? 'text-grey' : ''">
-                  {{ xxs ? item.title.substring(9, 0) : item.title }}
-                </span>
-              </v-col>
-            </v-row>
-          </template>
-          <template #[`item.info.amount`]="{ value }">
-            <span class="text-no-wrap mr-2">
-              <span v-if="store.isVoi" class="font-weight-bold">V</span>
-              <algo-icon v-else color="currentColor" :width="10" />
-              {{ value != null ? bigintToString(value, 6, false, 2) : "-" }}
+      </div>
+      <div class="ext-footer">
+        <v-btn
+          block
+          size="large"
+          variant="flat"
+          text="Lute home"
+          @click="home()"
+        />
+      </div>
+    </template>
+    <template v-else>
+      <div class="ext-header">
+        <div class="title-panel">Connect to {{ siteName }}</div>
+      </div>
+      <v-data-table
+        v-model="selected"
+        item-value="addr"
+        :loading="!!store.loading"
+        :items="store.snoop ? store.acctInfo : store.sendAcctInfo"
+        :headers="headers"
+        items-per-page="-1"
+        show-select
+        class="connect-table"
+      >
+        <template #headers />
+        <template #bottom />
+        <template #[`item.addr`]="{ item }">
+          <div class="connect-name">
+            <span class="ellipsis">
+              {{ item.name || item.ns?.name || item.title }}
             </span>
-          </template>
-        </v-data-table>
-        <v-row class="text-center mt-3">
-          <v-col>
-            <v-btn
-              text="Connect"
-              :disabled="!selected.length"
-              @click="connect()"
+            <span
+              v-if="isUpgradeable(item.secret) && !item.subType"
+              class="dot"
+            >
+              <v-tooltip
+                activator="parent"
+                location="top"
+                text="Upgrade account from the menu"
+              />
+            </span>
+          </div>
+          <div class="connect-sub ellipsis">
+            <account-icon :item plain />
+            <template v-if="item.name || item.ns?.name">
+              · {{ item.title }}
+            </template>
+          </div>
+        </template>
+        <template #[`item.info.amount`]="{ value }">
+          <span class="amount">
+            <span v-if="store.isVoi" class="font-weight-bold">V </span>
+            <algo-icon
+              v-else
+              color="currentColor"
+              :width="9"
+              class="algo-glyph"
             />
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-card>
-  </v-container>
+            {{ value != null ? bigintToString(value, 6, false, 2) : "-" }}
+          </span>
+        </template>
+      </v-data-table>
+      <div class="ext-footer">
+        <v-btn
+          block
+          size="large"
+          variant="flat"
+          text="Connect"
+          :disabled="!selected.length"
+          :loading="connecting"
+          @click="connect()"
+        />
+      </div>
+    </template>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import router from "@/router";
+import { isUpgradeable } from "@/services/accountSecret";
+import Msig from "@/services/Msig";
 import {
   bigintToString,
   isFromOpener,
@@ -69,11 +96,9 @@ import {
   sendOrPostMessage,
   whenLoaded,
 } from "@/utils";
-import { useDisplay } from "vuetify";
-
+import { emptySignatures } from "@/utils/emptySignature";
+import { findNetwork } from "@/utils/networks";
 const store = useAppStore();
-const { width } = useDisplay();
-const xxs = computed(() => width.value < 450);
 const selected = ref([]);
 const headers: any[] = [{ key: "addr" }, { key: "info.amount", align: "end" }];
 const who = ref();
@@ -112,13 +137,7 @@ async function messageHandler(event: any) {
   try {
     if (store.isWeb && !isFromOpener(event)) return;
     if (event.data?.action === "network") {
-      const network = store.allNetworks.find(
-        (n) =>
-          n.genesisID ===
-          (event.data.genesisID === "sandnet-v1"
-            ? "dockernet-v1"
-            : event.data.genesisID)
-      );
+      const network = findNetwork(store.allNetworks, event.data.genesisID);
       if (store.debug) console.log("[Lute Debug]", network);
       if (!network) {
         throw Error(`Invalid Network ${event.data.genesisID}`);
@@ -146,10 +165,24 @@ function home() {
   }
 }
 
-function connect() {
+const connecting = ref(false);
+
+async function connect() {
+  connecting.value = true;
+  const addrs: string[] = [...selected.value];
+  // For dapps that simulate fees. Best effort: never blocks connecting.
+  let sigs: Record<string, string> = {};
+  try {
+    sigs = await emptySignatures(addrs, store.acctInfo, (appId) =>
+      Msig.loadParams(appId)
+    );
+  } catch (err) {
+    console.error(err);
+  }
   const message = {
     action: "connect",
-    addrs: [...selected.value],
+    addrs,
+    emptySignatures: sigs,
     debug: store.debug,
   };
   sendOrPostMessage(message, tabId);
@@ -162,8 +195,35 @@ window.onbeforeunload = function () {
 };
 </script>
 
-<style>
-.v-table > .v-table__wrapper > table > tbody > tr > td {
-  padding: 0 4px;
+<style scoped>
+.connect-table :deep(td) {
+  padding: 8px 10px !important;
+  border-bottom: none !important;
+}
+.connect-table :deep(td:nth-child(2)) {
+  width: 100%;
+  max-width: 0;
+}
+.connect-table :deep(td:last-child) {
+  white-space: nowrap;
+}
+.connect-table {
+  padding: 6px 8px;
+}
+.connect-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.connect-sub {
+  margin-top: 2px;
+  font: 11px var(--font-mono);
+  color: rgb(var(--v-theme-text-dim));
+}
+.amount {
+  font-size: 13px;
 }
 </style>

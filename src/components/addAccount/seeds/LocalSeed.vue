@@ -1,48 +1,60 @@
 <template>
-  <div class="pl-12">Local Seed</div>
-  <v-container v-if="!passwordSet" class="px-1 text-center">
-    <div>You must set a password in order to use this feature.</div>
-    <v-btn class="my-4" text="Set Password" @click="showPass = true" />
-  </v-container>
-  <v-container v-else>
-    <v-tabs v-if="!hideTabs" v-model="tab" color="primary">
-      <v-tab text="NEW" />
-      <v-tab text="IMPORT" />
-    </v-tabs>
-    <v-window v-model="tab">
-      <v-window-item :value="0">
-        <new-key
-          :number-of-words="24"
-          @hide-tabs="hideTabs = true"
-          @seed="(id, seed) => $emit('seed', id, seed)"
-        />
-      </v-window-item>
-      <v-window-item :value="1">
-        <input-bip39 @seed="(id, seed) => $emit('seed', id, seed)" />
-      </v-window-item>
-    </v-window>
-  </v-container>
-  <v-dialog v-model="showPass" max-width="600" persistent>
-    <password-create @close="checkPassword()" />
-  </v-dialog>
+  <div v-if="store.keystoreMode === 'device'" class="flow-notice">
+    <no-password-notice />
+  </div>
+  <v-tabs v-if="!hideTabs" v-model="tab" class="flow-tabs">
+    <v-tab text="New" />
+    <v-tab text="Import" />
+  </v-tabs>
+  <v-window v-model="tab">
+    <v-window-item :value="0">
+      <new-key
+        :number-of-words="24"
+        @hide-tabs="hideTabs = true"
+        @seed="(id, seed) => $emit('seed', id, seed)"
+      />
+    </v-window-item>
+    <v-window-item :value="1">
+      <input-bip39 @seed="(id, seed) => $emit('seed', id, seed)">
+        <div class="text-center">
+          <v-btn
+            size="small"
+            :prepend-icon="mdiFingerprint"
+            text="Recover from a passkey"
+            @click="recoverPasskey"
+          />
+        </div>
+      </input-bip39>
+    </v-window-item>
+  </v-window>
 </template>
 
 <script lang="ts" setup>
-import { get } from "@/dbLute";
+import Seed from "@/services/Seed";
+import { mdiFingerprint } from "@mdi/js";
 
-defineEmits(["seed"]);
+const emit = defineEmits(["seed", "stage"]);
 
+const store = useAppStore();
 const hideTabs = ref(false);
-const showPass = ref(false);
-const passwordSet = ref();
 const tab = ref(0);
 
-async function checkPassword() {
-  showPass.value = false;
-  passwordSet.value = !!(await get("app", "password"));
-}
+// For the HD wallet step title. NewKey hides the tabs for its word check.
+const stage = computed(() =>
+  tab.value === 1 ? "import" : hideTabs.value ? "check" : "new"
+);
+watch(stage, (s) => emit("stage", s), { immediate: true });
 
-onBeforeMount(() => {
-  checkPassword();
-});
+// Passkeys can no longer create seeds, but one registered with an earlier
+// version can still be recovered on a new device.
+async function recoverPasskey() {
+  try {
+    const { seed, credentialId } = await Seed.getPasskeySeed();
+    const seedId = await Seed.storePasskeyCred(credentialId);
+    emit("seed", seedId, seed);
+  } catch (err: any) {
+    console.error(err);
+    store.setSnackbar(err.message, err.code === "aborted" ? "info" : "error");
+  }
+}
 </script>

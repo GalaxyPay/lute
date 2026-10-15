@@ -1,22 +1,14 @@
 <template>
-  <v-container>
-    <v-row>
-      <v-col
-        v-for="asset in inboxInfo?.assets"
-        :key="Number(asset.assetId)"
-        cols="12"
-        md="6"
-        lg="4"
-      >
-        <inbox-asset
-          :inbox-info="inboxInfo"
-          :asset="asset"
-          :acct="acct"
-          @complete="emit('complete')"
-        />
-      </v-col>
-    </v-row>
-  </v-container>
+  <div class="tab-pane">
+    <inbox-asset
+      v-for="asset in inboxInfo?.assets"
+      :key="Number(asset.assetId)"
+      :inbox-info="inboxInfo"
+      :asset="asset"
+      :acct="acct"
+      @complete="emit('complete')"
+    />
+  </div>
 </template>
 <script lang="ts" setup>
 import type { AccountInfo } from "@/types";
@@ -31,3 +23,12 @@ defineProps({
 });
 const emit = defineEmits(["complete"]);
 </script>
+
+<style scoped>
+.tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 18px 18px;
+}
+</style>

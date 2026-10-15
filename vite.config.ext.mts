@@ -9,9 +9,14 @@ import packageJson from "./package.json" with { type: "json" };
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import VueRouter from "vue-router/vite";
+import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.js";
 
 export const sharedConfig: UserConfig = {
   root: r("src"),
+  // Separate from the web app's cache (vite.config.ts): when `pnpm dev` and
+  // `pnpm devx` run together, a shared one is re-optimized by each in turn
+  // and the other serves stale dependency chunks (504).
+  cacheDir: r("node_modules/.vite-ext"),
   resolve: {
     alias: {
       "@/": `${r("src")}/`,
@@ -29,7 +34,9 @@ export const sharedConfig: UserConfig = {
     Vue({ template: { transformAssetUrls } }),
     Vuetify({
       autoImport: true,
+      styles: { configFile: r("src/styles/settings.scss") },
     }),
+    vuetifyStylesFallback(r("src/styles/settings.scss")),
 
     AutoImport({
       imports: [
@@ -81,6 +88,8 @@ export const sharedConfig: UserConfig = {
       "@ledgerhq/hw-transport-webhid",
       "@ledgerhq/hw-transport-webusb",
       "@scure/bip32",
+      "@scure/bip39",
+      "@scure/bip39/wordlists/english.js",
       "ledger-algorand-js",
       "micro-key-producer/slip10.js",
       "vite-plugin-node-polyfills/shims/buffer",

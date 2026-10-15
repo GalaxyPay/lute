@@ -3,17 +3,23 @@
     <v-card :loading="loading" :disabled="loading">
       <template v-if="!loading">
         <div class="text-h5 pa-4">
-          {{ `${siteName} wants to add a Network to your Lute configuration` }}
+          {{ `${siteName} wants to add a network to your Lute configuration` }}
         </div>
         <v-container>
           <v-row>
             <v-col>
-              <pre style="overflow: auto; font-size: 0.75em">{{ network }}</pre>
+              <pre>{{ network }}</pre>
             </v-col>
           </v-row>
           <v-row class="text-center">
             <v-col>
-              <v-btn text="Add" @click="addNetwork()" />
+              <v-btn
+                variant="flat"
+                size="large"
+                text="Add"
+                :disabled="!valid"
+                @click="addNetwork()"
+              />
             </v-col>
           </v-row>
         </v-container>
@@ -33,10 +39,12 @@ import {
   sendOrPostMessage,
   whenLoaded,
 } from "@/utils";
+import { networkError } from "@/utils/networks";
 
 const store = useAppStore();
 const loading = ref(true);
 const network = ref();
+const valid = ref(false);
 
 let tabId: number | undefined;
 let who: string | null;
@@ -80,29 +88,11 @@ async function messageHandler(event: any) {
 }
 
 async function validateNetwork() {
-  let errMsg: string | undefined;
-  if (
-    typeof network.value !== "object" ||
-    Array.isArray(network.value) ||
-    network.value === null ||
-    !network.value.name ||
-    network.value.algod?.port == null ||
-    network.value.algod?.token == null ||
-    !network.value.algod?.url ||
-    (network.value.indexer &&
-      (network.value.indexer?.port == null ||
-        network.value.indexer?.token == null ||
-        !network.value.indexer?.url)) ||
-    !network.value.genesisID
-  ) {
-    errMsg = "Invalid Network";
-  }
-  const genIds = networks
-    .map((n) => n.genesisID)
-    .concat(store.customNetworks.map((n) => n.genesisID));
-  if (genIds.includes(network.value.genesisID)) {
-    errMsg = "Network Already Exists";
-  }
+  const errMsg = networkError(network.value, [
+    ...networks,
+    ...store.customNetworks,
+  ]);
+  valid.value = !errMsg;
   if (errMsg) {
     const message = {
       action: "error",
@@ -116,6 +106,8 @@ async function validateNetwork() {
 }
 
 async function addNetwork() {
+  // The request was already refused if this is false.
+  if (!valid.value) return;
   const newVal = deepClone(store.customNetworks.concat([network.value]));
   await set("app", "customNetworks", newVal);
   await set("app", "networkName", network.value.name);

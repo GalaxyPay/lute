@@ -1,84 +1,142 @@
 <template>
-  <v-container>
-    <v-row v-if="acct.canSign || acct.appId">
-      <v-col class="text-center">
-        <v-btn
-          text="Opt-In to Asset"
-          :prepend-icon="mdiPlusCircle"
-          @click="show = true"
-          class="pr-7"
-        />
-        <v-btn
-          text="Opt-Out of Asset"
-          :prepend-icon="mdiCloseCircle"
-          @click="optOut = !optOut"
-        />
-      </v-col>
-    </v-row>
-    <v-row v-if="!acct.info?.assets?.length">
-      <v-col class="text-center text-body-2 font-italic"> No Assets yet </v-col>
-    </v-row>
-    <v-row v-if="!store.loading">
-      <v-col
-        v-for="asset in acct.info?.assets"
-        :key="Number(asset.assetId)"
-        cols="12"
-        md="6"
-        lg="4"
-      >
-        <asset-card :acct="acct" :asset="asset" :opt-out="optOut" />
-      </v-col>
-    </v-row>
-  </v-container>
-  <v-dialog v-model="show" max-width="600" persistent>
+  <div v-if="acct.info?.assets?.length" class="asset-filter">
+    <v-text-field
+      v-model="filter"
+      placeholder="Search assets"
+      density="compact"
+      variant="outlined"
+      :prepend-inner-icon="mdiMagnify"
+      clearable
+      hide-details
+    />
+  </div>
+  <div v-if="acct.canSign || acct.appId" class="asset-actions">
+    <v-btn
+      variant="outlined"
+      size="small"
+      text="Opt-in to asset"
+      :prepend-icon="mdiPlus"
+      @click="show = true"
+    />
+    <v-btn
+      variant="outlined"
+      size="small"
+      text="Opt-out of asset"
+      :prepend-icon="mdiClose"
+      :active="optOut"
+      @click="optOut = !optOut"
+    />
+  </div>
+  <div v-if="!acct.info?.assets?.length" class="empty-note">No assets yet</div>
+  <div v-else-if="!assets.length" class="empty-note">No matching assets</div>
+  <div v-if="!store.loading">
+    <asset-card
+      v-for="asset in assets"
+      :key="Number(asset.assetId)"
+      :acct="acct"
+      :asset="asset"
+      :asset-info="infos[Number(asset.assetId)]"
+      :favorite="favorites.includes(Number(asset.assetId))"
+      :opt-out="optOut"
+      :swappable="swappable"
+      @swap="emit('swap', asset.assetId)"
+      @toggle-favorite="
+        store.toggleFavoriteAsset(acct.addr, Number(asset.assetId))
+      "
+    />
+  </div>
+  <v-dialog v-model="show" max-width="440" persistent>
     <v-card>
       <v-card-title class="d-flex">
-        Opt-In to Asset
+        Opt-in to asset
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="closeDialog()" />
+        <v-icon :icon="mdiClose" @click="closeDialog()" />
       </v-card-title>
       <v-form ref="form" @submit.prevent="optIn()">
-        <v-container>
-          <v-row justify="center">
-            <v-col cols="8">
-              <v-text-field
-                v-model.number="assetId"
-                type="number"
-                label="Asset ID"
-                density="comfortable"
-                @update:model-value="getAsset()"
-                :error-messages="assetError"
-                :hint="asset?.params.name ?? ''"
-                persistent-hint
-                :rules="[required]"
-                autofocus
-              />
-            </v-col>
-          </v-row>
-          <v-card-actions>
-            <v-spacer />
-            <v-btn text="Opt-In" type="submit" />
-          </v-card-actions>
-        </v-container>
+        <v-card-text>
+          <v-text-field
+            v-model.number="assetId"
+            type="number"
+            label="Asset ID"
+            density="comfortable"
+            @update:model-value="getAsset()"
+            :error-messages="assetError"
+            :hint="asset?.params.name ?? ''"
+            persistent-hint
+            :rules="[required]"
+            autofocus
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-btn variant="flat" text="Opt-in" type="submit" />
+        </v-card-actions>
       </v-form>
     </v-card>
   </v-dialog>
 </template>
 <script lang="ts" setup>
 import Algo from "@/services/Algo";
+import { swapSupported } from "@/services/Swap";
 import type { AccountInfo } from "@/types";
-import { priceTxns, send } from "@/utils";
-import { luteSigner } from "@/utils/signers";
-import { mdiClose, mdiCloseCircle, mdiPlusCircle } from "@mdi/js";
-import algosdk from "algosdk";
+import { getAssetInfo, priceTxns, send } from "@/utils";
+import { luteSigner, reportSignError } from "@/utils/signers";
+import { mdiClose, mdiMagnify, mdiPlus } from "@mdi/js";
+import algosdk, { modelsv2 } from "algosdk";
 
 const props = defineProps({
   acct: { type: Object as PropType<AccountInfo>, required: true },
 });
+const emit = defineEmits<{ swap: [assetId: bigint] }>();
 
 const store = useAppStore();
+// Same rule as the account's Swap tab.
+const swappable = computed(
+  () => props.acct.canSign && !props.acct.appId && swapSupported()
+);
 const show = ref(false);
 const optOut = ref(false);
+const filter = ref("");
+// Asset params by id, loaded here so the list can filter on names.
+const infos = ref<Record<number, modelsv2.Asset | undefined>>({});
+
+watch(
+  () => store.networkName,
+  () => (infos.value = {})
+);
+watch(
+  () => props.acct.info?.assets?.map((a) => a.assetId),
+  (ids) => {
+    // A network switch replaces the map, dropping lookups still in flight.
+    const map = infos.value;
+    ids?.forEach(async (id) => {
+      const num = Number(id);
+      if (num in map) return;
+      map[num] = undefined;
+      map[num] = await getAssetInfo(id);
+      // Failed lookups retry on the next refresh.
+      if (!map[num]) delete map[num];
+    });
+  },
+  { immediate: true }
+);
+
+const favorites = computed(
+  () => store.favoriteAssets[store.favoritesKey(props.acct.addr)] || []
+);
+const assets = computed(() => {
+  const q = filter.value?.trim().toLowerCase();
+  const list = (props.acct.info?.assets || []).filter((a) => {
+    if (!q) return true;
+    const params = infos.value[Number(a.assetId)]?.params;
+    return [params?.name, params?.unitName, String(a.assetId)].some((s) =>
+      s?.toLowerCase().includes(q)
+    );
+  });
+  // Favorites first, each group keeping the account's order.
+  const fav = (a: modelsv2.AssetHolding) =>
+    favorites.value.includes(Number(a.assetId));
+  return [...list.filter(fav), ...list.filter((a) => !fav(a))];
+});
 const form = ref();
 const assetId = ref();
 const asset = ref();
@@ -101,7 +159,7 @@ async function getAsset() {
           .do()
           .catch(() => {
             asset.value = undefined;
-            assetError.value = "Invalid Asset";
+            assetError.value = "Invalid asset";
           })
       : undefined;
   }, 500);
@@ -122,14 +180,40 @@ async function optIn() {
     closeDialog();
     await priceTxns([txn], props.acct);
     const stxn = await luteSigner([txn]);
-    await send(stxn, "Opted-In to Asset");
+    await send(stxn, "Opted-in to asset");
   } catch (err: any) {
-    console.error(err);
-    store.setSnackbar(err.message, "error");
+    reportSignError(err);
   }
   store.overlay = false;
 }
 </script>
+
+<style scoped>
+.asset-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgb(var(--v-theme-border-subtle));
+}
+.asset-filter {
+  padding: 12px 18px;
+  border-bottom: 1px solid rgb(var(--v-theme-border-subtle));
+}
+.empty-note {
+  padding: 24px 18px;
+  text-align: center;
+  font-size: 13px;
+  color: rgb(var(--v-theme-text-muted));
+}
+@media (max-width: 599.98px) {
+  .asset-actions .v-btn {
+    flex: 1;
+    --v-btn-height: 44px;
+  }
+}
+</style>
 
 <style>
 input::-webkit-outer-spin-button,

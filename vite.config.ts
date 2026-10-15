@@ -7,10 +7,15 @@ import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import { VitePWA } from "vite-plugin-pwa";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import sri from "vite-plugin-sri-gen";
+import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.ts";
 
 // Utilities
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
+
+const vuetifySettings = fileURLToPath(
+  new URL("./src/styles/settings.scss", import.meta.url)
+);
 
 const connect = [
   "'self'",
@@ -18,6 +23,8 @@ const connect = [
   "api.envoi.sh",
   "ipfs.algonode.dev",
   "asa-list.tinyman.org",
+  "api.hay.app",
+  "hayrouter.txnlab.dev",
   "*.lute.app",
   "*.nodely.dev",
   "*.nodely.io",
@@ -66,7 +73,9 @@ export default defineConfig({
     // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
     Vuetify({
       autoImport: true,
+      styles: { configFile: vuetifySettings },
     }),
+    vuetifyStylesFallback(vuetifySettings),
     nodePolyfills(),
     VitePWA({
       registerType: "autoUpdate",
@@ -151,6 +160,8 @@ export default defineConfig({
       "@ledgerhq/hw-transport-webhid",
       "@ledgerhq/hw-transport-webusb",
       "@scure/bip32",
+      "@scure/bip39",
+      "@scure/bip39/wordlists/english.js",
       "ledger-algorand-js",
       "micro-key-producer/slip10.js",
       "vite-plugin-node-polyfills/shims/buffer",

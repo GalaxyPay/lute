@@ -9,7 +9,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { routes } from "vue-router/auto-routes";
 
 for (const route of routes) {
-  const modals = ["/connect", "/sign", "/auth", "/network"];
+  const modals = ["/connect", "/sign", "/auth", "/network", "/sync"];
   if (modals.includes(route.name!.toString())) {
     route.meta = { modal: true };
   }
@@ -37,7 +37,7 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
-  const actions = ["connect", "sign", "auth", "swap", "network"];
+  const actions = ["connect", "sign", "auth", "swap", "network", "sync"];
   const action = to.query.action?.toString();
   if (action && actions.includes(action)) {
     delete to.query.action;

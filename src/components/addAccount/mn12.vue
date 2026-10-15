@@ -1,10 +1,10 @@
 <template>
-  <v-container v-if="!mn25">
+  <template v-if="!mn25">
     <v-radio-group
       v-model="wallet"
       inline
       hide-details
-      class="d-flex justify-center"
+      class="d-flex justify-center pt-4"
     >
       <v-radio
         v-for="item in wallets"
@@ -18,7 +18,7 @@
       button-text="Convert"
       @mn="handleMnemonic"
     />
-  </v-container>
+  </template>
   <new-key v-else :number-of-words="25" :convertion="mn25" />
 </template>
 
