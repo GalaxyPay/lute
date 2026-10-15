@@ -12,6 +12,9 @@ export {
 export { getAssetInfo } from "./assetInfo";
 export {
   BASE_PATH,
+  DAPP_SILENT_MS,
+  dappLinkProblem,
+  type DappLinkProblem,
   isFromOpener,
   postReady,
   referrerOrigin,
