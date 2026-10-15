@@ -1,5 +1,9 @@
-import type { SignDataResponseSafe, SignDataSafe } from "@/types";
-import type { StdSignData, StdSignDataResponse } from "ledger-algorand-js";
+import type {
+  SignDataResponseSafe,
+  SignDataSafe,
+  StdSignData,
+  StdSignDataResponse,
+} from "@/types";
 
 export function signDataSafe(obj: StdSignData): SignDataSafe {
   return {

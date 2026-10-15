@@ -1,5 +1,10 @@
 import Signer, { SignContext } from "@/services/Signer";
-import type { Siwa } from "@/types";
+import type {
+  Siwa,
+  StdSignData,
+  StdSignDataResponse,
+  StdSignMetadata,
+} from "@/types";
 import {
   isBadPassword,
   needsPassword,
@@ -12,15 +17,10 @@ import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 import algosdk, { encodeAddress } from "algosdk";
 import { canonify } from "canonify";
 import { FALCON_DET1024_PUBKEY_SIZE } from "falcon-1024";
-import {
-  AlgorandApp,
-  type StdSignData,
-  type StdSignDataResponse,
-  type StdSignMetadata,
-} from "ledger-algorand-js";
+import { AlgorandApp } from "ledger-algorand-js";
 import { z } from "zod";
 
-enum ScopeType {
+export enum ScopeType {
   UNKNOWN = -1,
   AUTH = 1,
 }
@@ -45,6 +45,10 @@ class SignDataError extends Error {
 // Error Codes & Messages
 export const ERROR_INVALID = new SignDataError("Invalid Request", 4300);
 export const ERROR_INVALID_SCOPE = new SignDataError("Invalid Scope", 4600);
+export const ERROR_UNSUPPORTED_SCHEME = new SignDataError(
+  "Unsupported Scheme",
+  4601
+);
 export const ERROR_FAILED_DECODING = new SignDataError("Failed decoding", 4602);
 export const ERROR_INVALID_SIGNER = new SignDataError("Invalid Signer", 4603);
 export const ERROR_BAD_JSON = new SignDataError("Bad JSON", 4609);
@@ -55,7 +59,7 @@ export const ERROR_FAILED_DOMAIN_AUTH = new SignDataError(
 
 const SIGNER_SIZE: Record<Siwa["type"], number> = {
   ed25519: 32,
-  falcon1024: FALCON_DET1024_PUBKEY_SIZE,
+  "falcon-1024-det": FALCON_DET1024_PUBKEY_SIZE,
 };
 
 export default class LuteData {
@@ -109,7 +113,7 @@ export default class LuteData {
         "request-id": z.string().optional(),
         chain_id: z.string(),
         resources: z.string().array().optional(),
-        type: z.enum(["ed25519", "falcon1024"]),
+        type: z.enum(["ed25519", "falcon-1024-det"]),
       }) as z.ZodType<Siwa>;
 
       switch (this.metadata.encoding) {
@@ -148,6 +152,13 @@ export default class LuteData {
           if (!canonifiedJson || canonifiedJson !== this.jsonString) {
             throw ERROR_BAD_JSON;
           }
+
+          // scheme is optional (older dapps omit it); when given it must match
+          // siwa.type, which the schema above already limits to known schemes.
+          const scheme = this.stdSignData.scheme;
+          if (scheme !== undefined && scheme !== this.siwa.type)
+            throw ERROR_UNSUPPORTED_SCHEME;
+
           // the signer must be a public key of the requested scheme
           if (this.stdSignData.signer.length !== SIGNER_SIZE[this.siwa.type])
             throw ERROR_INVALID_SIGNER;
@@ -199,7 +210,7 @@ export default class LuteData {
       if (!this.validated || !this.jsonString || !this.siwa)
         throw ERROR_INVALID;
       const signer = this.stdSignData.signer;
-      const isFalcon = this.siwa.type === "falcon1024";
+      const isFalcon = this.siwa.type === "falcon-1024-det";
       // A Falcon address is a hash of its public key, an ed25519 address is
       // the key itself.
       const signerAddr = isFalcon

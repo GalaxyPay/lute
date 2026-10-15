@@ -66,7 +66,8 @@ async function request(
   account_address: string,
   type: string,
   signer: Uint8Array,
-  referrer = DOMAIN
+  referrer = DOMAIN,
+  scheme?: string
 ) {
   const siwa = {
     domain: DOMAIN,
@@ -84,6 +85,7 @@ async function request(
       signer,
       domain: DOMAIN,
       authenticatorData,
+      scheme,
     },
     { scope: 1, encoding: "base64" },
     referrer
@@ -100,7 +102,7 @@ beforeEach(() => {
   posted.length = 0;
 });
 
-describe("SIWA falcon1024", () => {
+describe("SIWA falcon-1024-det", () => {
   it("signs with the Falcon key the request names", async () => {
     const { LuteData, fx } = await setup();
     const { publicKey, addr } = falconKey();
@@ -108,7 +110,7 @@ describe("SIWA falcon1024", () => {
     const { ld, toSign } = await request(
       LuteData,
       addr,
-      "falcon1024",
+      "falcon-1024-det",
       publicKey
     );
     expect(posted).toEqual([]);
@@ -133,17 +135,22 @@ describe("SIWA falcon1024", () => {
     const addr = algosdk
       .addressFromPQKey(algosdk.FALCON_1024_SCHEME, publicKey)
       .address.toString();
-    const { ld } = await request(LuteData, addr, "falcon1024", publicKey);
+    const { ld } = await request(LuteData, addr, "falcon-1024-det", publicKey);
     expect(posted).toEqual([]);
     await ld.sign(PASS);
     expect(posted[0]).toMatchObject({ action: "error", code: 4603 });
   });
 
-  it("rejects falcon1024 for an ed25519 account", async () => {
+  it("rejects falcon-1024-det for an ed25519 account", async () => {
     const { LuteData, fx } = await setup();
     // Not a Falcon public key, but the right size to pass validation.
     const signer = new Uint8Array(publicKeySize()).fill(1);
-    const { ld } = await request(LuteData, fx.hotAddr, "falcon1024", signer);
+    const { ld } = await request(
+      LuteData,
+      fx.hotAddr,
+      "falcon-1024-det",
+      signer
+    );
     await ld.sign(PASS);
     expect(posted[0]).toMatchObject({ action: "error", code: 4603 });
   });
@@ -210,6 +217,48 @@ describe("SIWA validation gates signing", () => {
       expect.objectContaining({ action: "error", code: 4300 }),
     ]);
   });
+});
+
+describe("StdSignData.scheme", () => {
+  it.each(["ed25519", undefined])("signs with scheme %s", async (scheme) => {
+    const { LuteData, fx } = await setup();
+    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    const { ld } = await request(
+      LuteData,
+      fx.hotAddr,
+      "ed25519",
+      signer,
+      DOMAIN,
+      scheme
+    );
+    expect(posted).toEqual([]);
+    expect(await ld.sign(PASS)).toBe(true);
+    expect(posted[0].signerResponse.scheme).toBe(scheme);
+  });
+
+  it.each(["falcon-1024-det", "falcon1024"])(
+    "rejects scheme %s that does not match siwa.type",
+    async (scheme) => {
+      const { LuteData, fx } = await setup();
+      const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+      const { ld } = await request(
+        LuteData,
+        fx.hotAddr,
+        "ed25519",
+        signer,
+        DOMAIN,
+        scheme
+      );
+      expect(posted).toEqual([
+        expect.objectContaining({ action: "error", code: 4601 }),
+      ]);
+      posted.length = 0;
+      await ld.sign(PASS);
+      expect(posted).toEqual([
+        expect.objectContaining({ action: "error", code: 4300 }),
+      ]);
+    }
+  );
 });
 
 describe("legacy SIWA requests (LuteDataOld)", () => {
