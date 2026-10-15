@@ -62,6 +62,8 @@ const accts = computed(() => {
     if (a.info && !seen.has(a.info.address)) seen.set(a.info.address, a.info);
   return [...seen.values()];
 });
+// Totals are unknown until every account's info has loaded.
+const ready = computed(() => store.acctInfo.every((a) => a.info));
 const algoTotal = computed(() =>
   accts.value.reduce((sum, i) => sum + i.amount, 0n)
 );
@@ -81,11 +83,16 @@ const pricedCount = ref(0);
 let run = 0;
 
 watch(
-  [holdings, priced],
+  [holdings, priced, ready],
   async () => {
     const id = ++run;
     if (!priced.value) {
       unitPrices.value = new Map();
+      return;
+    }
+    if (!ready.value) {
+      assetAlgo.value = undefined;
+      loading.value = false;
       return;
     }
     loading.value = true;
@@ -110,7 +117,9 @@ watch(
 const pending = (v: number | undefined, f: (n: number) => string) =>
   loading.value ? "…" : v === undefined ? "—" : f(v);
 
-const algoText = computed(() => bigintToString(algoTotal.value, 6, false, 2));
+const algoText = computed(() =>
+  ready.value ? bigintToString(algoTotal.value, 6, false, 2) : "-"
+);
 const assetText = computed(() => pending(assetAlgo.value, formatAlgoValue));
 const totalAlgo = computed(() =>
   assetAlgo.value === undefined

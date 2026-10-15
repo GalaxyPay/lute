@@ -8,7 +8,7 @@ import { userIndexes, validateTradeGroup } from "@/utils/trade";
 import { RouterClient, type SwapQuote } from "@txnlab/haystack-router";
 import type { Transaction, TransactionSigner } from "algosdk";
 
-const ROUTER_KEY = "";
+const ROUTER_KEY = "f537ea2c-3be6-46bd-879a-32ffd5a4b9c3";
 /** Receives 25% of the router fee. */
 const REFERRER = "LUTEAFDWOSZMPJNCG3RRLVSULS2T33KFMKFVEUVFNQYA5TY3ZE2E3BZKAY";
 /** Router fee charged to the user: 0.15%. */
