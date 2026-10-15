@@ -1,5 +1,5 @@
 <template>
-  <v-form @submit.prevent="trade()" autocomplete="off">
+  <v-form @submit.prevent="swap()" autocomplete="off">
     <v-container class="send-form">
       <v-row>
         <v-col cols="12" sm="6">
@@ -108,10 +108,10 @@
     <v-card-actions class="card-footer">
       <v-btn
         variant="flat"
-        text="Trade"
+        text="Swap"
         type="submit"
-        :disabled="!canTrade"
-        :loading="trading"
+        :disabled="!canSwap"
+        :loading="swapping"
       />
     </v-card-actions>
   </v-form>
@@ -119,20 +119,20 @@
 
 <script lang="ts" setup>
 import {
-  executeTrade,
+  executeSwap,
   FEE_BPS,
   getQuote,
   type SwapQuote,
-} from "@/services/Trade";
+} from "@/services/Swap";
 import type { AccountInfo, TinyAsset } from "@/types";
 import { bigintToString, getAssetInfo, stringToBigint } from "@/utils";
 import { reportSignError } from "@/utils/signers";
-import { minReceived, spendable } from "@/utils/trade";
+import { minReceived, spendable } from "@/utils/swap";
 import { mdiSwapVertical } from "@mdi/js";
 import type { modelsv2 } from "algosdk";
 
 const SLIPPAGES = [0.5, 1, 2];
-const SLIPPAGE_KEY = "trade-slippage";
+const SLIPPAGE_KEY = "swap-slippage";
 const IMPACT_WARN = 5;
 const IMPACT_CONFIRM = 15;
 const REFRESH_MS = 20_000;
@@ -292,7 +292,7 @@ watch([fromId, toId, base], () => {
 });
 onMounted(() => {
   refresher = window.setInterval(() => {
-    if (quote.value && !trading.value && !document.hidden) fetchQuote();
+    if (quote.value && !swapping.value && !document.hidden) fetchQuote();
   }, REFRESH_MS);
 });
 onBeforeUnmount(() => {
@@ -323,25 +323,25 @@ const routeText = computed(() => {
 const usd = (n: number) =>
   n.toLocaleString(undefined, { style: "currency", currency: "USD" });
 
-const trading = ref(false);
-const canTrade = computed(
+const swapping = ref(false);
+const canSwap = computed(
   () =>
     !!quote.value?.quote &&
     !quoting.value &&
-    !trading.value &&
+    !swapping.value &&
     !amountError.value &&
     (impact.value <= IMPACT_CONFIRM || impactOk.value)
 );
 
-async function trade() {
-  if (!canTrade.value || !quote.value) return;
-  trading.value = true;
+async function swap() {
+  if (!canSwap.value || !quote.value) return;
+  swapping.value = true;
   const summary =
-    `Trade ${bigintToString(quote.value.amount, fromItem.value.decimals)} ${fromItem.value.unit}` +
+    `Swap ${bigintToString(quote.value.amount, fromItem.value.decimals)} ${fromItem.value.unit}` +
     ` for at least ${minText.value} ${toItem.value.unit} via ${routeText.value}.` +
     (needsOptIn.value ? ` Includes an opt-in to ${toItem.value.unit}.` : "");
   try {
-    await executeTrade({
+    await executeSwap({
       quote: quote.value,
       acct: props.acct,
       slippage: slippage.value,
@@ -353,7 +353,7 @@ async function trade() {
     reportSignError(err);
   } finally {
     store.overlay = false;
-    trading.value = false;
+    swapping.value = false;
   }
 }
 </script>

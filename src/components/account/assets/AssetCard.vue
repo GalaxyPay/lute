@@ -27,13 +27,13 @@
       {{ formatAlgoValue(value) }}
     </div>
     <v-btn
-      v-if="tradable && asset.amount"
+      v-if="swappable && asset.amount"
       :icon="mdiSwapHorizontal"
       class="text-icon"
       variant="text"
       size="small"
-      aria-label="Trade asset"
-      @click="emit('trade')"
+      aria-label="Swap asset"
+      @click="emit('swap')"
     />
     <v-btn
       :icon="favorite ? mdiStar : mdiStarOutline"
@@ -113,9 +113,9 @@ const props = defineProps({
   assetInfo: { type: Object as PropType<modelsv2.Asset> },
   favorite: { type: Boolean },
   optOut: { type: Boolean },
-  tradable: { type: Boolean },
+  swappable: { type: Boolean },
 });
-const emit = defineEmits<{ toggleFavorite: []; trade: [] }>();
+const emit = defineEmits<{ toggleFavorite: []; swap: [] }>();
 
 const image = ref();
 const form = ref();

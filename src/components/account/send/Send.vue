@@ -21,7 +21,7 @@
         :rekey="txnType.key === 'rekey'"
       />
       <Participation v-if="txnType.key === 'keyreg'" :acct="acct" />
-      <Swap v-else-if="txnType.key === 'swap'" :sender="acct" />
+      <P2PSwap v-else-if="txnType.key === 'swap'" :sender="acct" />
     </template>
   </div>
 </template>
@@ -34,7 +34,7 @@ defineProps<{ acct: AccountInfo }>();
 const txnTypes = [
   { title: "Transfer", key: "xfer" },
   { title: "Key registration", key: "keyreg" },
-  { title: "Atomic swap", key: "swap" },
+  { title: "P2P swap", key: "swap" },
   { title: "Rekey", key: "rekey" },
 ];
 const txnType = ref(txnTypes[0]);

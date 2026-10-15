@@ -1,123 +1,158 @@
-// Swap links come from another person; the taker signs txn2.
+// Swap groups are written by the router's API; the wallet checks what the
+// user signs before the sign dialog opens.
 import algosdk from "algosdk";
 import { describe, expect, it } from "vitest";
-import { parseSwap, validateSwap } from "@/utils/swap";
+import {
+  MAX_SWAP_FEE,
+  minReceived,
+  spendable,
+  SWAP_FEE_RESERVE,
+  userIndexes,
+  validateSwapGroup,
+} from "@/utils/swap";
 
-const maker = algosdk.generateAccount();
-const taker = algosdk.generateAccount().addr;
-const thief = algosdk.generateAccount().addr;
+const user = algosdk.generateAccount().addr.toString();
+const pool = algosdk.generateAccount().addr.toString();
+const thief = algosdk.generateAccount().addr.toString();
+const genesisHash = new Uint8Array(32).fill(1);
 
-const params = (genesisHash = new Uint8Array(32).fill(1)) => ({
-  fee: 1000n,
+const sp = (fee = 1000n, hash = genesisHash) => ({
+  fee,
   minFee: 1000n,
   firstValid: 1n,
   lastValid: 1000n,
-  genesisID: "localnet-v1",
-  genesisHash,
+  genesisID: "mainnet-v1.0",
+  genesisHash: hash,
   flatFee: true,
 });
 
-const offer = () =>
+const pay = (extra: Record<string, unknown> = {}, fee?: bigint) =>
   algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: maker.addr,
-    receiver: taker,
-    amount: 5,
-    suggestedParams: params(),
-  });
-
-const ask = (extra: Record<string, unknown> = {}) =>
-  algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    sender: taker,
-    receiver: maker.addr,
-    assetIndex: 7,
-    amount: 1,
-    suggestedParams: params(),
+    sender: user,
+    receiver: pool,
+    amount: 1_000_000,
+    suggestedParams: sp(fee),
     ...extra,
   });
-
-/** A link the way Swap.vue builds it. */
-function link(txn1: algosdk.Transaction, txn2: algosdk.Transaction) {
-  const b64url = (b: Uint8Array) => b.toBase64({ alphabet: "base64url" });
-  return {
-    tx1: b64url(algosdk.signTransaction(txn1, maker.sk).blob),
-    tx2: b64url(txn2.toByte()),
-  };
-}
-
-function grouped(...txns: algosdk.Transaction[]) {
-  return algosdk.assignGroupID(txns);
-}
-
-describe("swap links", () => {
-  it("accepts the swap Swap.vue builds", () => {
-    const [t1, t2] = grouped(offer(), ask());
-    const { tx1, tx2 } = link(t1!, t2!);
-    const { txn1, txn2 } = parseSwap(tx1, tx2);
-    expect(txn1.txID()).toBe(t1!.txID());
-    expect(txn2.txID()).toBe(t2!.txID());
+const call = (onComplete = algosdk.OnApplicationComplete.NoOpOC) =>
+  algosdk.makeApplicationCallTxnFromObject({
+    sender: user,
+    appIndex: 42,
+    onComplete,
+    suggestedParams: sp(),
+  });
+const optIn = (assetIndex = 31566704) =>
+  algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender: user,
+    receiver: user,
+    assetIndex,
+    amount: 0,
+    suggestedParams: sp(),
+  });
+const send = (assetIndex: number, amount: number) =>
+  algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender: user,
+    receiver: pool,
+    assetIndex,
+    amount,
+    suggestedParams: sp(),
+  });
+// Router escrow txn, signed by its lsig, not the user.
+const routerTxn = () =>
+  algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender: pool,
+    receiver: user,
+    assetIndex: 31566704,
+    amount: 5,
+    suggestedParams: sp(),
   });
 
-  it.each([
-    ["close the taker's account", { closeRemainderTo: thief }, "close"],
-    ["rekey the taker's account", { rekeyTo: thief }, "rekey"],
-  ])("refuses a txn2 that would %s", (_what, extra, msg) => {
-    const [t1, t2] = grouped(offer(), ask(extra));
-    expect(() => validateSwap(t1!, t2!)).toThrow(msg);
+const expect0 = { address: user, fromASAID: 0n, amount: 1_000_000n, genesisHash };
+const check = (group: algosdk.Transaction[], exp = expect0) =>
+  validateSwapGroup(group, userIndexes(group, user), exp);
+
+describe("validateSwapGroup", () => {
+  it("accepts opt-ins, app calls and the input payment", () => {
+    expect(() => check([optIn(), call(algosdk.OnApplicationComplete.OptInOC), pay(), call(), routerTxn()])).not.toThrow();
   });
 
-  it("refuses a clawback as txn2", () => {
-    const [t1, t2] = grouped(offer(), ask({ assetSender: thief }));
-    expect(() => validateSwap(t1!, t2!)).toThrow("clawback");
+  it("signs exactly the user's txns", () => {
+    const group = [pay(), routerTxn()];
+    expect(() => validateSwapGroup(group, [0, 1], expect0)).toThrow("signers");
+    expect(() => validateSwapGroup(group, [], expect0)).toThrow("signers");
   });
 
-  it("refuses a close on the taker's Algo payment", () => {
-    const pay = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: taker,
-      receiver: maker.addr,
+  it("rejects rekey, close and clawback", () => {
+    expect(() => check([pay({ rekeyTo: thief })])).toThrow("rekey");
+    expect(() => check([pay({ closeRemainderTo: thief })])).toThrow("close");
+    const claw = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      sender: user,
+      receiver: thief,
+      assetSender: pool,
+      assetIndex: 7,
       amount: 1,
-      closeRemainderTo: thief,
-      suggestedParams: params(),
+      suggestedParams: sp(),
     });
-    const [t1, t2] = grouped(offer(), pay);
-    expect(() => validateSwap(t1!, t2!)).toThrow("close");
+    expect(() => check([claw], { ...expect0, fromASAID: 7n })).toThrow("clawback");
   });
 
-  it("refuses a group that holds a third, hidden txn", () => {
-    const hidden = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: maker.addr,
-      receiver: maker.addr,
-      amount: 0,
-      suggestedParams: params(),
+  it("allows the router fee on top of the input and a small ALGO top-up", () => {
+    const withFee = { ...expect0, feeBps: 15 };
+    expect(() => check([pay({ amount: 1_001_500 }), pay({ amount: 100_000 })], withFee)).not.toThrow();
+    const asa = { ...withFee, fromASAID: 7n, amount: 10_000n };
+    expect(() => check([send(7, 10_015), pay({ amount: 100_000 })], asa)).not.toThrow();
+  });
+
+  it("rejects moving more than the input, router fee and cost budget", () => {
+    // ALGO input: anything past the fee comes out of the same budget as fees.
+    expect(() => check([pay({ amount: 1_000_000 + Number(MAX_SWAP_FEE) })])).toThrow("fee");
+    expect(() => check([pay(), pay({ amount: Number(MAX_SWAP_FEE) })])).toThrow("fee");
+    // ASA input: the asset itself is capped, ALGO goes to the budget.
+    const asa = { ...expect0, fromASAID: 7n, amount: 10_000n, feeBps: 15 };
+    expect(() => check([send(7, 10_016)], asa)).toThrow("amount");
+    expect(() => check([send(7, 10_000), pay({ amount: Number(MAX_SWAP_FEE) })], asa)).toThrow("fee");
+    expect(() => check([pay(), send(99, 1)])).toThrow("transfer");
+  });
+
+  it("rejects app updates, deletes and other txn types", () => {
+    expect(() => check([call(algosdk.OnApplicationComplete.DeleteApplicationOC)])).toThrow("app call");
+    expect(() => check([call(algosdk.OnApplicationComplete.UpdateApplicationOC)])).toThrow("app call");
+    const keyreg = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
+      sender: user,
+      suggestedParams: sp(),
     });
-    const [t1, t2] = grouped(offer(), ask(), hidden);
-    expect(() => validateSwap(t1!, t2!)).toThrow("Invalid Group");
+    expect(() => check([keyreg])).toThrow("keyreg");
   });
 
-  it("refuses txns from different groups or none", () => {
-    const [a1] = grouped(offer(), ask());
-    const [, b2] = grouped(offer(), ask({ amount: 2 }));
-    expect(() => validateSwap(a1!, b2!)).toThrow("Invalid Group");
-    expect(() => validateSwap(offer(), ask())).toThrow("Invalid Group");
-  });
-
-  it("refuses a swap that does not pay each side", () => {
-    const [t1, t2] = grouped(offer(), ask({ receiver: thief }));
-    expect(() => validateSwap(t1!, t2!)).toThrow("Invalid Swap");
-  });
-
-  it("refuses anything but payments and asset transfers", () => {
-    const optIn = algosdk.makeApplicationOptInTxnFromObject({
-      sender: taker,
-      appIndex: 1,
-      suggestedParams: params(),
+  it("rejects excessive fees and other networks", () => {
+    expect(() => check([pay({}, MAX_SWAP_FEE + 1n)])).toThrow("fee");
+    const foreign = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: user,
+      receiver: pool,
+      amount: 1,
+      suggestedParams: sp(1000n, new Uint8Array(32).fill(2)),
     });
-    const [t1, t2] = grouped(offer(), optIn);
-    expect(() => validateSwap(t1!, t2!)).toThrow("Invalid Swap");
+    expect(() => check([foreign])).toThrow("Network Mismatch");
+  });
+});
+
+describe("swap amounts", () => {
+  it("minReceived applies slippage in basis points", () => {
+    expect(minReceived(1_000_000n, 1)).toBe(990_000n);
+    expect(minReceived(1_000_000n, 0.5)).toBe(995_000n);
+    expect(minReceived(3n, 1)).toBe(2n);
   });
 
-  it("refuses txns for different networks", () => {
-    const other = ask({ suggestedParams: params(new Uint8Array(32).fill(2)) });
-    const [t1, t2] = grouped(offer(), other);
-    expect(() => validateSwap(t1!, t2!)).toThrow("Network Mismatch");
+  it("spendable keeps ALGO's min balance, reserve and fee headroom", () => {
+    const info = {
+      amount: 2_000_000n,
+      minBalance: 200_000n,
+      assets: [{ assetId: 7n, amount: 55n }],
+    };
+    expect(spendable(info, 0n)).toBe(1_800_000n - SWAP_FEE_RESERVE);
+    expect(spendable(info, 0n, 100_000n)).toBe(1_700_000n - SWAP_FEE_RESERVE);
+    expect(spendable(info, 7n)).toBe(55n);
+    expect(spendable(info, 8n)).toBe(0n);
+    expect(spendable({ amount: 1n, minBalance: 100_000n }, 0n)).toBe(0n);
   });
 });

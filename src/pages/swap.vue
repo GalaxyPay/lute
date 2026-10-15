@@ -1,7 +1,7 @@
 <template>
   <v-container class="page">
     <v-card :loading="loading">
-      <v-card-title>Atomic swap</v-card-title>
+      <v-card-title>P2P swap</v-card-title>
       <v-card-subtitle>
         Swap assets directly with another party - no middle-man or smart
         contract
@@ -44,7 +44,7 @@ import Algo from "@/services/Algo";
 import { bigintToString, copyToClipboard, send } from "@/utils";
 import { findNetwork } from "@/utils/networks";
 import { luteSigner, reportSignError } from "@/utils/signers";
-import { parseSwap } from "@/utils/swap";
+import { parseSwap } from "@/utils/p2pSwap";
 import { modelsv2, Transaction } from "algosdk";
 
 const store = useAppStore();

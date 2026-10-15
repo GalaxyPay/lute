@@ -18,7 +18,7 @@ export default class LuteTxns {
   nonce?: bigint;
   groupWarn: boolean = false;
   tabId?: number;
-  /** What an in-app request does, in words, e.g. a trade's amounts. */
+  /** What an in-app request does, in words, e.g. a swap's amounts. */
   summary?: string;
   // The validators report a failure to the dapp instead of throwing, so sign()
   // checks these rather than trusting the caller to stop.

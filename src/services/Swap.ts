@@ -1,10 +1,10 @@
-// In-wallet trades through Hay's router (Haystack Router, TxnLab), MainNet only.
+// In-wallet swaps through Hay's router (Haystack Router, TxnLab), MainNet only.
 import { networks } from "@/data";
 import Algo from "@/services/Algo";
 import { send } from "@/utils/send";
 import { luteSigner } from "@/utils/signers";
 import { falconPlaceholderSigner, simulateFees } from "@/utils/simulateFees";
-import { userIndexes, validateTradeGroup } from "@/utils/trade";
+import { userIndexes, validateSwapGroup } from "@/utils/swap";
 import { RouterClient, type SwapQuote } from "@txnlab/haystack-router";
 import type { Transaction, TransactionSigner } from "algosdk";
 
@@ -18,7 +18,7 @@ const PRICE_HEADROOM = 10n;
 
 export type { SwapQuote };
 
-export function tradeSupported() {
+export function swapSupported() {
   return !!ROUTER_KEY && useAppStore().networkName === "MainNet";
 }
 
@@ -83,7 +83,7 @@ export function getQuote(p: {
  * holds these same txn objects and signs them later, router lsigs included,
  * so the regrouped txns are what gets signed.
  */
-async function priceTradeGroup(
+async function priceSwapGroup(
   group: Transaction[],
   acct: { addr: string; isFalcon25?: boolean }
 ) {
@@ -102,25 +102,42 @@ async function priceTradeGroup(
 }
 
 /**
- * Build the trade from `quote`, price it for this signer, review and sign it
+ * Build the swap from `quote`, price it for this signer, review and sign it
  * in the sign dialog (which shows `summary`) and send it.
  */
-export async function executeTrade(p: {
+export async function executeSwap(p: {
   quote: SwapQuote;
   acct: { addr: string; isFalcon25?: boolean };
   slippage: number;
   summary: string;
 }) {
-  const { genesisHash } = useAppStore().network;
+  const store = useAppStore();
+  const { genesisHash } = store.network;
   if (!genesisHash) throw Error("Unknown Network");
   const expect = {
     address: p.acct.addr,
     fromASAID: BigInt(p.quote.fromASAID),
     amount: p.quote.amount,
+    feeBps: FEE_BPS,
     genesisHash: Uint8Array.fromBase64(genesisHash),
   };
   const signer: TransactionSigner = async (group, idxs) => {
-    validateTradeGroup(group, idxs, expect);
+    if (store.debug)
+      console.log(
+        "[Lute Debug] swap group",
+        group.map((t, idx) => ({
+          idx,
+          sign: idxs.includes(idx),
+          type: t.type,
+          sender: t.sender.toString(),
+          amount: t.payment?.amount ?? t.assetTransfer?.amount,
+          asset: t.assetTransfer?.assetIndex,
+          receiver: (t.payment?.receiver ?? t.assetTransfer?.receiver)?.toString(),
+          app: t.applicationCall?.appIndex,
+          fee: t.fee,
+        }))
+      );
+    validateSwapGroup(group, idxs, expect);
     return luteSigner(group, idxs, { summary: p.summary });
   };
   const composer = await client().newSwap({
@@ -130,10 +147,10 @@ export async function executeTrade(p: {
     signer,
   });
   await composer.addSwapTransactions();
-  await priceTradeGroup(
+  await priceSwapGroup(
     composer.buildGroup().map((t) => t.txn),
     p.acct
   );
   const signed = await composer.sign();
-  return send(signed, "Trade completed");
+  return send(signed, "Swap completed");
 }
