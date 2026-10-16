@@ -1,5 +1,5 @@
 import type { Transaction, modelsv2 } from "algosdk";
-import type { StdSignData, StdSignDataResponse } from "ledger-algorand-js";
+import type { ScopeType } from "@/classes/LuteData";
 
 export interface SnackBar {
   text: string;
@@ -461,15 +461,40 @@ export interface Siwa {
   "request-id"?: string;
   chain_id: string;
   resources?: string[];
-  type: "ed25519" | "falcon1024";
+  type: "ed25519" | "falcon-1024-det";
 }
 
-export interface SignDataSafe extends StdSignData {
+export interface StdSignData {
+  data: string;
+  signer: Uint8Array;
+  domain: string;
+  authenticatorData: Uint8Array;
+  requestId?: string;
+  hdPath?: string;
+  scheme?: string;
+}
+
+export interface StdSignMetadata {
+  scope: ScopeType;
+  encoding: string;
+}
+
+export interface StdSignDataResponse extends StdSignData {
+  signature: Uint8Array;
+}
+
+export interface SignDataSafe extends Omit<
+  StdSignData,
+  "signer" | "authenticatorData"
+> {
   signer: string;
   authenticatorData: string;
 }
 
-export interface SignDataResponseSafe extends StdSignDataResponse {
+export interface SignDataResponseSafe extends Omit<
+  StdSignDataResponse,
+  "signer" | "authenticatorData" | "signature"
+> {
   signer: string;
   authenticatorData: string;
   signature: string;

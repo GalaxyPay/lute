@@ -79,7 +79,6 @@ async function ready() {
   store.networkName = "MainNet";
   const message = { action: "ready", debug: store.debug };
   if (store.isWeb) {
-    if (!window.opener) throw Error("Invalid Referrer");
     window.addEventListener("message", messageHandler);
     postReady(message);
   } else {

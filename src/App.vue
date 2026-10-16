@@ -21,7 +21,8 @@
     <AppBar v-if="showAppBar" />
     <AppNav />
     <v-main>
-      <router-view />
+      <router-view v-show="!dappLinkProblem" />
+      <DappLinkError v-if="dappLinkProblem" :problem="dappLinkProblem" />
       <SignDialog />
     </v-main>
     <v-overlay v-model="store.overlay" persistent />
@@ -33,7 +34,7 @@
 import type { AccountHD, MsgpackHD } from "@/types";
 import Sync from "@/services/Sync";
 import Unlock from "@/services/Unlock";
-import { fetchAsync, refresh } from "@/utils";
+import { dappLinkProblem, fetchAsync, refresh } from "@/utils";
 import { decodeMsgpack, modelsv2 } from "algosdk";
 import { useRoute } from "vue-router";
 import { useDisplay } from "vuetify";

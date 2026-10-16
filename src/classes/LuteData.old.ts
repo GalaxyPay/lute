@@ -1,9 +1,8 @@
-import type { StdSignData, StdSignMetadata } from "ledger-algorand-js";
 import LuteData, { ERROR_BAD_JSON } from "./LuteData";
 import { Address } from "algosdk";
 import { createHash } from "crypto";
 import { sendOrPostMessage } from "@/utils";
-import type { Siwa } from "@/types";
+import type { Siwa, StdSignData, StdSignMetadata } from "@/types";
 
 export default class LuteDataOld extends LuteData {
   constructor(
