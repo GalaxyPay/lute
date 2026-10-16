@@ -153,10 +153,10 @@ export default class LuteData {
             throw ERROR_BAD_JSON;
           }
 
-          // scheme is optional (older dapps omit it); when given it must match
-          // siwa.type, which the schema above already limits to known schemes.
-          const scheme = this.stdSignData.scheme;
-          if (scheme !== undefined && scheme !== this.siwa.type)
+          // scheme defaults to ed25519 when omitted and must match siwa.type;
+          // the schema above limits siwa.type to known schemes, so any unknown
+          // scheme fails here too.
+          if (this.siwa.type !== (this.stdSignData.scheme ?? "ed25519"))
             throw ERROR_UNSUPPORTED_SCHEME;
 
           // the signer must be a public key of the requested scheme

@@ -471,7 +471,7 @@ export interface StdSignData {
   authenticatorData: Uint8Array;
   requestId?: string;
   hdPath?: string;
-  scheme?: "ed25519" | "falcon-1024-det";
+  scheme?: string;
 }
 
 export interface StdSignMetadata {
