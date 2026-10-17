@@ -15,7 +15,20 @@ By participating in this project, you agree to treat all contributors and mainta
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 22.16.0
-- [pnpm](https://pnpm.io/) (recommended package manager)
+- [pnpm](https://pnpm.io/) (version pinned by `packageManager` in `package.json`)
+
+### Setup
+
+```sh
+pnpm install
+pnpm check   # lint, format, type-check and unit tests
+```
+
+See the [README](README.md) for the full list of scripts.
+
+### Editor
+
+The repo includes shared VS Code settings. Accept the recommended extensions when prompted (Prettier, ESLint, Vue, Vitest, EditorConfig). Files are then formatted with Prettier on save, and ESLint fixes are applied on manual save. Other editors should use Prettier with the repo's `.prettierrc` and respect `.editorconfig`.
 
 ## How to Contribute
 
@@ -42,9 +55,9 @@ Feature requests are welcome. Please open an issue and describe:
 
 1. **Fork the repository** and create a feature branch from `main`.
 2. **Make your changes** in focused, logical commits.
-3. **Run the linter** (`pnpm lint`) and fix any issues.
+3. **Run `pnpm lint` and `pnpm format`**, then `pnpm check` to confirm lint, formatting, types and tests pass.
 4. **Test your changes** thoroughly in both the web app and browser extension, if applicable.
-5. **Open a pull request** against `main` with a clear description of your changes.
+5. **Open a pull request** against `main` with a clear description of your changes. CI runs lint, format, type-check, tests and both builds, and must pass before a PR can be merged.
 
 ### Pull Request Guidelines
 
@@ -60,14 +73,15 @@ Feature requests are welcome. Please open an issue and describe:
 
 - Follow the existing code conventions in the project.
 - Use TypeScript for all new code.
-- Run `pnpm lint` before committing. ESLint is configured to auto-fix common issues.
+- Run `pnpm lint` and `pnpm format` before committing. ESLint auto-fixes common issues; Prettier owns formatting.
+- Line endings are LF on every OS, enforced by `.gitattributes`. If `pnpm format:check` fails on every file in an older Windows clone, the files were checked out as CRLF. Commit or stash your work, then run `git rm --cached -r . && git reset --hard` to check them out again as LF.
 
 ### Crypto & Security Considerations
 
 Lute is a cryptocurrency wallet. Contributions that touch security-sensitive areas require extra scrutiny:
 
 - **Key management**: Any changes to key generation, derivation, storage, or signing must be reviewed by a maintainer with cryptography experience.
-- **Transaction handling**: Changes to transaction construction, signing, or submission must include thorough testing on testnet before review.
+- **Transaction handling**: Changes to transaction construction, signing, or submission must include thorough testing on localnet (`pnpm test:localnet` against `algokit localnet start`), and on testnet where localnet can't cover it, before review.
 - **Dependencies**: New dependencies that handle cryptographic operations, network requests, or data storage require explicit maintainer approval. Prefer well-audited, widely-used libraries.
 - **No secrets in code**: Never commit API keys, private keys, seed phrases, or other sensitive material. Use environment variables for configuration.
 - **Input validation**: Validate and sanitize all user inputs, especially addresses, amounts, and transaction parameters.

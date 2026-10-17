@@ -24,15 +24,17 @@ Requires **Node.js >= 22.16.0** and **pnpm**.
 pnpm i
 ```
 
-| Command              | Description                                                         |
-| -------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`           | Web app with HMR                                                    |
-| `pnpm devx`          | Browser extension with HMR                                          |
-| `pnpm build`         | Production web build to `/dist`                                     |
-| `pnpm buildx`        | Production extension build to `/extension`                          |
-| `pnpm lint`          | Lint and auto-fix                                                   |
-| `pnpm test`          | Unit tests (keystore, migration, sync, signing requests)            |
-| `pnpm test:coverage` | Unit tests with a coverage report in `/coverage`                    |
+| Command              | Description                                                          |
+| -------------------- | -------------------------------------------------------------------- |
+| `pnpm dev`           | Web app with HMR                                                     |
+| `pnpm devx`          | Browser extension with HMR                                           |
+| `pnpm build`         | Production web build to `/dist`                                      |
+| `pnpm buildx`        | Production extension build to `/extension`                           |
+| `pnpm lint`          | Lint and auto-fix                                                    |
+| `pnpm format`        | Format with Prettier                                                 |
+| `pnpm check`         | Lint, format, type-check and unit tests without writing (as CI does) |
+| `pnpm test`          | Unit tests (keystore, migration, sync, signing requests)             |
+| `pnpm test:coverage` | Unit tests with a coverage report in `/coverage`                     |
 | `pnpm test:localnet` | ARC-55 multisig and fee tests on localnet (`algokit localnet start`) |
 
 ## Upgrading from 1.x
