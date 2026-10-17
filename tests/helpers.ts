@@ -45,12 +45,15 @@ export type Env = Awaited<ReturnType<typeof fresh>>;
 /** Load the store caches the way getCache does, for the sign gate. */
 export async function loadCaches(env: Env) {
   const { db, store } = env;
-  store.keys = (await db.keys("keys")) as string[];
-  store.seeds = (await db.getAll("seeds")) as any;
-  store.falcon25Seeds = (await db.getAll("falcon25-seeds")) as any;
-  store.keystore = ((await db.getAll("keystore")) as any[]).map(
-    ({ id, kind, form }) => ({ id, kind, form })
-  );
+  const c = await db.readCache();
+  store.keys = c.keys as string[];
+  store.seeds = c.seeds as any;
+  store.falcon25Seeds = c.falcon25Seeds as any;
+  store.keystore = (c.keystore as any[]).map(({ id, kind, form }) => ({
+    id,
+    kind,
+    form,
+  }));
   store.keystoreMode = await env.Keystore.mode();
 }
 

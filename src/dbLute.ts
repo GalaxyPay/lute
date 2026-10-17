@@ -167,6 +167,34 @@ export async function keys(storeName: StoreNames<LuteDB>) {
   return (await dbLute).getAllKeys(storeName);
 }
 
+/**
+ * Everything the Pinia cache holds, read in one transaction so the stores
+ * agree with each other even if another context writes mid-read.
+ */
+export async function readCache() {
+  const tx = (await dbLute).transaction([
+    "app",
+    "keys",
+    "seeds",
+    "falcon25-seeds",
+    "keystore",
+  ]);
+  const app = tx.objectStore("app");
+  const [appKeys, appVals, keyAddrs, seeds, falcon25Seeds, keystore] =
+    await Promise.all([
+      app.getAllKeys(),
+      app.getAll(),
+      tx.objectStore("keys").getAllKeys(),
+      tx.objectStore("seeds").getAll(),
+      tx.objectStore("falcon25-seeds").getAll(),
+      tx.objectStore("keystore").getAll(),
+    ]);
+  const appMap: Record<string, any> = Object.fromEntries(
+    appKeys.map((k, i) => [k, appVals[i]])
+  );
+  return { app: appMap, keys: keyAddrs, seeds, falcon25Seeds, keystore };
+}
+
 /** Thrown from a keystoreTx body on drift. Nothing has been written. */
 export class KeystoreConflict extends Error {
   constructor(message = "The wallet changed in another window. Try again.") {
