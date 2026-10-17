@@ -111,7 +111,9 @@ describe("SIWA falcon-1024-det", () => {
       LuteData,
       addr,
       "falcon-1024-det",
-      publicKey
+      publicKey,
+      DOMAIN,
+      "falcon-1024-det"
     );
     expect(posted).toEqual([]);
     expect(await ld.sign(PASS)).toBe(true);
@@ -135,7 +137,14 @@ describe("SIWA falcon-1024-det", () => {
     const addr = algosdk
       .addressFromPQKey(algosdk.FALCON_1024_SCHEME, publicKey)
       .address.toString();
-    const { ld } = await request(LuteData, addr, "falcon-1024-det", publicKey);
+    const { ld } = await request(
+      LuteData,
+      addr,
+      "falcon-1024-det",
+      publicKey,
+      DOMAIN,
+      "falcon-1024-det"
+    );
     expect(posted).toEqual([]);
     await ld.sign(PASS);
     expect(posted[0]).toMatchObject({ action: "error", code: 4603 });
@@ -149,7 +158,9 @@ describe("SIWA falcon-1024-det", () => {
       LuteData,
       fx.hotAddr,
       "falcon-1024-det",
-      signer
+      signer,
+      DOMAIN,
+      "falcon-1024-det"
     );
     await ld.sign(PASS);
     expect(posted[0]).toMatchObject({ action: "error", code: 4603 });
@@ -234,6 +245,15 @@ describe("StdSignData.scheme", () => {
     expect(posted).toEqual([]);
     expect(await ld.sign(PASS)).toBe(true);
     expect(posted[0].signerResponse.scheme).toBe(scheme);
+  });
+
+  it("rejects an omitted scheme for falcon-1024-det", async () => {
+    const { LuteData, fx } = await setup();
+    const { publicKey } = falconKey();
+    await request(LuteData, fx.falconAddr, "falcon-1024-det", publicKey);
+    expect(posted).toEqual([
+      expect.objectContaining({ action: "error", code: 4601 }),
+    ]);
   });
 
   it.each(["falcon-1024-det", "falcon1024"])(
