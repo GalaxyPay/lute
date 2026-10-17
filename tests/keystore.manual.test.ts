@@ -79,9 +79,7 @@ describe("upgrading an account", () => {
       seedId: 4,
       addr: fx.hdOther0.addr,
     });
-    expect(((await db.getAll("seeds")) as any[]).map((s) => s.id)).toEqual([
-      3,
-    ]);
+    expect(((await db.getAll("seeds")) as any[]).map((s) => s.id)).toEqual([3]);
     expect(await Keystore.exportMnemonic(mk, "bip39:4")).toBe(HD_OTHER_MN);
   });
 

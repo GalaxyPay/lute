@@ -195,4 +195,3 @@ export function copyToClipboard(val: string) {
   navigator.clipboard.writeText(val);
   store.setSnackbar("Copied", "info", 1000);
 }
-

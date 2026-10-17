@@ -53,9 +53,18 @@ describe("networkError", () => {
     ["a blank name", proposed({ name: "  " })],
     ["no genesis id", proposed({ genesisID: undefined })],
     ["no algod", proposed({ algod: undefined })],
-    ["an algod with no token", proposed({ algod: { url: client.url, port: "" } })],
-    ["a non-http algod", proposed({ algod: { ...client, url: "javascript:alert(1)" } })],
-    ["an unparseable algod url", proposed({ algod: { ...client, url: "not a url" } })],
+    [
+      "an algod with no token",
+      proposed({ algod: { url: client.url, port: "" } }),
+    ],
+    [
+      "a non-http algod",
+      proposed({ algod: { ...client, url: "javascript:alert(1)" } }),
+    ],
+    [
+      "an unparseable algod url",
+      proposed({ algod: { ...client, url: "not a url" } }),
+    ],
     ["a broken indexer", proposed({ indexer: { url: client.url } })],
   ])("refuses %s", (_what, network) => {
     expect(networkError(network, existing)).toBe("Invalid Network");

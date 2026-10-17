@@ -67,13 +67,26 @@ const routerTxn = () =>
     suggestedParams: sp(),
   });
 
-const expect0 = { address: user, fromASAID: 0n, amount: 1_000_000n, genesisHash };
+const expect0 = {
+  address: user,
+  fromASAID: 0n,
+  amount: 1_000_000n,
+  genesisHash,
+};
 const check = (group: algosdk.Transaction[], exp = expect0) =>
   validateSwapGroup(group, userIndexes(group, user), exp);
 
 describe("validateSwapGroup", () => {
   it("accepts opt-ins, app calls and the input payment", () => {
-    expect(() => check([optIn(), call(algosdk.OnApplicationComplete.OptInOC), pay(), call(), routerTxn()])).not.toThrow();
+    expect(() =>
+      check([
+        optIn(),
+        call(algosdk.OnApplicationComplete.OptInOC),
+        pay(),
+        call(),
+        routerTxn(),
+      ])
+    ).not.toThrow();
   });
 
   it("signs exactly the user's txns", () => {
@@ -93,30 +106,46 @@ describe("validateSwapGroup", () => {
       amount: 1,
       suggestedParams: sp(),
     });
-    expect(() => check([claw], { ...expect0, fromASAID: 7n })).toThrow("clawback");
+    expect(() => check([claw], { ...expect0, fromASAID: 7n })).toThrow(
+      "clawback"
+    );
   });
 
   it("allows the router fee on top of the input and a small ALGO top-up", () => {
     const withFee = { ...expect0, feeBps: 15 };
-    expect(() => check([pay({ amount: 1_001_500 }), pay({ amount: 100_000 })], withFee)).not.toThrow();
+    expect(() =>
+      check([pay({ amount: 1_001_500 }), pay({ amount: 100_000 })], withFee)
+    ).not.toThrow();
     const asa = { ...withFee, fromASAID: 7n, amount: 10_000n };
-    expect(() => check([send(7, 10_015), pay({ amount: 100_000 })], asa)).not.toThrow();
+    expect(() =>
+      check([send(7, 10_015), pay({ amount: 100_000 })], asa)
+    ).not.toThrow();
   });
 
   it("rejects moving more than the input, router fee and cost budget", () => {
     // ALGO input: anything past the fee comes out of the same budget as fees.
-    expect(() => check([pay({ amount: 1_000_000 + Number(MAX_SWAP_FEE) })])).toThrow("fee");
-    expect(() => check([pay(), pay({ amount: Number(MAX_SWAP_FEE) })])).toThrow("fee");
+    expect(() =>
+      check([pay({ amount: 1_000_000 + Number(MAX_SWAP_FEE) })])
+    ).toThrow("fee");
+    expect(() => check([pay(), pay({ amount: Number(MAX_SWAP_FEE) })])).toThrow(
+      "fee"
+    );
     // ASA input: the asset itself is capped, ALGO goes to the budget.
     const asa = { ...expect0, fromASAID: 7n, amount: 10_000n, feeBps: 15 };
     expect(() => check([send(7, 10_016)], asa)).toThrow("amount");
-    expect(() => check([send(7, 10_000), pay({ amount: Number(MAX_SWAP_FEE) })], asa)).toThrow("fee");
+    expect(() =>
+      check([send(7, 10_000), pay({ amount: Number(MAX_SWAP_FEE) })], asa)
+    ).toThrow("fee");
     expect(() => check([pay(), send(99, 1)])).toThrow("transfer");
   });
 
   it("rejects app updates, deletes and other txn types", () => {
-    expect(() => check([call(algosdk.OnApplicationComplete.DeleteApplicationOC)])).toThrow("app call");
-    expect(() => check([call(algosdk.OnApplicationComplete.UpdateApplicationOC)])).toThrow("app call");
+    expect(() =>
+      check([call(algosdk.OnApplicationComplete.DeleteApplicationOC)])
+    ).toThrow("app call");
+    expect(() =>
+      check([call(algosdk.OnApplicationComplete.UpdateApplicationOC)])
+    ).toThrow("app call");
     const keyreg = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
       sender: user,
       suggestedParams: sp(),

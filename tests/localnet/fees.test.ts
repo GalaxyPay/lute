@@ -50,9 +50,7 @@ describe("fee pricing", () => {
     expect(txns[0]!.fee).toBe(2n * (await minFee()));
     expect(txns[1]!.fee).toBe(0n);
     expect(txns[0]!.group).toEqual(txns[1]!.group);
-    expect(algosdk.computeGroupID(txns.map(ungrouped))).toEqual(
-      txns[0]!.group
-    );
+    expect(algosdk.computeGroupID(txns.map(ungrouped))).toEqual(txns[0]!.group);
     await submit([
       txns[0]!.signTxn(a.account.sk),
       txns[1]!.signTxn(b.account.sk),
@@ -83,9 +81,7 @@ describe("fee pricing", () => {
       receiver: a,
       amount: microAlgo(100_000_000),
     });
-    await expect(priceTxns([overspend], {})).rejects.toThrow(
-      "Simulate failed"
-    );
+    await expect(priceTxns([overspend], {})).rejects.toThrow("Simulate failed");
   });
 });
 

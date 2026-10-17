@@ -26,12 +26,14 @@ const TEST_HASH = new Uint8Array(32).fill(2);
 const alice = algosdk.generateAccount().addr.toString();
 const bob = algosdk.generateAccount().addr.toString();
 
-function pay(opts: {
-  sender?: string;
-  amount?: number;
-  genesisID?: string;
-  genesisHash?: Uint8Array;
-} = {}) {
+function pay(
+  opts: {
+    sender?: string;
+    amount?: number;
+    genesisID?: string;
+    genesisHash?: Uint8Array;
+  } = {}
+) {
   return algosdk.makePaymentTxnWithSuggestedParamsFromObject({
     sender: opts.sender ?? alice,
     receiver: bob,
@@ -71,8 +73,16 @@ beforeEach(() => {
     accounts: [],
     device: { transport: undefined },
     allNetworks: [
-      { name: "LocalNet", genesisID: "localnet-v1", genesisHash: LOCAL_HASH.toBase64() },
-      { name: "TestNet", genesisID: "testnet-v1.0", genesisHash: TEST_HASH.toBase64() },
+      {
+        name: "LocalNet",
+        genesisID: "localnet-v1",
+        genesisHash: LOCAL_HASH.toBase64(),
+      },
+      {
+        name: "TestNet",
+        genesisID: "testnet-v1.0",
+        genesisHash: TEST_HASH.toBase64(),
+      },
       { name: "Dockernet", genesisID: "dockernet-v1" },
     ],
   });
@@ -91,7 +101,9 @@ const lastError = () => posted.at(-1);
 
 describe("validateNetwork", () => {
   it("selects the request's network", async () => {
-    const lt = new LuteTxns([wtxn(pay({ genesisID: "testnet-v1.0", genesisHash: TEST_HASH }))]);
+    const lt = new LuteTxns([
+      wtxn(pay({ genesisID: "testnet-v1.0", genesisHash: TEST_HASH })),
+    ]);
     expect(await lt.validateNetwork()).toBe(true);
     expect(testStore.networkName).toBe("TestNet");
   });
@@ -120,15 +132,22 @@ describe("validateNetwork", () => {
     const lt = new LuteTxns([wtxn(pay())]);
     testStore.luteTxns = lt as any;
     const events: any[] = [];
-    (globalThis as any).window.dispatchEvent = (e: any) => events.push(e.detail);
+    (globalThis as any).window.dispatchEvent = (e: any) =>
+      events.push(e.detail);
     (globalThis as any).CustomEvent ??= class {
-      constructor(public type: string, public init: any) {}
+      constructor(
+        public type: string,
+        public init: any
+      ) {}
       get detail() {
         return this.init.detail;
       }
     };
     expect(await lt.validateNetwork()).toBe(false);
-    expect(events[0]).toMatchObject({ action: "error", message: "Network Mismatch" });
+    expect(events[0]).toMatchObject({
+      action: "error",
+      message: "Network Mismatch",
+    });
     expect(testStore.networkName).toBe("MainNet");
   });
 });
@@ -140,7 +159,9 @@ describe("validateGroup", () => {
     expect(one.groupValid).toBe(true);
     expect(one.groupWarn).toBe(false);
 
-    const pair = new LuteTxns(grouped(pay(), pay({ amount: 2 })).map((t) => wtxn(t)));
+    const pair = new LuteTxns(
+      grouped(pay(), pay({ amount: 2 })).map((t) => wtxn(t))
+    );
     await pair.validateGroup();
     expect(pair.groupValid).toBe(true);
     expect(pair.groupWarn).toBe(false);
@@ -177,19 +198,28 @@ describe("validateGroup", () => {
   it("refuses an empty or oversized request", async () => {
     const empty = new LuteTxns([]);
     await empty.validateGroup();
-    expect(lastError()).toMatchObject({ code: 4300, message: "Empty Transaction Array" });
+    expect(lastError()).toMatchObject({
+      code: 4300,
+      message: "Empty Transaction Array",
+    });
 
     const t = wtxn(pay());
     const big = new LuteTxns(Array(513).fill(t));
     await big.validateGroup();
-    expect(lastError()).toMatchObject({ code: 4201, message: "Too Many Transactions" });
+    expect(lastError()).toMatchObject({
+      code: 4201,
+      message: "Too Many Transactions",
+    });
   });
 });
 
 describe("sign", () => {
   it("signs what the request asks for and passes the rest through", async () => {
     const [a, b, c] = grouped(pay(), pay({ amount: 2 }), pay({ amount: 3 }));
-    const presigned = algosdk.signTransaction(b!, algosdk.generateAccount().sk).blob;
+    const presigned = algosdk.signTransaction(
+      b!,
+      algosdk.generateAccount().sk
+    ).blob;
     const lt = await validated([
       wtxn(a!),
       wtxn(b!, { signers: [], stxn: presigned.toBase64() }),
@@ -221,7 +251,10 @@ describe("sign", () => {
     [
       "Signed Transaction Mismatch",
       () => {
-        const other = algosdk.signTransaction(pay({ amount: 7 }), algosdk.generateAccount().sk);
+        const other = algosdk.signTransaction(
+          pay({ amount: 7 }),
+          algosdk.generateAccount().sk
+        );
         return [wtxn(pay(), { signers: [], stxn: other.blob.toBase64() })];
       },
     ],
@@ -256,7 +289,9 @@ describe("sign", () => {
   });
 
   it("names the auth address the request gives", async () => {
-    const lt = await validated([wtxn(pay(), { signers: [bob], authAddr: bob })]);
+    const lt = await validated([
+      wtxn(pay(), { signers: [bob], authAddr: bob }),
+    ]);
     await lt.sign();
     expect(signer.mock.calls[0]![2]).toEqual([bob]);
   });
@@ -304,7 +339,9 @@ describe("msigCheck", () => {
   it("accepts a request with nothing to sign", async () => {
     const t = pay();
     const st = algosdk.signTransaction(t, algosdk.generateAccount().sk);
-    const lt = await validated([wtxn(t, { signers: [], stxn: st.blob.toBase64() })]);
+    const lt = await validated([
+      wtxn(t, { signers: [], stxn: st.blob.toBase64() }),
+    ]);
     await lt.msigCheck();
     expect(posted).toEqual([]);
     expect(lt.msig).toBeUndefined();

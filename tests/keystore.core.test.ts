@@ -53,9 +53,7 @@ describe("password mode", () => {
   it("refuses a second password over an existing one", async () => {
     const { Keystore } = await fresh();
     await Keystore.newPassword("pw");
-    await expect(Keystore.newPassword("again")).rejects.toThrow(
-      "already set"
-    );
+    await expect(Keystore.newPassword("again")).rejects.toThrow("already set");
   });
 });
 
@@ -80,9 +78,9 @@ describe("records", () => {
       { ...rec, kind: "algo25" },
       { ...rec, id: "falcon25:Y" },
     ])
-      await expect(Keystore.decryptRecord(mk, tampered)).rejects.toMatchObject(
-        { name: "OperationError" }
-      );
+      await expect(Keystore.decryptRecord(mk, tampered)).rejects.toMatchObject({
+        name: "OperationError",
+      });
   });
 
   it("rejects plaintext of the wrong length for its form", async () => {

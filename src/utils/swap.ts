@@ -21,7 +21,9 @@ export interface SwapExpect {
 
 /** Indexes of the txns the swapping account sends, and so signs. */
 export function userIndexes(group: Transaction[], address: string) {
-  return group.flatMap((t, idx) => (t.sender.toString() === address ? [idx] : []));
+  return group.flatMap((t, idx) =>
+    t.sender.toString() === address ? [idx] : []
+  );
 }
 
 /** Lowest output a fixed-input quote may fill at, `slippage` in percent. */
@@ -38,11 +40,16 @@ export const SWAP_FEE_RESERVE = 50_000n;
  * `reserve` (e.g. the MBR of an opt-in the swap adds) and fee headroom.
  */
 export function spendable(
-  info: { amount: bigint; minBalance: bigint; assets?: { assetId: bigint; amount: bigint }[] },
+  info: {
+    amount: bigint;
+    minBalance: bigint;
+    assets?: { assetId: bigint; amount: bigint }[];
+  },
   assetId: bigint,
   reserve = 0n
 ) {
-  if (assetId) return info.assets?.find((a) => a.assetId === assetId)?.amount ?? 0n;
+  if (assetId)
+    return info.assets?.find((a) => a.assetId === assetId)?.amount ?? 0n;
   const max = info.amount - info.minBalance - reserve - SWAP_FEE_RESERVE;
   return max > 0n ? max : 0n;
 }

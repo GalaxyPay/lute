@@ -125,7 +125,10 @@ export async function extensionSenderTransport(webOrigin: string) {
     url,
     type: "normal",
     focused: true,
-    ...syncWindowBounds(await browser.windows.getCurrent(), SYNC_BROWSER_WINDOW),
+    ...syncWindowBounds(
+      await browser.windows.getCurrent(),
+      SYNC_BROWSER_WINDOW
+    ),
   });
   return {
     transport,

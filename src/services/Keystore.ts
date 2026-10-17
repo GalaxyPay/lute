@@ -129,7 +129,8 @@ export function signingMaterial(
 export function plaintextFromMnemonic(kind: KeystoreKind, mn: string) {
   switch (kind) {
     case "bip39": {
-      if (!bip39.validateMnemonic(mn, wordlist)) throw Error("Invalid Mnemonic");
+      if (!bip39.validateMnemonic(mn, wordlist))
+        throw Error("Invalid Mnemonic");
       const entropy = bip39.mnemonicToEntropy(mn, wordlist);
       if (entropy.length !== BIP39_ENTROPY_BYTES) {
         entropy.fill(0);
@@ -267,7 +268,13 @@ async function switchMasterKey(
     if (cur?.id !== expect.id || cur.gen !== expect.gen)
       throw new KeystoreConflict();
     const ids = await tx.objectStore("keystore").getAllKeys();
-    if (!sameKeys(ids, recs.map((r) => r.id))) throw new KeystoreConflict();
+    if (
+      !sameKeys(
+        ids,
+        recs.map((r) => r.id)
+      )
+    )
+      throw new KeystoreConflict();
     app.put(next, "keystore");
     for (const r of out) tx.objectStore("keystore").put(r, r.id);
   });
@@ -328,7 +335,8 @@ const Keystore = {
   async getMk(pass?: string): Promise<MasterKey> {
     const h = await this.header();
     if (h?.mode === "device") return { key: h.mk, id: h.id };
-    if (!h && !(await this.hasLegacyVerifier())) return await this.createDevice();
+    if (!h && !(await this.hasLegacyVerifier()))
+      return await this.createDevice();
     if (h) {
       const cached = await Unlock.get(h.id);
       if (cached) {
@@ -541,7 +549,8 @@ const Keystore = {
       let next = start;
       const ids = items.map((it) => {
         if (it.id) return it.id;
-        if (it.kind !== "bip39") throw Error(`An id is required for ${it.kind}`);
+        if (it.kind !== "bip39")
+          throw Error(`An id is required for ${it.kind}`);
         return `bip39:${next++}`;
       });
       const recs = await Promise.all(
