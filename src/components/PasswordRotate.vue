@@ -1,21 +1,21 @@
 <template>
-  <v-dialog v-model="show" max-width="500" persistent>
+  <v-dialog v-model="show" max-width="440" persistent>
     <v-card :loading="rotating" :disabled="rotating">
       <v-card-title class="d-flex">
-        Change Password
+        Change password
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
-      <v-card-text class="text-warning pb-0">
-        Make sure your recovery phrase(s) are backed up before continuing.
-      </v-card-text>
-      <v-card-text class="pb-0" style="color: #9aa0a5; font-size: 0.8em">
-        This re-encrypts every seed stored in this browser. Algo25, Ledger,
-        watch, multi-sig, and passkey accounts are not affected because none of
-        them are protected by this password.
-      </v-card-text>
-      <v-container>
-        <v-form ref="form" @submit.prevent="rotate()" validate-on="submit">
+      <v-form ref="form" @submit.prevent="rotate()" validate-on="submit">
+        <v-card-text>
+          <p class="text-warning text-body-2 mb-1">
+            Make sure your mnemonics are backed up before continuing.
+          </p>
+          <p class="text-muted text-body-2 mb-2">
+            The password protects every account stored in this browser: HD,
+            Algo25 and Falcon. Ledger, watch, multi-sig, and passkey accounts
+            are not affected.
+          </p>
           <v-text-field
             v-show="false"
             name="username"
@@ -23,7 +23,7 @@
           />
           <v-text-field
             v-model="current"
-            label="Current Password"
+            label="Current password"
             type="password"
             name="current-password"
             autocomplete="current-password"
@@ -33,7 +33,7 @@
           />
           <v-text-field
             v-model="pass1"
-            label="New Password"
+            label="New password"
             type="password"
             name="new-password"
             autocomplete="new-password"
@@ -42,25 +42,29 @@
           />
           <v-text-field
             v-model="pass2"
-            label="Confirm New Password"
+            label="Confirm new password"
             type="password"
             name="confirm-password"
             autocomplete="new-password"
             density="comfortable"
             :rules="[required, match]"
           />
-          <v-card-actions>
-            <v-spacer />
-            <v-btn text="Submit" type="submit" :loading="rotating" />
-          </v-card-actions>
-        </v-form>
-      </v-container>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn
+            variant="flat"
+            text="Submit"
+            type="submit"
+            :loading="rotating"
+          />
+        </v-card-actions>
+      </v-form>
     </v-card>
   </v-dialog>
 </template>
 
 <script lang="ts" setup>
-import Seed from "@/services/Seed";
+import Keystore from "@/services/Keystore";
 import { mdiClose } from "@mdi/js";
 
 const store = useAppStore();
@@ -101,16 +105,17 @@ async function rotate() {
     if (!valid) return;
 
     rotating.value = true;
-    if (!(await Seed.rotatePassword(current.value, pass1.value))) {
-      store.setSnackbar("Incorrect Password", "error");
+    if (!(await Keystore.rotate(current.value, pass1.value))) {
+      store.setSnackbar("Incorrect password", "error");
       return;
     }
-    store.setSnackbar("Password Changed", "success");
+    await store.getCache();
+    store.setSnackbar("Password changed", "success");
     emit("close");
   } catch (err: any) {
     console.error(err);
-    // Nothing was written: rotation pre-flights every decrypt and commits in a
-    // single transaction, so the old password still works.
+    // Nothing was written: the new header is committed in one transaction, so
+    // the old password still works.
     store.setSnackbar(`Password unchanged. ${err.message}`, "error");
   } finally {
     rotating.value = false;

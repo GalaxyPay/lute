@@ -2,11 +2,16 @@
 import type LuteTxns from "@/classes/LuteTxns";
 import { networks } from "@/data";
 import { get, getAll, keys, set } from "@/dbLute";
+import { secretStatus } from "@/services/accountSecret";
 import type {
   AccountHD,
   AccountInfo,
   Arc55App,
   FalconSeedData,
+  KeystoreHeader,
+  KeystoreMeta,
+  KeystoreMode,
+  KeystoreRecord,
   LuteAccount,
   Network,
   NsObject,
@@ -39,17 +44,28 @@ export const useAppStore = defineStore("app", {
     keys: [] as string[],
     seeds: [] as SeedData[],
     falcon25Seeds: [] as FalconSeedData[],
+    // Metadata only; ciphertext never enters the store.
+    keystore: [] as KeystoreMeta[],
+    hasKeystore: false,
+    // Also the mode the wallet will take once its header is written.
+    keystoreMode: "device" as KeystoreMode,
+    // A 1.x password verifier not yet replaced by a keystore header.
+    legacyVerifier: false,
     drawer: false,
     debug: false,
     snoop: false,
     ledgerSelect: false,
     experimental: false,
+    nsSend: true,
+    hideBalances: false,
     autoLockMinutes: 0,
     unlocked: false,
     tinyman: undefined as TinyAsset[] | undefined,
     sandboxRouter: undefined as number | undefined,
     isWeb: document.location.protocol.startsWith("http"),
     customNetworks: [] as Network[],
+    // Favorite asset ids, keyed by favoritesKey(): per network and account.
+    favoriteAssets: {} as Record<string, number[]>,
     signingData: false,
     luteTxns: undefined as LuteTxns | undefined,
     fallback: false,
@@ -72,15 +88,19 @@ export const useAppStore = defineStore("app", {
         )
         .forEach((a) => {
           function getCanSign(acct: LuteAccount) {
-            const isHot = state.keys.includes(acct.addr);
-            const isFalcon25 = state.falcon25Seeds.some(
-              (s) => s.id === acct.addr
-            );
+            const secret = secretStatus(acct, state);
+            const isFalcon25 =
+              state.falcon25Seeds.some((s) => s.id === acct.addr) ||
+              state.keystore.some((k) => k.id === `falcon25:${acct.addr}`);
+            const isHot =
+              !isFalcon25 &&
+              (state.keys.includes(acct.addr) ||
+                state.keystore.some((k) => k.id === `algo25:${acct.addr}`));
             const canSign = isHot || isFalcon25 || acct.slot != null;
-            return { info, isHot, isFalcon25, canSign };
+            return { info, isHot, isFalcon25, canSign, secret };
           }
           const info = this.info.find((i) => i.address === a.addr);
-          const { isHot, isFalcon25, canSign } = getCanSign(a);
+          const { isHot, isFalcon25, canSign, secret } = getCanSign(a);
           if (isHot && !this.hotWallet) return;
           const authAcct = this.accounts.find(
             (a) => a.addr === info?.authAddr?.toString()
@@ -94,6 +114,7 @@ export const useAppStore = defineStore("app", {
               isHot,
               isFalcon25,
               canSign,
+              secret,
               info,
               globalIdx,
               ns: this.nsObj[a.addr],
@@ -110,6 +131,7 @@ export const useAppStore = defineStore("app", {
                   isHot: false,
                   isFalcon25,
                   canSign,
+                  secret,
                   subType: "rekey",
                   info: i,
                   globalIdx,
@@ -128,6 +150,7 @@ export const useAppStore = defineStore("app", {
                   isHot: false,
                   isFalcon25: false,
                   canSign,
+                  secret,
                   subType: "hd",
                   info: i,
                   globalIdx,
@@ -205,11 +228,20 @@ export const useAppStore = defineStore("app", {
       this.networkName =
         this.allNetworks.find((n) => n.name === nn)?.name || networks[0]!.name;
       this.sandboxRouter = await get("app", "sandboxRouter");
+      this.favoriteAssets = (await get("app", "favoriteAssets")) || {};
+      const header: KeystoreHeader | undefined = await get("app", "keystore");
+      this.legacyVerifier = !!(await get("app", "password"));
+      this.hasKeystore = !!header;
+      this.keystoreMode =
+        header?.mode ?? (this.legacyVerifier ? "password" : "device");
       this.accounts = (await get("app", "accounts")) || [];
       this.debug = (await get("app", "debug")) ?? this.debug;
       this.snoop = (await get("app", "snoop")) ?? this.snoop;
       this.ledgerSelect =
         (await get("app", "ledgerSelect")) ?? this.ledgerSelect;
+      this.nsSend = (await get("app", "nsSend")) ?? this.nsSend;
+      this.hideBalances =
+        (await get("app", "hideBalances")) ?? this.hideBalances;
       this.autoLockMinutes =
         (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
       this.experimental =
@@ -217,6 +249,23 @@ export const useAppStore = defineStore("app", {
       this.keys = (await keys("keys")) as string[];
       this.seeds = await getAll("seeds");
       this.falcon25Seeds = await getAll("falcon25-seeds");
+      this.keystore = ((await getAll("keystore")) as KeystoreRecord[]).map(
+        ({ id, kind, form }) => ({ id, kind, form })
+      );
+    },
+    favoritesKey(addr: string) {
+      return `${this.network.genesisID}/${addr}`;
+    },
+    async toggleFavoriteAsset(addr: string, assetId: number) {
+      const key = this.favoritesKey(addr);
+      const ids = this.favoriteAssets[key] || [];
+      const next = ids.includes(assetId)
+        ? ids.filter((id) => id !== assetId)
+        : [...ids, assetId];
+      const all = { ...this.favoriteAssets, [key]: next };
+      if (!next.length) delete all[key];
+      this.favoriteAssets = all;
+      await set("app", "favoriteAssets", deepClone(all));
     },
     async setTheme(name: string | null) {
       await set("app", "theme", name || "dark");

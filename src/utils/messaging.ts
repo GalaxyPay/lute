@@ -9,6 +9,8 @@
  * hijacked opener cannot read it.
  */
 
+import { ref } from "vue";
+
 export const BASE_PATH = "dist/main/index.html";
 export async function resetSidePanel() {
   // @ts-expect-error missing types
@@ -36,8 +38,25 @@ export function isFromOpener(event: MessageEvent): boolean {
   if (!event.origin || event.origin === "null") return false;
   if (dappOrigin) return event.origin === dappOrigin;
   dappOrigin = event.origin;
+  clearTimeout(silentTimer);
+  dappLinkProblem.value = undefined;
   return true;
 }
+
+/**
+ * Why a web-mode popup cannot complete its request, so the user is told
+ * instead of being left with a dead page.
+ * - "missing": there is no opener to reply to. Either the dapp sends
+ *   `Cross-Origin-Opener-Policy: same-origin`, which severs the link to
+ *   cross-origin popups, or the page was opened directly.
+ * - "silent": the opener never sent a request after "ready".
+ */
+export type DappLinkProblem = "missing" | "silent";
+export const dappLinkProblem = ref<DappLinkProblem>();
+
+/** How long to wait for the dapp's request after "ready". */
+export const DAPP_SILENT_MS = 10_000;
+let silentTimer: ReturnType<typeof setTimeout> | undefined;
 
 /**
  * Send the initial "ready" handshake to the opener. Nothing sensitive is in
@@ -45,7 +64,15 @@ export function isFromOpener(event: MessageEvent): boolean {
  * origin when known and fall back to any origin.
  */
 export function postReady(message: { action: string; debug: boolean }) {
-  window.opener?.postMessage(message, referrerOrigin() ?? "*");
+  if (!window.opener) {
+    dappLinkProblem.value = "missing";
+    return;
+  }
+  window.opener.postMessage(message, referrerOrigin() ?? "*");
+  clearTimeout(silentTimer);
+  silentTimer = setTimeout(() => {
+    if (!dappOrigin) dappLinkProblem.value = "silent";
+  }, DAPP_SILENT_MS);
 }
 
 /** Actions that carry no user data and may go out before the origin is pinned. */

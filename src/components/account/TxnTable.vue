@@ -1,40 +1,41 @@
 <template>
-  <v-container v-if="loading" class="text-center my-10">
-    <v-progress-circular :size="60" color="primary" indeterminate />
-  </v-container>
-  <v-container v-else>
-    <v-data-table
-      :items="txns"
-      :headers="headers"
-      class="no-select"
-      items-per-page="25"
-      @click:row="txnDetails"
-      hover
-    >
-      <template #headers />
-      <template #no-data>
-        <i>{{ noData }}</i>
-      </template>
-      <template #[`item.col1`]="{ item }">
-        <div class="text-caption text-grey text-uppercase">
-          {{ formatAction(item) }}
-        </div>
-        <div>{{ formatTarget(item) }}</div>
-      </template>
-      <template #[`item.col2`]="{ item }">
-        <div class="text-caption text-grey text-right">
-          {{ new Date(Number(item.roundTime) * 1000).toLocaleString() }}
-        </div>
-        <div class="text-right">
-          <span v-if="item.paymentTransaction">
-            <span v-if="store.isVoi" class="font-weight-bold">V</span>
-            <algo-icon v-else color="currentColor" :width="10" />
-          </span>
-          {{ formatAmount(item) }}
-        </div>
-      </template>
-    </v-data-table>
-  </v-container>
+  <div v-if="loading">
+    <v-progress-linear indeterminate height="3" />
+    <v-skeleton-loader type="list-item-two-line@3" />
+  </div>
+  <v-data-table
+    v-else
+    :items="txns"
+    :headers="headers"
+    class="no-select txn-table"
+    items-per-page="25"
+    @click:row="txnDetails"
+    hover
+  >
+    <template #headers />
+    <template #no-data>{{ noData }}</template>
+    <template #[`item.col1`]="{ item }">
+      <div class="txn-action">{{ formatAction(item) }}</div>
+      <div class="txn-target">{{ formatTarget(item) }}</div>
+    </template>
+    <template #[`item.col2`]="{ item }">
+      <div class="txn-when">
+        {{ new Date(Number(item.roundTime) * 1000).toLocaleString() }}
+      </div>
+      <div class="amount txn-amount">
+        <template v-if="item.paymentTransaction">
+          <span v-if="store.isVoi" class="font-weight-bold">V </span>
+          <algo-icon
+            v-else
+            color="currentColor"
+            :width="10"
+            class="algo-glyph"
+          />
+        </template>
+        {{ formatAmount(item) }}
+      </div>
+    </template>
+  </v-data-table>
 </template>
 <script lang="ts" setup>
 import Algo from "@/services/Algo";
@@ -53,7 +54,7 @@ const headers: any[] = [{ key: "col1" }, { key: "col2" }];
 const txns = ref<indexerModels.Transaction[]>([]);
 const assets = ref<modelsv2.Asset[]>([]);
 const nsRecords = ref<NsObject>({});
-const noData = ref("No Transactions yet");
+const noData = ref("No transactions yet");
 
 const addrs = computed(() => {
   const sends = txns.value.map((txn) => txn.sender);
@@ -159,3 +160,39 @@ watch(
   () => getTxns()
 );
 </script>
+
+<style scoped>
+.txn-table :deep(tbody tr) {
+  height: 56px;
+}
+.txn-table :deep(td) {
+  padding: 8px 18px !important;
+}
+.txn-table :deep(td:last-child) {
+  text-align: right;
+}
+.txn-action {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--v-theme-text-dim));
+}
+.txn-target {
+  margin-top: 3px;
+  font: 13px var(--font-mono);
+}
+.txn-when {
+  font-size: 11.5px;
+  color: rgb(var(--v-theme-text-dim));
+  white-space: nowrap;
+}
+.txn-amount {
+  margin-top: 3px;
+  font-size: 13.5px;
+}
+.txn-table :deep(.v-data-table-footer) {
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: rgb(var(--v-theme-text-muted));
+}
+</style>

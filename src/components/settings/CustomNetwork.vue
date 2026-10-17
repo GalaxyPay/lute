@@ -1,35 +1,35 @@
 <template>
-  <v-dialog v-model="show" max-width="800" persistent>
+  <v-dialog v-model="show" max-width="620" persistent>
     <v-card>
       <v-card-title class="d-flex">
-        Custom Networks
+        Custom networks
         <v-spacer />
-        <v-icon :icon="mdiClose" size="small" @click="show = false" />
+        <v-icon :icon="mdiClose" @click="show = false" />
       </v-card-title>
-      <v-card-subtitle class="text-wrap">
+      <v-card-text class="pb-0 text-muted text-body-2">
         Here you can add custom networks. If you specify a genesisID for a
         built-in network, your algod/indexer will override the built-in values
         and the name will be ignored.
-      </v-card-subtitle>
-      <v-container>
-        <v-form ref="form" @submit.prevent="setCustomNetworks()">
+      </v-card-text>
+      <v-form ref="form" @submit.prevent="setCustomNetworks()">
+        <v-card-text class="pb-0">
           <v-textarea
+            class="font-mono"
             rows="16"
             v-model="custom"
             spellcheck="false"
-            style="font-family: monospace"
             :rules="[tryParse]"
           />
-          <v-card-actions>
-            <v-btn text="Save" type="submit" />
-            <v-btn text="Reset" @click="reset" />
-          </v-card-actions>
-        </v-form>
-      </v-container>
-      <v-card-subtitle>Example:</v-card-subtitle>
-      <v-container>
-        <pre style="overflow: auto; font-size: 0.75em">{{ example }}</pre>
-      </v-container>
+        </v-card-text>
+        <div class="d-flex ga-2 px-6 pt-1 pb-4">
+          <v-btn variant="flat" text="Save" type="submit" />
+          <v-btn text="Reset" color="text-body" @click="reset" />
+        </div>
+      </v-form>
+      <div class="example">
+        <div class="text-muted text-caption mb-2">Example:</div>
+        <pre>{{ example }}</pre>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -125,3 +125,15 @@ async function reset() {
   show.value = false;
 }
 </script>
+
+<style scoped>
+.example {
+  padding: 18px 24px 22px;
+  border-top: 1px solid rgb(var(--v-theme-border));
+}
+.example pre {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: rgb(var(--v-theme-text-muted));
+}
+</style>

@@ -49,7 +49,7 @@ export async function getAuthAccts(addr: string): Promise<string[]> {
       .do();
     return accounts.map((a: any) => a.address);
   } catch (err: any) {
-    store.setSnackbar("Indexer Error", "error");
+    store.setSnackbar("Indexer error", "error");
     console.error(err);
     return [];
   }

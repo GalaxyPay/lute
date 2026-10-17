@@ -1,74 +1,58 @@
 <template>
-  <v-container class="pt-6 px-1">
-    <v-form ref="form" @submit.prevent="createApp()">
-      <v-row justify="center">
-        <v-col cols="12" sm="6">
-          <v-select
-            v-model="creator"
-            label="Creator"
-            placeholder="Choose an Account..."
-            density="comfortable"
-            persistent-placeholder
-            :items="store.signAcctInfo"
-            :item-title="
-              (item: AccountInfo) => item.name || item.ns?.name || item.title
-            "
-            item-value="addr"
-            :rules="[required]"
-          />
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col>
-          <v-select
-            v-model.number="threshold"
-            label="Threshold"
-            :items="thresholdOptions"
-            density="comfortable"
-            hint="Number of signatures needed"
-            persistent-hint
-          />
-        </v-col>
-        <v-col cols="1" class="text-center" align-self="center">OF</v-col>
-        <v-col>
-          <v-select
-            v-model.number="numAddrs"
-            label="Number of Addresses"
-            :items="numAddrsOptions"
-            density="comfortable"
-            @update:model-value="addrs.splice(numAddrs)"
-          />
-        </v-col>
-      </v-row>
-      <v-row v-for="n in numAddrs" :key="n">
-        <v-col>
-          <v-text-field
-            v-model="addrs[n - 1]"
-            :label="`Address ${n}`"
-            density="comfortable"
-            :rules="[required, validAddress]"
-            style="font-family: monospace"
-          />
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col>
-          <v-text-field
-            :model-value="msigAddr"
-            :label="'Multi-Sig Address (Calculated)'"
-            readonly
-            density="comfortable"
-            variant="solo-filled"
-            style="font-family: monospace"
-          />
-        </v-col>
-      </v-row>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn text="Create" type="submit" />
-      </v-card-actions>
-    </v-form>
-  </v-container>
+  <v-form ref="form" @submit.prevent="createApp()">
+    <div class="dialog-body d-flex flex-column ga-1">
+      <v-select
+        v-model="creator"
+        label="Creator"
+        placeholder="Choose an account..."
+        density="comfortable"
+        persistent-placeholder
+        :items="store.signAcctInfo"
+        :item-title="
+          (item: AccountInfo) => item.name || item.ns?.name || item.title
+        "
+        item-value="addr"
+        :rules="[required]"
+      />
+      <div class="d-flex align-start ga-3">
+        <v-select
+          v-model.number="threshold"
+          label="Threshold"
+          :items="thresholdOptions"
+          density="comfortable"
+          hint="Number of signatures needed"
+          persistent-hint
+        />
+        <span class="of-label">of</span>
+        <v-select
+          v-model.number="numAddrs"
+          label="Number of addresses"
+          :items="numAddrsOptions"
+          density="comfortable"
+          @update:model-value="addrs.splice(numAddrs)"
+        />
+      </div>
+      <v-text-field
+        v-for="n in numAddrs"
+        :key="n"
+        class="font-mono"
+        v-model="addrs[n - 1]"
+        :label="`Address ${n}`"
+        density="comfortable"
+        :rules="[required, validAddress]"
+      />
+      <v-text-field
+        class="font-mono readonly-field"
+        :model-value="msigAddr"
+        :label="'Multi-sig address (calculated)'"
+        readonly
+        density="comfortable"
+      />
+    </div>
+    <v-card-actions>
+      <v-btn variant="flat" text="Create" type="submit" />
+    </v-card-actions>
+  </v-form>
 </template>
 
 <script lang="ts" setup>
@@ -94,7 +78,7 @@ const thresholdOptions = computed(() =>
 
 const required = (v: string) => !!v || "Required";
 const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid Address";
+  algosdk.isValidAddress(v) || "Invalid address";
 
 const addrs = ref([]);
 const mparams = computed(() => ({
@@ -144,3 +128,15 @@ async function createApp() {
   store.overlay = false;
 }
 </script>
+
+<style scoped>
+.of-label {
+  padding-top: 32px;
+  font-size: 13px;
+  color: rgb(var(--v-theme-text-dim));
+}
+.readonly-field :deep(.v-field) {
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-text-dim));
+}
+</style>

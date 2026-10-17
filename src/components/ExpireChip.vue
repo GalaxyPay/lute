@@ -16,8 +16,8 @@ const chipProps = computed(() => {
   if (props.ns?.timeExpires == null) return;
   const expDays = expireDays(props.ns.timeExpires);
   if (expDays == null) return;
-  if (expDays <= 1) return { color: "red", text: "Expriring" };
-  if (expDays <= 30) return { color: "warning", text: `${expDays} Days` };
+  if (expDays <= 1) return { color: "error", text: "Expiring" };
+  if (expDays <= 30) return { color: "warning", text: `${expDays} days` };
 });
 function renew() {
   const store = useAppStore();
