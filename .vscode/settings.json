@@ -1,0 +1,16 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript][typescript][vue][json][jsonc][html][css][scss][markdown][yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "prettier.requireConfig": true,
+  "files.eol": "\n",
+  "files.associations": {
+    "**/public/_headers": "plaintext",
+    "**/public/_redirects": "plaintext"
+  }
+}

@@ -31,14 +31,18 @@ function chromePorts(name: string, sender?: RelayPort["sender"]) {
         // Exposed for delivery below.
         ...({ listeners } as any),
       },
-      onDisconnect: { addListener: (cb) => closers.push(cb), ...({ closers } as any) },
+      onDisconnect: {
+        addListener: (cb) => closers.push(cb),
+        ...({ closers } as any),
+      },
     };
   };
   const page = make();
   const bg = make();
   const link = (from: End, to: End) => {
     from.postMessage = (m) => {
-      if (from.disconnected) throw Error("Attempting to use a disconnected port");
+      if (from.disconnected)
+        throw Error("Attempting to use a disconnected port");
       const copy = structuredClone(m);
       setTimeout(() => {
         if (to.disconnected) return;
@@ -102,11 +106,15 @@ describe("sync relay", () => {
     await later(50);
     const panel = chromePorts("lute-sync-receiver:7");
     expect(r.internal(panel.bg)).toBe(true);
-    const received = b.SyncSession.runReceiver("ext", portTransport(panel.page), {
-      ...hooks,
-      confirm: async () => true,
-      getMk: () => b.Keystore.getMk(),
-    });
+    const received = b.SyncSession.runReceiver(
+      "ext",
+      portTransport(panel.page),
+      {
+        ...hooks,
+        confirm: async () => true,
+        getMk: () => b.Keystore.getMk(),
+      }
+    );
     const [s, rec] = await Promise.all([sent, received]);
     expect(rec.added).toBe(1);
     expect(s.added).toBe(1);
@@ -119,7 +127,9 @@ describe("sync relay", () => {
     const { relay: r } = relay();
     const ext = chromePorts("lute-sync-ext");
     const token = new Promise<string>((resolve) =>
-      ext.page.onMessage.addListener((m: any) => m?.t === "token" && resolve(m.token))
+      ext.page.onMessage.addListener(
+        (m: any) => m?.t === "token" && resolve(m.token)
+      )
     );
     expect(r.internal(ext.bg)).toBe(true);
     expect(await token).toBe("tok1");
@@ -129,7 +139,10 @@ describe("sync relay", () => {
       mk: await a.Keystore.getMk(),
     });
     await later(50);
-    const web = chromePorts("lute-sync:tok1", { origin: ORIGIN, tab: { id: 3 } });
+    const web = chromePorts("lute-sync:tok1", {
+      origin: ORIGIN,
+      tab: { id: 3 },
+    });
     r.external(web.bg);
     const received = b.SyncSession.runReceiver("web", portTransport(web.page), {
       ...hooks,

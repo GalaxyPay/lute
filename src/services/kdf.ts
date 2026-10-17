@@ -81,7 +81,11 @@ export async function deriveKeyFromPassSalt(
   );
 }
 
-async function verifierBits(pass: string, salt: Uint8Array, iterations: number) {
+async function verifierBits(
+  pass: string,
+  salt: Uint8Array,
+  iterations: number
+) {
   const keyMaterial = await importPassword(pass);
   const bits = await crypto.subtle.deriveBits(
     params(salt, iterations),

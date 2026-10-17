@@ -94,8 +94,8 @@
           <span>{{ FEE_BPS / 100 }}%</span>
         </div>
         <div v-if="needsOptIn" class="text-body-2 text-text-body mt-1">
-          Includes an opt-in to {{ toItem.unit }}, which adds 0.1 ALGO to
-          your minimum balance.
+          Includes an opt-in to {{ toItem.unit }}, which adds 0.1 ALGO to your
+          minimum balance.
         </div>
         <v-checkbox-btn
           v-if="impact > IMPACT_CONFIRM"
@@ -166,7 +166,10 @@ watch(
         .filter((a) => a.amount > 0n)
         .map((a) => getAssetInfo(a.assetId, true))
     );
-    held.value = [ALGO, ...infos.flatMap((i) => (i?.params ? [asItem(i.index, i.params)] : []))];
+    held.value = [
+      ALGO,
+      ...infos.flatMap((i) => (i?.params ? [asItem(i.index, i.params)] : [])),
+    ];
   },
   { immediate: true }
 );
@@ -185,7 +188,10 @@ const tokens = computed<Item[]>(() => {
   return [...list.values()];
 });
 function itemProps(item: Item) {
-  return { title: `${item.unit} · ${item.name}`, subtitle: item.id ? String(item.id) : undefined };
+  return {
+    title: `${item.unit} · ${item.name}`,
+    subtitle: item.id ? String(item.id) : undefined,
+  };
 }
 
 const fromId = ref<bigint>(props.from ?? 0n);
@@ -205,14 +211,20 @@ const needsOptIn = computed(
 const amount = ref<string>();
 const base = computed(() => {
   try {
-    return amount.value ? stringToBigint(amount.value, fromItem.value.decimals) : 0n;
+    return amount.value
+      ? stringToBigint(amount.value, fromItem.value.decimals)
+      : 0n;
   } catch {
     return 0n;
   }
 });
 const max = computed(() =>
   props.acct.info
-    ? spendable(props.acct.info, fromId.value, needsOptIn.value ? OPT_IN_MBR : 0n)
+    ? spendable(
+        props.acct.info,
+        fromId.value,
+        needsOptIn.value ? OPT_IN_MBR : 0n
+      )
     : 0n
 );
 const balanceText = computed(() =>
@@ -225,7 +237,8 @@ function maxAmount() {
   amount.value = bigintToString(max.value, fromItem.value.decimals, true);
 }
 function flip() {
-  if (toId.value == null || !held.value.some((i) => i.id === toId.value)) return;
+  if (toId.value == null || !held.value.some((i) => i.id === toId.value))
+    return;
   [fromId.value, toId.value] = [toId.value, fromId.value];
   amount.value = undefined;
 }
@@ -253,7 +266,12 @@ let debounce: number | undefined;
 let refresher: number | undefined;
 async function fetchQuote() {
   const id = ++run;
-  if (toId.value == null || toId.value === fromId.value || !base.value || amountError.value) {
+  if (
+    toId.value == null ||
+    toId.value === fromId.value ||
+    !base.value ||
+    amountError.value
+  ) {
     quote.value = undefined;
     quoteError.value = undefined;
     // A request this cancels no longer resets it.
@@ -269,7 +287,8 @@ async function fetchQuote() {
       address: props.acct.addr,
       optIn: needsOptIn.value,
       // A Ledger confirms each txn on the device.
-      maxGroupSize: props.acct.slot != null && props.acct.seedId == null ? 8 : undefined,
+      maxGroupSize:
+        props.acct.slot != null && props.acct.seedId == null ? 8 : undefined,
     });
     if (id !== run) return;
     quote.value = q;
@@ -305,11 +324,17 @@ const outText = computed(() =>
 const minOut = computed(() =>
   quote.value ? minReceived(quote.value.quote, slippage.value) : 0n
 );
-const minText = computed(() => bigintToString(minOut.value, toItem.value.decimals));
+const minText = computed(() =>
+  bigintToString(minOut.value, toItem.value.decimals)
+);
 // The router reports price impact in percent.
 const impact = computed(() => quote.value?.userPriceImpact ?? 0);
 const impactClass = computed(() =>
-  impact.value > IMPACT_CONFIRM ? "text-error" : impact.value > IMPACT_WARN ? "text-warning" : ""
+  impact.value > IMPACT_CONFIRM
+    ? "text-error"
+    : impact.value > IMPACT_WARN
+      ? "text-warning"
+      : ""
 );
 const impactOk = ref(false);
 // Acceptance covers the impact seen, not a worse one a refresh brings.

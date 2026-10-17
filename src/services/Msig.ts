@@ -100,7 +100,9 @@ const Msig = {
             const abiType = algosdk.ABIType.from("byte[64][]");
             const abiData = abiType.decode(boxInfo.value) as number[][];
             // ABI byte arrays decode to number[], not Uint8Array.
-            abiData.forEach((sig) => sigs.push(Uint8Array.from(sig).toBase64()));
+            abiData.forEach((sig) =>
+              sigs.push(Uint8Array.from(sig).toBase64())
+            );
             groups[nonce - 1]!.sigs.push({
               addr,
               sigs,

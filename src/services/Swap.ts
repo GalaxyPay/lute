@@ -105,7 +105,9 @@ export async function executeSwap(p: {
           sender: t.sender.toString(),
           amount: t.payment?.amount ?? t.assetTransfer?.amount,
           asset: t.assetTransfer?.assetIndex,
-          receiver: (t.payment?.receiver ?? t.assetTransfer?.receiver)?.toString(),
+          receiver: (
+            t.payment?.receiver ?? t.assetTransfer?.receiver
+          )?.toString(),
           app: t.applicationCall?.appIndex,
           fee: t.fee,
         }))

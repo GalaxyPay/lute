@@ -1,6 +1,11 @@
 // Stand-in for the Pinia store in unit tests. Only the fields the services
 // under test read are modelled.
-import type { FalconSeedData, KeystoreMeta, KeystoreMode, SeedData } from "@/types";
+import type {
+  FalconSeedData,
+  KeystoreMeta,
+  KeystoreMode,
+  SeedData,
+} from "@/types";
 
 export const testStore = {
   isWeb: true,

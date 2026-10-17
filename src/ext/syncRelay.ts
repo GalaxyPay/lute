@@ -79,8 +79,7 @@ export function createSyncRelay(opts: RelayOptions) {
   const waitingWeb = new Map<number, Waiting>();
   const waitingTokens = new Map<string, Waiting>();
 
-  const busy = () =>
-    !!session || waitingWeb.size > 0 || waitingTokens.size > 0;
+  const busy = () => !!session || waitingWeb.size > 0 || waitingTokens.size > 0;
 
   /** Hold a port, and what it sends, until its other half connects. */
   function wait<K>(map: Map<K, Waiting>, key: K, port: RelayPort) {
@@ -150,7 +149,10 @@ export function createSyncRelay(opts: RelayOptions) {
           refuse(port, "failed", "The extension could not open its window.");
         });
       } else if (port.name.startsWith("lute-sync:")) {
-        const sender = take(waitingTokens, port.name.slice("lute-sync:".length));
+        const sender = take(
+          waitingTokens,
+          port.name.slice("lute-sync:".length)
+        );
         if (!sender)
           return refuse(
             port,

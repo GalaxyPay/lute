@@ -64,7 +64,10 @@ async function passKey(pass: string, salt: Uint8Array, iterations: number) {
     false,
     ["deriveKey", "deriveBits"]
   );
-  return { material, params: { name: "PBKDF2", salt, iterations, hash: "SHA-256" } };
+  return {
+    material,
+    params: { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+  };
 }
 
 /**
@@ -118,7 +121,9 @@ async function verifier(pass: string, format: VerifierFormat) {
     return { salt: salt.toBase64(), hash: new Uint8Array(hash).toBase64() };
   }
   const { material, params } = await passKey(pass, salt, TEST_ITERATIONS);
-  const bits = new Uint8Array(await crypto.subtle.deriveBits(params, material, 256));
+  const bits = new Uint8Array(
+    await crypto.subtle.deriveBits(params, material, 256)
+  );
   if (format === "raw")
     return {
       salt: salt.toBase64(),

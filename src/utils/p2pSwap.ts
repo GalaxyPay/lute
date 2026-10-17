@@ -54,4 +54,3 @@ export function validateSwap(txn1: Transaction, txn2: Transaction) {
   )
     throw Error("Network Mismatch");
 }
-

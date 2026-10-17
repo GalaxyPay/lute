@@ -58,7 +58,9 @@ export default defineConfig({
         "pinia",
         { "@/stores/app": ["useAppStore"] },
       ],
-      dts: "src/auto-imports.d.ts",
+      // Committed src/auto-imports.d.ts is owned by vite.config.ext.mts, whose
+      // imports are a superset (adds `browser`, used by shared components).
+      dts: false,
       eslintrc: {
         enabled: true,
       },

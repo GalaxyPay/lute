@@ -21,7 +21,9 @@
     <AppBar v-if="showAppBar" />
     <AppNav />
     <v-main>
-      <router-view v-show="!dappLinkProblem" />
+      <div v-show="!dappLinkProblem" style="display: contents">
+        <router-view />
+      </div>
       <DappLinkError v-if="dappLinkProblem" :problem="dappLinkProblem" />
       <SignDialog />
     </v-main>

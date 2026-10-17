@@ -70,9 +70,7 @@ export const useAppStore = defineStore("app", {
     fallback: false,
     device: {
       transport: (navigator.hid ? "hid" : navigator.usb ? "usb" : undefined) as
-        | "hid"
-        | "usb"
-        | undefined,
+        "hid" | "usb" | undefined,
       showSelector: false,
       list: [] as (HIDDevice | USBDevice)[],
     },

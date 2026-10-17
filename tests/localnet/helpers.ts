@@ -47,8 +47,6 @@ export async function funded(algos = 10) {
 
 /** Submit signed txns and wait for them. */
 export async function submit(signed: Uint8Array[]) {
-  const { txid } = await algorand.client.algod
-    .sendRawTransaction(signed)
-    .do();
+  const { txid } = await algorand.client.algod.sendRawTransaction(signed).do();
   return await algosdk.waitForConfirmation(algorand.client.algod, txid, 10);
 }
