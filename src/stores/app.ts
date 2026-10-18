@@ -1,7 +1,7 @@
 // Utilities
 import type LuteTxns from "@/classes/LuteTxns";
 import { networks } from "@/data";
-import { get, getAll, keys, set } from "@/dbLute";
+import { readCache, set } from "@/dbLute";
 import { secretStatus } from "@/services/accountSecret";
 import type {
   AccountHD,
@@ -23,6 +23,30 @@ import vuetify from "@/plugins/vuetify";
 import { deepClone, formatAddr, setIcon } from "@/utils";
 import type { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
+
+// "app" store keys copied straight to the state field of the same name, with
+// the value used when the key is unset.
+const SETTINGS = {
+  customNetworks: [] as Network[],
+  sandboxRouter: undefined as number | undefined,
+  // Favorite asset ids, keyed by favoritesKey(): per network and account.
+  favoriteAssets: {} as Record<string, number[]>,
+  debug: false,
+  snoop: false,
+  ledgerSelect: false,
+  nsSend: true,
+  hideBalances: false,
+  autoLockMinutes: 0,
+};
+
+const hotWalletSupport = crypto.subtle
+  .generateKey({ name: "Ed25519" }, false, ["sign"])
+  .then(
+    () => true,
+    () => false
+  );
+
+let appliedTheme: string | undefined;
 
 export const useAppStore = defineStore("app", {
   state: () => ({
@@ -211,42 +235,41 @@ export const useAppStore = defineStore("app", {
     },
   },
   actions: {
+    // One snapshot, one patch: a render between partial assignments shows
+    // states that never existed (e.g. legacy secrets with no keystore yet).
     async getCache() {
-      this.theme = (await get("app", "theme")) || "dark";
-      vuetify.theme.change(this.theme);
-      await setIcon(this.theme);
-      try {
-        await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign"]);
-      } catch {
-        this.hotWallet = false;
+      const [c, hotWallet] = await Promise.all([readCache(), hotWalletSupport]);
+      const theme: string = c.app.theme || "dark";
+      const settings = Object.fromEntries(
+        Object.entries(SETTINGS).map(([k, d]) => [k, c.app[k] ?? d])
+      ) as typeof SETTINGS;
+      const nn = c.app.networkName;
+      const header: KeystoreHeader | undefined = c.app.keystore;
+      const legacyVerifier = !!c.app.password;
+      this.$patch({
+        ...settings,
+        theme,
+        hotWallet,
+        // allNetworks is the built-ins plus custom networks by name.
+        networkName:
+          [...networks, ...settings.customNetworks].find((n) => n.name === nn)
+            ?.name || networks[0]!.name,
+        hasKeystore: !!header,
+        legacyVerifier,
+        keystoreMode: header?.mode ?? (legacyVerifier ? "password" : "device"),
+        accounts: c.app.accounts || [],
+        keys: c.keys as string[],
+        seeds: c.seeds,
+        falcon25Seeds: c.falcon25Seeds,
+        keystore: (c.keystore as KeystoreRecord[]).map(
+          ({ id, kind, form }) => ({ id, kind, form })
+        ),
+      });
+      if (theme !== appliedTheme) {
+        appliedTheme = theme;
+        vuetify.theme.change(theme);
+        await setIcon(theme);
       }
-      const nn = await get("app", "networkName");
-      this.customNetworks = (await get("app", "customNetworks")) || [];
-      this.networkName =
-        this.allNetworks.find((n) => n.name === nn)?.name || networks[0]!.name;
-      this.sandboxRouter = await get("app", "sandboxRouter");
-      this.favoriteAssets = (await get("app", "favoriteAssets")) || {};
-      const header: KeystoreHeader | undefined = await get("app", "keystore");
-      this.legacyVerifier = !!(await get("app", "password"));
-      this.hasKeystore = !!header;
-      this.keystoreMode =
-        header?.mode ?? (this.legacyVerifier ? "password" : "device");
-      this.accounts = (await get("app", "accounts")) || [];
-      this.debug = (await get("app", "debug")) ?? this.debug;
-      this.snoop = (await get("app", "snoop")) ?? this.snoop;
-      this.ledgerSelect =
-        (await get("app", "ledgerSelect")) ?? this.ledgerSelect;
-      this.nsSend = (await get("app", "nsSend")) ?? this.nsSend;
-      this.hideBalances =
-        (await get("app", "hideBalances")) ?? this.hideBalances;
-      this.autoLockMinutes =
-        (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
-      this.keys = (await keys("keys")) as string[];
-      this.seeds = await getAll("seeds");
-      this.falcon25Seeds = await getAll("falcon25-seeds");
-      this.keystore = ((await getAll("keystore")) as KeystoreRecord[]).map(
-        ({ id, kind, form }) => ({ id, kind, form })
-      );
     },
     favoritesKey(addr: string) {
       return `${this.network.genesisID}/${addr}`;

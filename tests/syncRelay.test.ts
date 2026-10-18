@@ -8,6 +8,26 @@ const HOT = algosdk.mnemonicFromSeed(new Uint8Array(32).fill(21));
 const HOT_ADDR = algosdk.mnemonicToSecretKey(HOT).addr.toString();
 const later = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Deliveries and disconnects not yet run, across every chromePorts pair.
+let inFlight = 0;
+const deferred = (fn: () => void) => {
+  inFlight++;
+  setTimeout(() => {
+    inFlight--;
+    fn();
+  }, 0);
+};
+
+/**
+ * Waits until every queued delivery has run, including any it queued in turn
+ * (a relayed message takes two hops). Counting rather than sleeping keeps the
+ * tests independent of how busy the machine is.
+ */
+async function settle() {
+  do await later(0);
+  while (inFlight > 0);
+}
+
 type End = RelayPort & { disconnected: boolean };
 
 /**
@@ -44,19 +64,19 @@ function chromePorts(name: string, sender?: RelayPort["sender"]) {
       if (from.disconnected)
         throw Error("Attempting to use a disconnected port");
       const copy = structuredClone(m);
-      setTimeout(() => {
+      deferred(() => {
         if (to.disconnected) return;
         for (const l of [...(to.onMessage as any).listeners]) l(copy);
-      }, 0);
+      });
     };
     from.disconnect = () => {
       if (from.disconnected) return;
       from.disconnected = true;
-      setTimeout(() => {
+      deferred(() => {
         if (to.disconnected) return;
         to.disconnected = true;
         for (const c of (to.onDisconnect as any).closers) c();
-      }, 0);
+      });
     };
   };
   link(page, bg);
@@ -179,7 +199,7 @@ describe("sync relay", () => {
     const secondMsgs = errors(second.page);
     r.internal(second.bg);
 
-    await later(20);
+    await settle();
     expect(replayMsgs[0]).toMatchObject({ t: "error", code: "invalid" });
     expect(replay.page.disconnected).toBe(true);
     expect(foreign.page.disconnected).toBe(true);
@@ -194,7 +214,9 @@ describe("sync relay", () => {
     const got: any[] = [];
     web.page.onMessage.addListener((m) => got.push(m));
     r.external(web.bg);
-    await later(80);
+    // Timers fire in expiry order, so the 30ms TTL has run by now.
+    await later(40);
+    await settle();
     expect(got[0]).toMatchObject({ t: "error", code: "timeout" });
     expect(web.page.disconnected).toBe(true);
     // Free for a new session afterwards.
@@ -202,7 +224,7 @@ describe("sync relay", () => {
     const msgs: any[] = [];
     again.page.onMessage.addListener((m) => msgs.push(m));
     r.external(again.bg);
-    await later(10);
+    await settle();
     expect(msgs).toEqual([]);
   });
 });
@@ -219,9 +241,9 @@ describe("sync relay edges", () => {
     const probe = chromePorts("lute-sync-ext");
     const got = inbox(probe.page);
     r.internal(probe.bg);
-    await later(10);
+    await settle();
     probe.page.disconnect();
-    await later(10);
+    await settle();
     return got[0]?.t === "token";
   }
 
@@ -237,7 +259,7 @@ describe("sync relay edges", () => {
     r2.external(bad.bg);
     const none = chromePorts("lute-sync", { tab: { id: 4 } });
     r2.external(none.bg);
-    await later(10);
+    await settle();
     expect(open2).not.toHaveBeenCalled();
     expect(bad.page.disconnected).toBe(true);
     expect(none.page.disconnected).toBe(true);
@@ -249,7 +271,7 @@ describe("sync relay edges", () => {
     const odd = chromePorts("lute-other", { origin: ORIGIN, tab: { id: 1 } });
     r.external(noTab.bg);
     r.external(odd.bg);
-    await later(10);
+    await settle();
     expect(noTab.page.disconnected).toBe(true);
     expect(odd.page.disconnected).toBe(true);
     expect(openReceiver).not.toHaveBeenCalled();
@@ -262,7 +284,7 @@ describe("sync relay edges", () => {
     const second = chromePorts("lute-sync", { origin: ORIGIN, tab: { id: 2 } });
     const got = inbox(second.page);
     r.external(second.bg);
-    await later(10);
+    await settle();
     expect(got[0]).toMatchObject({ t: "error", code: "busy" });
     expect(openReceiver).toHaveBeenCalledTimes(1);
   });
@@ -272,7 +294,7 @@ describe("sync relay edges", () => {
     const web = chromePorts("lute-sync", { origin: ORIGIN, tab: { id: 1 } });
     const got = inbox(web.page);
     r.external(web.bg);
-    await later(20);
+    await settle();
     expect(got[0]).toMatchObject({ t: "error", code: "failed" });
     expect(web.page.disconnected).toBe(true);
     expect(await isFree(r)).toBe(true);
@@ -284,7 +306,7 @@ describe("sync relay edges", () => {
     const panel = chromePorts("lute-sync-receiver:2");
     const got = inbox(panel.page);
     expect(r.internal(panel.bg)).toBe(true);
-    await later(10);
+    await settle();
     expect(got[0]).toMatchObject({ t: "error", code: "invalid" });
   });
 
@@ -294,7 +316,7 @@ describe("sync relay edges", () => {
     const got = inbox(web.page);
     r.external(web.bg);
     r.receiverClosed(1, Date.now());
-    await later(10);
+    await settle();
     expect(got[0]).toMatchObject({ t: "error", code: "closed" });
     expect(web.page.disconnected).toBe(true);
     expect(await isFree(r)).toBe(true);
@@ -307,7 +329,7 @@ describe("sync relay edges", () => {
     const got = inbox(web.page);
     r.external(web.bg);
     r.receiverClosed(1, openedAt);
-    await later(10);
+    await settle();
     expect(got).toEqual([]);
     expect(web.page.disconnected).toBe(false);
   });
@@ -317,11 +339,11 @@ describe("sync relay edges", () => {
     const ext = chromePorts("lute-sync-ext");
     r.internal(ext.bg);
     ext.page.disconnect();
-    await later(10);
+    await settle();
     const late = chromePorts("lute-sync:tok1", { origin: ORIGIN });
     const got = inbox(late.page);
     r.external(late.bg);
-    await later(10);
+    await settle();
     expect(got[0]).toMatchObject({ t: "error", code: "invalid" });
     expect(await isFree(r)).toBe(true);
   });
@@ -330,11 +352,11 @@ describe("sync relay edges", () => {
     const { relay: r } = relay();
     const ext = chromePorts("lute-sync-ext");
     r.internal(ext.bg);
-    await later(10);
+    await settle();
     // Sent before the web page connects: held, except what is not sync.
     ext.page.postMessage({ t: "hello", pub: "a" });
     ext.page.postMessage({ t: "token", token: "forged" });
-    await later(10);
+    await settle();
     const web = chromePorts("lute-sync:tok1", { origin: ORIGIN });
     const toWeb = inbox(web.page);
     r.external(web.bg);
@@ -342,7 +364,7 @@ describe("sync relay edges", () => {
     web.page.postMessage({ t: "hello", pub: "b" });
     web.page.postMessage({ t: "anything" });
     ext.page.postMessage({ t: "payload", data: "x" });
-    await later(20);
+    await settle();
     expect(toWeb).toEqual([
       { t: "hello", pub: "a" },
       { t: "payload", data: "x" },
@@ -351,7 +373,7 @@ describe("sync relay edges", () => {
     expect(await isFree(r)).toBe(false);
 
     web.page.disconnect();
-    await later(20);
+    await settle();
     expect(ext.page.disconnected).toBe(true);
     expect(await isFree(r)).toBe(true);
   });
