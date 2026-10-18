@@ -1,6 +1,5 @@
 <template>
   <div v-if="loading">
-    <v-progress-linear indeterminate height="3" />
     <v-skeleton-loader type="list-item-two-line@3" />
   </div>
   <v-data-table

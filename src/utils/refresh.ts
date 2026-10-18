@@ -11,6 +11,7 @@ interface Sibling {
 export async function refresh() {
   const store = useAppStore();
   store.loading++;
+  const networkName = store.networkName;
   if (!store.fallback && store.network.fallback)
     try {
       await Algo.algod.status().do({}, { signal: AbortSignal.timeout(1000) });
@@ -63,7 +64,7 @@ export async function refresh() {
   } catch (err: any) {
     console.error(err);
   }
-  store.info = info;
+  store.$patch({ info, infoNetwork: networkName });
   try {
     store.nsObj = await NameService.reverseLookup(info.map((a) => a.address));
   } catch (err: any) {
