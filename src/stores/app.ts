@@ -1,8 +1,9 @@
 // Utilities
 import type LuteTxns from "@/classes/LuteTxns";
 import { networks } from "@/data";
-import { readCache, set } from "@/dbLute";
+import { del, readCache, set } from "@/dbLute";
 import { secretStatus } from "@/services/accountSecret";
+import { readTheme, saveTheme, THEME_KEY } from "@/services/themePref";
 import type {
   AccountHD,
   AccountInfo,
@@ -48,6 +49,11 @@ const hotWalletSupport = crypto.subtle
 
 let appliedTheme: string | undefined;
 
+// Fires in every other same-origin page, e.g. the popup when options change it.
+addEventListener("storage", (e) => {
+  if (e.key === THEME_KEY) useAppStore().applyTheme(e.newValue || "dark");
+});
+
 export const useAppStore = defineStore("app", {
   state: () => ({
     loading: 0,
@@ -62,7 +68,7 @@ export const useAppStore = defineStore("app", {
       display: false,
     } as SnackBar,
     refresh: 0,
-    theme: "dark",
+    theme: readTheme() || "dark",
     networkName: networks[0]!.name,
     hotWallet: true,
     keys: [] as string[],
@@ -239,7 +245,12 @@ export const useAppStore = defineStore("app", {
     // states that never existed (e.g. legacy secrets with no keystore yet).
     async getCache() {
       const [c, hotWallet] = await Promise.all([readCache(), hotWalletSupport]);
-      const theme: string = c.app.theme || "dark";
+      const saved = readTheme();
+      // @legacy-read: 1.x kept the theme in the "app" store.
+      const legacyTheme: string | undefined = c.app.theme;
+      if (!saved && legacyTheme && saveTheme(legacyTheme))
+        await del("app", "theme");
+      const theme = saved || legacyTheme || "dark";
       const settings = Object.fromEntries(
         Object.entries(SETTINGS).map(([k, d]) => [k, c.app[k] ?? d])
       ) as typeof SETTINGS;
@@ -248,7 +259,6 @@ export const useAppStore = defineStore("app", {
       const legacyVerifier = !!c.app.password;
       this.$patch({
         ...settings,
-        theme,
         hotWallet,
         // allNetworks is the built-ins plus custom networks by name.
         networkName:
@@ -265,11 +275,15 @@ export const useAppStore = defineStore("app", {
           ({ id, kind, form }) => ({ id, kind, form })
         ),
       });
-      if (theme !== appliedTheme) {
-        appliedTheme = theme;
-        vuetify.theme.change(theme);
-        await setIcon(theme);
-      }
+      await this.applyTheme(theme);
+    },
+    /** Vuetify already starts in the saved theme; the icon waits for this. */
+    async applyTheme(name: string) {
+      this.theme = name;
+      if (name === appliedTheme) return;
+      appliedTheme = name;
+      vuetify.theme.change(name);
+      await setIcon(name);
     },
     favoritesKey(addr: string) {
       return `${this.network.genesisID}/${addr}`;
@@ -285,9 +299,10 @@ export const useAppStore = defineStore("app", {
       this.favoriteAssets = all;
       await set("app", "favoriteAssets", deepClone(all));
     },
+    // Other open pages follow through the storage event below.
     async setTheme(name: string | null) {
-      await set("app", "theme", name || "dark");
-      await this.getCache();
+      saveTheme(name || "dark");
+      await this.applyTheme(name || "dark");
     },
     async setSnackbar(text: string, color = "info", timeout = 4000) {
       if (color === "error") timeout = 15000;
