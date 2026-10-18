@@ -2,6 +2,7 @@
   <account-table
     :accounts="accounts"
     :loading="loading"
+    slow
     @get-addrs="getLedgerAddresses"
     @add-accounts="addAccounts"
   />
@@ -38,17 +39,16 @@ async function getLedgerAddresses(startIndex: number) {
       ? await hidOrUsb.request()
       : await hidOrUsb.create();
     const algoApp = new AlgorandApp(transport);
-    const accts: AccountSubs[] = [];
+    // Each account shows as soon as it is read: a device read takes a moment.
     for (let i = startIndex; i < 4 + startIndex; i++) {
       await algoApp.getAddressAndPubKey(i).then(async (resp) => {
         const addr = resp.address.toString();
         const ai: AccountSubs = await Algo.algod.accountInformation(addr).do();
         const aa = await getAuthAccts(addr);
         ai.subs = aa;
-        accts.push(ai);
+        accounts.value.push(ai);
       });
     }
-    accounts.value = accounts.value.concat(accts);
     await transport.close();
   } catch (err: any) {
     if (store.device.transport) {

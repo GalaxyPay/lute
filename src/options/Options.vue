@@ -47,6 +47,7 @@ watch(
     browser.runtime.sendMessage({
       action: "optionsRefresh",
       info,
+      infoNetwork: store.infoNetwork,
       nsObj: JSON.stringify(store.nsObj),
     });
   }

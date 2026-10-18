@@ -59,7 +59,12 @@ export const useAppStore = defineStore("app", {
     loading: 0,
     overlay: false,
     accounts: [] as LuteAccount[],
+    // Set by the first getCache; until then the account list is unknown.
+    cacheLoaded: false,
     info: [] as AccountHD[],
+    // The network `info` was loaded for. Until it matches networkName,
+    // rekeyed accounts show as top-level rows instead of under their signer.
+    infoNetwork: undefined as string | undefined,
     nsObj: {} as NsObject,
     snackbar: {
       text: "",
@@ -259,6 +264,7 @@ export const useAppStore = defineStore("app", {
       const legacyVerifier = !!c.app.password;
       this.$patch({
         ...settings,
+        cacheLoaded: true,
         hotWallet,
         // allNetworks is the built-ins plus custom networks by name.
         networkName:

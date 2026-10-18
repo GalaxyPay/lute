@@ -199,6 +199,9 @@ export default createVuetify({
     },
     VProgressLinear: {
       color: "primary",
+      // The track defaults to --v-border-opacity, which the themes set to 1:
+      // a solid track hides the indeterminate bars moving over it.
+      bgOpacity: 0.12,
     },
     VProgressCircular: {
       color: "primary",
