@@ -10,6 +10,7 @@ import { aliases, mdi } from "vuetify/iconsets/mdi-svg";
 
 // Composables
 import { createVuetify, type ThemeDefinition } from "vuetify";
+import { readTheme } from "@/services/themePref";
 
 /*
  * Design tokens. oklch is the source of truth (in the comments); Vuetify
@@ -210,7 +211,7 @@ export default createVuetify({
     },
   },
   theme: {
-    defaultTheme: "dark",
+    defaultTheme: readTheme() || "dark",
     themes: { dark, light, gold },
   },
   icons: {
