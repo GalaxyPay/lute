@@ -9,6 +9,8 @@
  * hijacked opener cannot read it.
  */
 
+import { ref } from "vue";
+
 export const BASE_PATH = "dist/main/index.html";
 export async function resetSidePanel() {
   // @ts-expect-error missing types
