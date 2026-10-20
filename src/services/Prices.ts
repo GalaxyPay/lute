@@ -4,8 +4,6 @@
 // out in batches with a few in flight, and results — including "no price" —
 // are cached so a refresh only asks for what has gone stale.
 
-import { shallowRef } from "vue";
-
 const API = "https://api.hay.app/api/assets/prices";
 const KEY = "hay_pk_pknm6ujwuphntck4jt6qronh2u";
 const BATCH = 100;
