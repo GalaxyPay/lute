@@ -42,7 +42,6 @@ import NameService from "@/services/NameService";
 import type { AccountInfo, NsObject } from "@/types";
 import { bigintToString, formatAddr, getAssetInfo, whenLoaded } from "@/utils";
 import { indexerModels, modelsv2 } from "algosdk";
-import type { PropType } from "vue";
 
 const store = useAppStore();
 const props = defineProps({
