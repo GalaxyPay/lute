@@ -13,7 +13,23 @@
             persistent-hint
             variant="outlined"
             class="pb-3 mono-hint"
-          />
+          >
+            <template #prepend-inner>
+              <swap-asset-icon :id="fromItem.id" :unit="fromItem.unit" />
+            </template>
+            <template #item="{ props: p, item }">
+              <v-list-item v-bind="p">
+                <template #prepend>
+                  <swap-asset-icon
+                    :id="(item.raw as Item).id"
+                    :unit="(item.raw as Item).unit"
+                    :size="32"
+                    class="mr-3"
+                  />
+                </template>
+              </v-list-item>
+            </template>
+          </v-autocomplete>
         </v-col>
         <v-col cols="12" sm="6">
           <v-text-field
@@ -52,7 +68,23 @@
         label="To"
         variant="outlined"
         class="pb-3"
-      />
+      >
+        <template v-if="toId != null" #prepend-inner>
+          <swap-asset-icon :id="toItem.id" :unit="toItem.unit" />
+        </template>
+        <template #item="{ props: p, item }">
+          <v-list-item v-bind="p">
+            <template #prepend>
+              <swap-asset-icon
+                :id="(item.raw as Item).id"
+                :unit="(item.raw as Item).unit"
+                :size="32"
+                class="mr-3"
+              />
+            </template>
+          </v-list-item>
+        </template>
+      </v-autocomplete>
 
       <div class="text-body-2 mb-1">Slippage</div>
       <v-chip-group v-model="slippage" mandatory selected-class="text-primary">
@@ -69,9 +101,43 @@
         :text="quoteError"
       />
       <div v-if="quote" class="quote my-3">
+        <div class="quote-row align-center">
+          <span class="font-weight-medium">Quote</span>
+          <v-btn
+            variant="text"
+            size="small"
+            rounded="pill"
+            color="text-muted"
+            class="refresh-btn"
+            :loading="quoting"
+            :disabled="swapping"
+            :title="`Refreshes in ${remaining}s. Click to refresh now.`"
+            :aria-label="`Refresh quote, auto-refresh in ${remaining} seconds`"
+            @click="refreshNow()"
+          >
+            <template #prepend>
+              <v-icon :icon="mdiRefresh" size="14" />
+            </template>
+            {{ remaining }}s
+          </v-btn>
+        </div>
+        <div class="quote-row">
+          <span>You pay</span>
+          <span class="amount d-inline-flex align-center ga-1">
+            <swap-asset-icon
+              :id="fromItem.id"
+              :unit="fromItem.unit"
+              :size="16"
+            />
+            {{ inText }} {{ fromItem.unit }}
+          </span>
+        </div>
         <div class="quote-row">
           <span>You receive</span>
-          <span class="amount">{{ outText }} {{ toItem.unit }}</span>
+          <span class="amount d-inline-flex align-center ga-1">
+            <swap-asset-icon :id="toItem.id" :unit="toItem.unit" :size="16" />
+            {{ outText }} {{ toItem.unit }}
+          </span>
         </div>
         <div class="quote-row">
           <span>Minimum received</span>
@@ -128,7 +194,7 @@ import type { AccountInfo, TinyAsset } from "@/types";
 import { bigintToString, getAssetInfo, stringToBigint } from "@/utils";
 import { reportSignError } from "@/utils/signers";
 import { minReceived, spendable } from "@/utils/swap";
-import { mdiSwapVertical } from "@mdi/js";
+import { mdiRefresh, mdiSwapVertical } from "@mdi/js";
 import type { modelsv2 } from "algosdk";
 
 const SLIPPAGES = [0.5, 1, 2];
@@ -261,9 +327,11 @@ function readSlippage() {
 const quote = ref<SwapQuote>();
 const quoting = ref(false);
 const quoteError = ref<string>();
+const quotedAt = ref(0);
+const now = ref(Date.now());
 let run = 0;
 let debounce: number | undefined;
-let refresher: number | undefined;
+let ticker: number | undefined;
 async function fetchQuote() {
   const id = ++run;
   if (
@@ -292,6 +360,7 @@ async function fetchQuote() {
     });
     if (id !== run) return;
     quote.value = q;
+    quotedAt.value = now.value = Date.now();
     quoteError.value = q.quote ? undefined : "No route found";
   } catch (err: any) {
     if (id !== run) return;
@@ -307,17 +376,37 @@ watch([fromId, toId, base], () => {
   window.clearTimeout(debounce);
   debounce = window.setTimeout(fetchQuote, 500);
 });
+const ageMs = computed(() => now.value - quotedAt.value);
+const remaining = computed(() =>
+  Math.max(0, Math.ceil((REFRESH_MS - ageMs.value) / 1000))
+);
+function refreshNow() {
+  window.clearTimeout(debounce);
+  fetchQuote();
+}
 onMounted(() => {
-  refresher = window.setInterval(() => {
-    if (quote.value && !swapping.value && !document.hidden) fetchQuote();
-  }, REFRESH_MS);
+  // A hidden tab lets the quote go stale; it refreshes on return.
+  ticker = window.setInterval(() => {
+    now.value = Date.now();
+    if (
+      quote.value &&
+      !quoting.value &&
+      !swapping.value &&
+      !document.hidden &&
+      ageMs.value >= REFRESH_MS
+    )
+      fetchQuote();
+  }, 1000);
 });
 onBeforeUnmount(() => {
   run++;
   window.clearTimeout(debounce);
-  window.clearInterval(refresher);
+  window.clearInterval(ticker);
 });
 
+const inText = computed(() =>
+  quote.value ? bigintToString(quote.value.amount, fromItem.value.decimals) : ""
+);
 const outText = computed(() =>
   quote.value ? bigintToString(quote.value.quote, toItem.value.decimals) : ""
 );
@@ -354,6 +443,8 @@ const swapping = ref(false);
 const canSwap = computed(
   () =>
     !!quote.value?.quote &&
+    // Never sign a quote past its refresh time.
+    ageMs.value < REFRESH_MS &&
     !quoting.value &&
     !swapping.value &&
     !amountError.value &&
@@ -393,6 +484,15 @@ async function swap() {
   padding: 12px;
   border: 1px solid rgb(var(--v-theme-border-subtle));
   border-radius: 8px;
+}
+/* Fixed size, so the countdown doesn't resize it. */
+.refresh-btn {
+  --v-btn-height: 22px;
+  width: 54px;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .quote-row {
   display: flex;

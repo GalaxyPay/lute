@@ -66,6 +66,7 @@ declare module 'vue' {
     SignView: typeof import('./components/sign/SignView.vue')['default']
     Snackbar: typeof import('./components/Snackbar.vue')['default']
     Swap: typeof import('./components/account/swap/Swap.vue')['default']
+    SwapAssetIcon: typeof import('./components/account/swap/SwapAssetIcon.vue')['default']
     SyncResult: typeof import('./components/keystore/SyncResult.vue')['default']
     SyncSession: typeof import('./components/keystore/SyncSession.vue')['default']
     TxnTable: typeof import('./components/account/TxnTable.vue')['default']
