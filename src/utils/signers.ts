@@ -2,10 +2,15 @@ import LuteTxns from "@/classes/LuteTxns";
 import Signer, { SignContext } from "@/services/Signer";
 import type { LuteMsig, WalletTransaction } from "@/types";
 import { selectDevice } from "@/utils";
+import { priceTxns } from "@/utils/simulateFees";
 import { signingAddr } from "@/utils/signingAddr";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import algosdk, { signTransactionWithSigner, Transaction } from "algosdk";
+import algosdk, {
+  signTransactionWithSigner,
+  Transaction,
+  type TransactionSigner,
+} from "algosdk";
 import { AlgorandApp } from "ledger-algorand-js";
 
 export { hotSign } from "@/services/Signer";
@@ -161,6 +166,17 @@ export async function luteSigner(
   });
   return luteSignerWT(walletTxns, opts.summary);
 }
+
+/**
+ * luteSigner for groups an algokit composer builds and sends: first prices
+ * the txns to sign for their sender's signature type, raising the fees the
+ * composer set. The composer sends what is signed, so the raise goes out.
+ */
+export const pricedSigner: TransactionSigner = async (group, idxs) => {
+  const addr = group[idxs[0]!]!.sender.toString();
+  const acct = useAppStore().acctInfo.find((a) => a.addr === addr) ?? { addr };
+  return luteSigner(await priceTxns(group, acct, idxs), idxs);
+};
 
 /** `summary` is a plain-language line the sign dialog shows above the txns. */
 export async function luteSignerWT(

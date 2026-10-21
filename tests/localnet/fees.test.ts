@@ -45,7 +45,7 @@ describe("fee pricing", () => {
     ];
 
     // Only a's txn may be raised; b's stays at zero.
-    await priceTxns(txns, {}, [0]);
+    await priceTxns(txns, { addr: a.toString() }, [0]);
 
     expect(txns[0]!.fee).toBe(2n * (await minFee()));
     expect(txns[1]!.fee).toBe(0n);
@@ -60,7 +60,7 @@ describe("fee pricing", () => {
   it("leaves a txn that already pays enough alone", async () => {
     const a = await funded(1);
     const txn = await pay(a.toString(), a.toString(), 5000);
-    await priceTxns([txn], {});
+    await priceTxns([txn], { addr: a.toString() });
     expect(txn.fee).toBe(5000n);
   });
 
@@ -81,7 +81,9 @@ describe("fee pricing", () => {
       receiver: a,
       amount: microAlgo(100_000_000),
     });
-    await expect(priceTxns([overspend], {})).rejects.toThrow("Simulate failed");
+    await expect(
+      priceTxns([overspend], { addr: a.toString() })
+    ).rejects.toThrow("Simulate failed");
   });
 });
 

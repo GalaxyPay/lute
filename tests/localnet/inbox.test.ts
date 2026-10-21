@@ -7,7 +7,14 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Arc59Factory } from "@/clients/Arc59Client";
 import Inbox from "@/services/Inbox";
 import { priceTxns } from "@/utils/simulateFees";
-import { algorand, funded, LOCALNET, submit, useLocalNet } from "./helpers";
+import {
+  algorand,
+  falcon,
+  funded,
+  LOCALNET,
+  submit,
+  useLocalNet,
+} from "./helpers";
 
 type Acct = ReturnType<typeof algorand.account.random>;
 
@@ -51,7 +58,7 @@ async function run(
   const { txns, feeIndexes } = Array.isArray(built)
     ? { txns: built, feeIndexes: undefined }
     : built;
-  await priceTxns(txns, {}, feeIndexes);
+  await priceTxns(txns, { addr: by.toString() }, feeIndexes);
   for (const t of txns) expect(t.sender.toString()).toBe(by.toString());
   return await submit(txns.map((t) => t.signTxn(by.account.sk)));
 }
@@ -175,6 +182,45 @@ describe("sending to an account that has not opted in", () => {
 
     expect(await holding(creator.toString(), assetId)).toBe(1000n);
     expect(await holding(receiver.toString(), assetId)).toBeUndefined();
+  });
+
+  it("prices every txn a Falcon claimer signs, not only the one paying", async () => {
+    const { creator, assetId } = await newAsset();
+    const receiver = falcon();
+    // Unfunded at the send, so its inbox also holds Algo for the claim.
+    await run(
+      await Inbox.sendTxns({
+        sender: creator.toString(),
+        receiver: receiver.addr,
+        assetId,
+        amount: 3n,
+      }),
+      creator
+    );
+    // Falcon fees are more than the send carries for the claim.
+    await algorand.send.payment({
+      sender: await algorand.account.localNetDispenser(),
+      receiver: receiver.addr,
+      amount: algo(1),
+    });
+    const inbox = await inboxOf(receiver.addr);
+
+    const { txns, feeIndexes } = await Inbox.claimTxns(
+      receiver.addr,
+      assetId,
+      false,
+      inbox.info
+    );
+    // Claim the Algo and opt in at no fee; the claim pays for all three.
+    expect(txns).toHaveLength(3);
+    await priceTxns(
+      txns,
+      { addr: receiver.addr, isFalcon25: true },
+      feeIndexes
+    );
+    await submit(await Promise.all(txns.map(receiver.sign)));
+
+    expect(await holding(receiver.addr, assetId)).toBe(3n);
   });
 
   it("claims for a receiver that opted in meanwhile", async () => {

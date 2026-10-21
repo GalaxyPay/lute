@@ -43,23 +43,25 @@ const PRICE_HEADROOM = 10n;
 /**
  * Price a group the wallet composed and will sign with `acct`: simulate it
  * and raise the fees of the txns at `indexes` (default all) to what algod
- * requires. A Falcon account is simulated with a placeholder signature so
- * its surcharge is included. Mutates and returns the txns.
+ * requires. Every txn a Falcon account sends is simulated with a placeholder
+ * signature so its surcharge is included, whether or not its fee may be
+ * raised. Mutates and returns the txns.
  */
 export async function priceTxns(
   txns: Transaction[],
-  acct: { isFalcon25?: boolean },
+  acct: { addr: string; isFalcon25?: boolean },
   indexes?: number[]
 ) {
   const sp = await Algo.algod.getTransactionParams().do();
   const headroom = BigInt(sp.minFee) * PRICE_HEADROOM;
   const simSigner = acct.isFalcon25 ? falconPlaceholderSigner : undefined;
   return simulateFees(
-    txns.map((txn, idx) =>
-      !indexes || indexes.includes(idx)
-        ? { txn, maxFee: txn.fee + headroom, simSigner }
-        : { txn }
-    ),
+    txns.map((txn, idx) => ({
+      txn,
+      maxFee:
+        !indexes || indexes.includes(idx) ? txn.fee + headroom : undefined,
+      simSigner: txn.sender.toString() === acct.addr ? simSigner : undefined,
+    })),
     { suggestedParams: sp }
   );
 }
@@ -138,8 +140,14 @@ export async function simulateFees(
   const simTxns = txns.map(({ txn, maxFee, simTxn }) => {
     const copy = algosdk.decodeUnsignedTransaction(txn.toByte());
     if (maxFee && maxFee > copy.fee) {
-      addedFees += maxFee - copy.fee;
+      const raise = maxFee - copy.fee;
+      addedFees += raise;
       copy.fee = maxFee;
+      // A lone payment sends that much less, so a send of the whole balance
+      // (Max) does not overspend at its cap. In a group an app may check it.
+      const pay = copy.payment as { amount: bigint } | undefined;
+      if (pay && !grouped)
+        pay.amount -= pay.amount < raise ? pay.amount : raise;
     }
     return simTxn ? simTxn(copy) : copy;
   });

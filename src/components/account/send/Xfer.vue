@@ -155,8 +155,8 @@ import type { AccountInfo } from "@/types";
 import {
   bigintToString,
   getAssetInfo,
+  maxAlgoSend,
   priceTxns,
-  probeFee,
   send,
   stringToBigint,
   whenLoaded,
@@ -266,12 +266,7 @@ async function lookupNs(q: string) {
 
 async function maxAmount() {
   if (!asset.value?.index) {
-    const bal = props.acct.info?.amount ?? 0n;
-    const minBal = props.acct.info?.minBalance ?? 100000n;
-    // Fee as priced for this signer (includes the Falcon surcharge).
-    const fee = await probeFee(props.acct).catch(() => 1000n);
-    const max = bal - minBal - fee;
-    amount.value = max > 0n ? bigintToString(max, 6, true) : 0;
+    amount.value = bigintToString(await maxAlgoSend(props.acct), 6, true);
   } else {
     amount.value = assetBalance(true);
   }

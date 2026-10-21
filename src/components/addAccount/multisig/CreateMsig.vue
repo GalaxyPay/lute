@@ -59,7 +59,7 @@
 import { MsigAppFactory } from "@/clients/MsigApp.client";
 import Algo from "@/services/Algo";
 import type { AccountInfo } from "@/types";
-import { luteSigner } from "@/utils/signers";
+import { pricedSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import algosdk from "algosdk";
 
@@ -102,7 +102,7 @@ async function createApp() {
     const { valid } = await form.value.validate();
     if (!valid) return;
     const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
-    algorand.setDefaultSigner(luteSigner);
+    algorand.setDefaultSigner(pricedSigner);
     algorand.setDefaultValidityWindow(1000);
     const factory = new MsigAppFactory({
       defaultSender: creator.value,
