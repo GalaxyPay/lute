@@ -23,7 +23,7 @@ export {
 } from "./messaging";
 export { refresh } from "./refresh";
 export { resolveProtocol } from "./resolveProtocol";
-export { send } from "./send";
+export { maxAlgoSend, send } from "./send";
 export {
   composerTxns,
   falconPlaceholderSigner,
