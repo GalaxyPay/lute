@@ -160,16 +160,12 @@ const moreTypes = computed(() => [
     icon: mdiImport,
     select: () => alertSelect(MN12),
   },
-  ...(store.experimental
-    ? [
-        {
-          title: HYBRID,
-          subtitle: "Classical + post-quantum security (experimental)",
-          icon: mdiPlusBox,
-          select: () => (type.value = HYBRID),
-        },
-      ]
-    : []),
+  {
+    title: HYBRID,
+    subtitle: "Classical + post-quantum security (experimental)",
+    icon: mdiPlusBox,
+    select: () => (type.value = HYBRID),
+  },
   {
     title: WATCH,
     subtitle: "Keep an eye on things",

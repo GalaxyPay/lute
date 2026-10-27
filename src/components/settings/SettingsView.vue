@@ -260,20 +260,6 @@
               />
             </div>
           </div>
-          <div v-if="narrow" class="set-row">
-            <div class="set-title">Experimental features</div>
-            <div class="set-desc">
-              Show features that may not be production-ready
-            </div>
-            <div class="set-actions">
-              <v-switch
-                :model-value="store.experimental"
-                :label="store.experimental ? 'Enabled' : 'Disabled'"
-                hide-details
-                @click.prevent="setExperimental()"
-              />
-            </div>
-          </div>
         </div>
       </section>
       <section v-if="!narrow">
@@ -309,20 +295,6 @@
               :label="store.debug ? 'Enabled' : 'Disabled'"
               hide-details
               @click.prevent="setDebug()"
-            />
-          </div>
-        </div>
-        <div class="set-row">
-          <div class="set-title">Experimental features</div>
-          <div class="set-desc">
-            Show features that may not be production-ready
-          </div>
-          <div class="set-actions">
-            <v-switch
-              :model-value="store.experimental"
-              :label="store.experimental ? 'Enabled' : 'Disabled'"
-              hide-details
-              @click.prevent="setExperimental()"
             />
           </div>
         </div>
@@ -459,11 +431,6 @@ async function setNsSend() {
 
 async function setLedgerSelect() {
   await set("app", "ledgerSelect", !store.ledgerSelect);
-  await store.getCache();
-}
-
-async function setExperimental() {
-  await set("app", "experimental", !store.experimental);
   await store.getCache();
 }
 
