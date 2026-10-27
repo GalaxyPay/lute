@@ -3,7 +3,7 @@ import router from "@/router";
 import Algo from "@/services/Algo";
 import type { Arc55App, MsigGroup, MultisigMetadata } from "@/types";
 import { send } from "@/utils";
-import { luteSigner } from "@/utils/signers";
+import { pricedSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import algosdk, { Transaction } from "algosdk";
 
@@ -100,7 +100,9 @@ const Msig = {
             const abiType = algosdk.ABIType.from("byte[64][]");
             const abiData = abiType.decode(boxInfo.value) as number[][];
             // ABI byte arrays decode to number[], not Uint8Array.
-            abiData.forEach((sig) => sigs.push(Uint8Array.from(sig).toBase64()));
+            abiData.forEach((sig) =>
+              sigs.push(Uint8Array.from(sig).toBase64())
+            );
             groups[nonce - 1]!.sigs.push({
               addr,
               sigs,
@@ -179,7 +181,7 @@ const Msig = {
 
   getAppClient(appID: bigint, addr: string) {
     const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
-    algorand.setDefaultSigner(luteSigner);
+    algorand.setDefaultSigner(pricedSigner);
     algorand.setDefaultValidityWindow(1000);
     const factory = new MsigAppFactory({
       defaultSender: addr,

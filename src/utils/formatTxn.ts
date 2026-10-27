@@ -22,8 +22,7 @@ export function formatTxn(
     type: TXN_TYPES[txn.type] ?? txn.type,
     from: formatAddr(txn.sender.toString()),
     to: formatAddr(
-      txn.payment?.receiver.toString() ||
-        txn.assetTransfer?.receiver.toString()
+      txn.payment?.receiver.toString() || txn.assetTransfer?.receiver.toString()
     ),
     // A clawback moves the asset out of this account, not the sender's.
     clawbackFrom: formatAddr(txn.assetTransfer?.assetSender?.toString()),

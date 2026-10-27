@@ -64,7 +64,9 @@ describe("session unlock", () => {
     expect(await Unlock.isUnlocked()).toBe(true);
     browser.data.unlock.hardExpiresAt = Date.now() + MIN;
     await Unlock.touch();
-    expect(browser.data.unlock.expiresAt).toBe(browser.data.unlock.hardExpiresAt);
+    expect(browser.data.unlock.expiresAt).toBe(
+      browser.data.unlock.hardExpiresAt
+    );
   });
 
   it("treats a 1.x per-seed unlock as locked", async () => {

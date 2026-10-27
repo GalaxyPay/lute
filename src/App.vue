@@ -21,7 +21,9 @@
     <AppBar v-if="showAppBar" />
     <AppNav />
     <v-main>
-      <router-view v-show="!dappLinkProblem" />
+      <div v-show="!dappLinkProblem" style="display: contents">
+        <router-view />
+      </div>
       <DappLinkError v-if="dappLinkProblem" :problem="dappLinkProblem" />
       <SignDialog />
     </v-main>
@@ -51,14 +53,17 @@ function optionsRefreshListener() {
   browser.runtime.onMessage.addListener(async (message: any) => {
     if (message?.action === "optionsRefresh") {
       await store.getCache();
-      store.info = message.info.map((i: MsgpackHD) => {
-        const ai: AccountHD = decodeMsgpack(
-          Uint8Array.fromBase64(i.ai),
-          modelsv2.Account
-        );
-        ai.addrIdx = i.hd.addrIdx;
-        ai.sibling = i.hd.sibling;
-        return ai;
+      store.$patch({
+        info: message.info.map((i: MsgpackHD) => {
+          const ai: AccountHD = decodeMsgpack(
+            Uint8Array.fromBase64(i.ai),
+            modelsv2.Account
+          );
+          ai.addrIdx = i.hd.addrIdx;
+          ai.sibling = i.hd.sibling;
+          return ai;
+        }),
+        infoNetwork: message.infoNetwork,
       });
       store.nsObj = JSON.parse(message.nsObj);
       goldCheck();

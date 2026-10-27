@@ -1,6 +1,5 @@
 <template>
   <div v-if="loading">
-    <v-progress-linear indeterminate height="3" />
     <v-skeleton-loader type="list-item-two-line@3" />
   </div>
   <v-data-table
@@ -43,7 +42,6 @@ import NameService from "@/services/NameService";
 import type { AccountInfo, NsObject } from "@/types";
 import { bigintToString, formatAddr, getAssetInfo, whenLoaded } from "@/utils";
 import { indexerModels, modelsv2 } from "algosdk";
-import type { PropType } from "vue";
 
 const store = useAppStore();
 const props = defineProps({

@@ -46,10 +46,7 @@ export function secretKind(
   return undefined;
 }
 
-export function secretStatus(
-  acct: AccountRef,
-  c: SecretContext
-): SecretStatus {
+export function secretStatus(acct: AccountRef, c: SecretContext): SecretStatus {
   if (acct.appId) return "none";
   if (isHd(acct)) {
     const sd = c.seeds.find((s) => s.id === acct.seedId);
@@ -59,9 +56,7 @@ export function secretStatus(
     return sd?.data ? "legacy-seed" : "none";
   }
   if (acct.slot != null) return "ledger";
-  const falcon = c.keystore.find(
-    (k) => k.id === keystoreId("falcon25", acct)
-  );
+  const falcon = c.keystore.find((k) => k.id === keystoreId("falcon25", acct));
   if (falcon) return falcon.form === "seed" ? "keystore" : "keystore-opaque";
   if (c.falcon25Seeds.some((s) => s.id === acct.addr)) return "legacy-seed";
   if (c.keystore.some((k) => k.id === keystoreId("algo25", acct)))

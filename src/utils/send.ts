@@ -18,3 +18,20 @@ export async function send(
     throw err;
   }
 }
+
+/** A Falcon-1024 signature costs this many min fees; ed25519 costs one. */
+const FALCON_FEES = 3n;
+
+/**
+ * Most microAlgos `acct` can send in one plain payment: its balance less its
+ * min balance and the fee for its signature type.
+ */
+export async function maxAlgoSend(acct: {
+  isFalcon25?: boolean;
+  info?: { amount: bigint; minBalance: bigint };
+}) {
+  const { minFee } = await Algo.algod.getTransactionParams().do();
+  const fee = acct.isFalcon25 ? minFee * FALCON_FEES : minFee;
+  const max = (acct.info?.amount ?? 0n) - (acct.info?.minBalance ?? 0n) - fee;
+  return max > 0n ? max : 0n;
+}

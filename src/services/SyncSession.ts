@@ -72,7 +72,8 @@ export const SYNC_TIMEOUT_MS = 2 * 60_000;
 const enc = new TextEncoder();
 const INFO = enc.encode("lute-sync:v1");
 const aad = (from: WalletSide) => enc.encode(`lute-sync:v1:from-${from}`);
-const other = (side: WalletSide): WalletSide => (side === "web" ? "ext" : "web");
+const other = (side: WalletSide): WalletSide =>
+  side === "web" ? "ext" : "web";
 
 /** An ephemeral ECDH key pair. The private key never leaves WebCrypto. */
 export async function createKeys() {
@@ -102,7 +103,11 @@ export async function deriveSessionKey(
     []
   );
   const bits = new Uint8Array(
-    await crypto.subtle.deriveBits({ name: "ECDH", public: peer }, privateKey, 256)
+    await crypto.subtle.deriveBits(
+      { name: "ECDH", public: peer },
+      privateKey,
+      256
+    )
   );
   try {
     const ikm = await crypto.subtle.importKey("raw", bits, "HKDF", false, [
@@ -215,7 +220,9 @@ class Inbox {
     return new Promise<SyncMessage>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.waiter = undefined;
-        reject(new SyncError("timeout", "The other window stopped responding."));
+        reject(
+          new SyncError("timeout", "The other window stopped responding.")
+        );
       }, timeoutMs);
       this.waiter = {
         resolve: (m) => {
@@ -369,10 +376,16 @@ export async function runReceiver(
     try {
       payload = await open(other(side), msg.data, key);
     } catch {
-      throw new SyncError("invalid", "The accounts sent could not be verified.");
+      throw new SyncError(
+        "invalid",
+        "The accounts sent could not be verified."
+      );
     }
     if (payload.from !== other(side))
-      throw new SyncError("invalid", "The accounts sent could not be verified.");
+      throw new SyncError(
+        "invalid",
+        "The accounts sent could not be verified."
+      );
     // Cancelled while the payload was opening: write nothing.
     if (inbox.isClosed())
       throw new SyncError("cancelled", "The sync was cancelled.", true);

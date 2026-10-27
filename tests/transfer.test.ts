@@ -118,7 +118,10 @@ describe("HD seeds", () => {
     const id = await env.Keystore.storeMnemonic(mk, "bip39", mn, {
       accounts: (cur, ids) => {
         const seedId = Number(ids[0]!.split(":")[1]);
-        return [...cur, ...accts.map((a, ix) => ({ ...a, slot: slots[ix]!, seedId }))];
+        return [
+          ...cur,
+          ...accts.map((a, ix) => ({ ...a, slot: slots[ix]!, seedId })),
+        ];
       },
     });
     return Number(id.split(":")[1]);

@@ -75,9 +75,11 @@ export function postReady(message: { action: string; debug: boolean }) {
   }, DAPP_SILENT_MS);
 }
 
-/** Actions that carry no user data and may go out before the origin is pinned. */
-const HARMLESS_ACTIONS = ["ready", "close", "error"];
-
+/**
+ * Replies never use a wildcard target. If the origin is unknown (no request
+ * yet and no referrer), the reply is dropped; lute-connect polls
+ * `popup.closed`, so a dropped "close" still settles the dapp's request.
+ */
 export function sendOrPostMessage(message: any, tabId?: number) {
   if (tabId) {
     browser.tabs.sendMessage(tabId, message, { frameId: 0 });
@@ -88,8 +90,6 @@ export function sendOrPostMessage(message: any, tabId?: number) {
   const target = dappOrigin ?? referrerOrigin();
   if (target) {
     window.opener.postMessage(message, target);
-  } else if (HARMLESS_ACTIONS.includes(message?.action)) {
-    window.opener.postMessage(message, "*");
   } else {
     console.error("[Lute] dropped reply: dapp origin unknown", message?.action);
   }

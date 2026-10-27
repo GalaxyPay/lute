@@ -2,7 +2,7 @@
   <div class="pick-body">
     <v-data-table
       v-model="selected"
-      :loading="loading"
+      :loading="loading && !accounts.length"
       :items="accounts"
       :headers="headers"
       items-per-page="-1"
@@ -12,10 +12,14 @@
       class="pick-table"
     >
       <template v-if="loading && !accounts.length" #headers />
-      <!-- Only before the first batch: a loading slot replaces existing rows. -->
+      <!-- Suppresses the header progress bar; the skeleton shows loading. -->
+      <template #loader />
+      <!-- Only before the first row; after that the Load more spinner shows
+           progress. Empty unless `slow`, since a quick load would only flash
+           it. One row, as rows arrive one at a time and the list should only
+           grow. -->
       <template v-if="!accounts.length" #loading>
-        <v-progress-linear indeterminate height="3" class="mb-1" />
-        <v-skeleton-loader type="list-item-two-line@4" />
+        <v-skeleton-loader v-if="slow" type="list-item-two-line" />
       </template>
       <template #bottom />
       <template #[`item.address`]="{ item, index }">
@@ -64,6 +68,7 @@
         v-show="!loading || accounts.length"
         size="small"
         :disabled="loading"
+        :loading="slow && loading"
         @click="$emit('getAddrs', accounts.length)"
         :append-icon="mdiChevronDown"
         text="Load more accounts"
@@ -95,6 +100,8 @@ const props = defineProps({
   added: { type: Array as PropType<string[]>, default: () => [] },
   preselect: { type: Object as PropType<AccountSubs> },
   loading: { type: Boolean, default: false },
+  // A slow source (a Ledger device): loading feedback has time to register.
+  slow: { type: Boolean, default: false },
 });
 
 defineEmits(["getAddrs", "addAccounts"]);

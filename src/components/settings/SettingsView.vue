@@ -356,7 +356,7 @@ import { extensionId } from "@/services/syncTransports";
 import type { MasterKey, Unlocker } from "@/types";
 import { isCancelled } from "@/utils";
 import Unlock from "@/services/Unlock";
-import { luteSigner } from "@/utils/signers";
+import { pricedSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
 import { mdiContentSave } from "@mdi/js";
 import { useDisplay, useTheme } from "vuetify";
@@ -482,7 +482,7 @@ async function lockNow() {
 async function createRouter() {
   try {
     const algorand = AlgorandClient.fromClients({ algod: Algo.algod });
-    algorand.setDefaultSigner(luteSigner);
+    algorand.setDefaultSigner(pricedSigner);
     algorand.setDefaultValidityWindow(1000);
     // TODO: choose sender
     const factory = new Arc59Factory({

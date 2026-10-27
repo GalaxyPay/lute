@@ -23,7 +23,7 @@ export {
 } from "./messaging";
 export { refresh } from "./refresh";
 export { resolveProtocol } from "./resolveProtocol";
-export { send } from "./send";
+export { maxAlgoSend, send } from "./send";
 export {
   composerTxns,
   falconPlaceholderSigner,
@@ -195,4 +195,3 @@ export function copyToClipboard(val: string) {
   navigator.clipboard.writeText(val);
   store.setSnackbar("Copied", "info", 1000);
 }
-

@@ -179,7 +179,9 @@ describe("receiver refuses a bad sender", () => {
     ]);
     // Re-encrypted under the receiver's own key, so this is its database.
     const mk = await env.Keystore.getMk();
-    expect(after.keystore.map((r: any) => r.id)).toEqual([`algo25:${HOT_ADDR}`]);
+    expect(after.keystore.map((r: any) => r.id)).toEqual([
+      `algo25:${HOT_ADDR}`,
+    ]);
     await expect(
       env.Keystore.getSecret(mk, `algo25:${HOT_ADDR}`)
     ).resolves.toBeTruthy();

@@ -1,8 +1,9 @@
 // Utilities
 import type LuteTxns from "@/classes/LuteTxns";
 import { networks } from "@/data";
-import { get, getAll, keys, set } from "@/dbLute";
+import { del, readCache, set } from "@/dbLute";
 import { secretStatus } from "@/services/accountSecret";
+import { readTheme, saveTheme, THEME_KEY } from "@/services/themePref";
 import type {
   AccountHD,
   AccountInfo,
@@ -24,12 +25,47 @@ import { deepClone, formatAddr, setIcon } from "@/utils";
 import type { modelsv2 } from "algosdk";
 import { defineStore } from "pinia";
 
+// "app" store keys copied straight to the state field of the same name, with
+// the value used when the key is unset.
+const SETTINGS = {
+  customNetworks: [] as Network[],
+  sandboxRouter: undefined as number | undefined,
+  // Favorite asset ids, keyed by favoritesKey(): per network and account.
+  favoriteAssets: {} as Record<string, number[]>,
+  debug: false,
+  snoop: false,
+  ledgerSelect: false,
+  experimental: false,
+  nsSend: true,
+  hideBalances: false,
+  autoLockMinutes: 0,
+};
+
+const hotWalletSupport = crypto.subtle
+  .generateKey({ name: "Ed25519" }, false, ["sign"])
+  .then(
+    () => true,
+    () => false
+  );
+
+let appliedTheme: string | undefined;
+
+// Fires in every other same-origin page, e.g. the popup when options change it.
+addEventListener("storage", (e) => {
+  if (e.key === THEME_KEY) useAppStore().applyTheme(e.newValue || "dark");
+});
+
 export const useAppStore = defineStore("app", {
   state: () => ({
     loading: 0,
     overlay: false,
     accounts: [] as LuteAccount[],
+    // Set by the first getCache; until then the account list is unknown.
+    cacheLoaded: false,
     info: [] as AccountHD[],
+    // The network `info` was loaded for. Until it matches networkName,
+    // rekeyed accounts show as top-level rows instead of under their signer.
+    infoNetwork: undefined as string | undefined,
     nsObj: {} as NsObject,
     snackbar: {
       text: "",
@@ -38,7 +74,7 @@ export const useAppStore = defineStore("app", {
       display: false,
     } as SnackBar,
     refresh: 0,
-    theme: "dark",
+    theme: readTheme() || "dark",
     networkName: networks[0]!.name,
     hotWallet: true,
     keys: [] as string[],
@@ -71,9 +107,7 @@ export const useAppStore = defineStore("app", {
     fallback: false,
     device: {
       transport: (navigator.hid ? "hid" : navigator.usb ? "usb" : undefined) as
-        | "hid"
-        | "usb"
-        | undefined,
+        "hid" | "usb" | undefined,
       showSelector: false,
       list: [] as (HIDDevice | USBDevice)[],
     },
@@ -214,44 +248,50 @@ export const useAppStore = defineStore("app", {
     },
   },
   actions: {
+    // One snapshot, one patch: a render between partial assignments shows
+    // states that never existed (e.g. legacy secrets with no keystore yet).
     async getCache() {
-      this.theme = (await get("app", "theme")) || "dark";
-      vuetify.theme.change(this.theme);
-      await setIcon(this.theme);
-      try {
-        await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign"]);
-      } catch {
-        this.hotWallet = false;
-      }
-      const nn = await get("app", "networkName");
-      this.customNetworks = (await get("app", "customNetworks")) || [];
-      this.networkName =
-        this.allNetworks.find((n) => n.name === nn)?.name || networks[0]!.name;
-      this.sandboxRouter = await get("app", "sandboxRouter");
-      this.favoriteAssets = (await get("app", "favoriteAssets")) || {};
-      const header: KeystoreHeader | undefined = await get("app", "keystore");
-      this.legacyVerifier = !!(await get("app", "password"));
-      this.hasKeystore = !!header;
-      this.keystoreMode =
-        header?.mode ?? (this.legacyVerifier ? "password" : "device");
-      this.accounts = (await get("app", "accounts")) || [];
-      this.debug = (await get("app", "debug")) ?? this.debug;
-      this.snoop = (await get("app", "snoop")) ?? this.snoop;
-      this.ledgerSelect =
-        (await get("app", "ledgerSelect")) ?? this.ledgerSelect;
-      this.nsSend = (await get("app", "nsSend")) ?? this.nsSend;
-      this.hideBalances =
-        (await get("app", "hideBalances")) ?? this.hideBalances;
-      this.autoLockMinutes =
-        (await get("app", "autoLockMinutes")) ?? this.autoLockMinutes;
-      this.experimental =
-        (await get("app", "experimental")) ?? this.experimental;
-      this.keys = (await keys("keys")) as string[];
-      this.seeds = await getAll("seeds");
-      this.falcon25Seeds = await getAll("falcon25-seeds");
-      this.keystore = ((await getAll("keystore")) as KeystoreRecord[]).map(
-        ({ id, kind, form }) => ({ id, kind, form })
-      );
+      const [c, hotWallet] = await Promise.all([readCache(), hotWalletSupport]);
+      const saved = readTheme();
+      // @legacy-read: 1.x kept the theme in the "app" store.
+      const legacyTheme: string | undefined = c.app.theme;
+      if (!saved && legacyTheme && saveTheme(legacyTheme))
+        await del("app", "theme");
+      const theme = saved || legacyTheme || "dark";
+      const settings = Object.fromEntries(
+        Object.entries(SETTINGS).map(([k, d]) => [k, c.app[k] ?? d])
+      ) as typeof SETTINGS;
+      const nn = c.app.networkName;
+      const header: KeystoreHeader | undefined = c.app.keystore;
+      const legacyVerifier = !!c.app.password;
+      this.$patch({
+        ...settings,
+        cacheLoaded: true,
+        hotWallet,
+        // allNetworks is the built-ins plus custom networks by name.
+        networkName:
+          [...networks, ...settings.customNetworks].find((n) => n.name === nn)
+            ?.name || networks[0]!.name,
+        hasKeystore: !!header,
+        legacyVerifier,
+        keystoreMode: header?.mode ?? (legacyVerifier ? "password" : "device"),
+        accounts: c.app.accounts || [],
+        keys: c.keys as string[],
+        seeds: c.seeds,
+        falcon25Seeds: c.falcon25Seeds,
+        keystore: (c.keystore as KeystoreRecord[]).map(
+          ({ id, kind, form }) => ({ id, kind, form })
+        ),
+      });
+      await this.applyTheme(theme);
+    },
+    /** Vuetify already starts in the saved theme; the icon waits for this. */
+    async applyTheme(name: string) {
+      this.theme = name;
+      if (name === appliedTheme) return;
+      appliedTheme = name;
+      vuetify.theme.change(name);
+      await setIcon(name);
     },
     favoritesKey(addr: string) {
       return `${this.network.genesisID}/${addr}`;
@@ -267,9 +307,10 @@ export const useAppStore = defineStore("app", {
       this.favoriteAssets = all;
       await set("app", "favoriteAssets", deepClone(all));
     },
+    // Other open pages follow through the storage event below.
     async setTheme(name: string | null) {
-      await set("app", "theme", name || "dark");
-      await this.getCache();
+      saveTheme(name || "dark");
+      await this.applyTheme(name || "dark");
     },
     async setSnackbar(text: string, color = "info", timeout = 4000) {
       if (color === "error") timeout = 15000;

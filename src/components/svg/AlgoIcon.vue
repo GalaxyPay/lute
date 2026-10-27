@@ -14,7 +14,7 @@
   </svg>
 </template>
 
-<script  lang="ts">
+<script lang="ts">
 export default {
   props: {
     width: { type: Number, default: 30 },

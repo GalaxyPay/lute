@@ -202,7 +202,11 @@ const Signer = {
     }
   },
 
-  async signFalconBytes(acct: AccountInfo, bytes: Uint8Array, ctx: SignContext) {
+  async signFalconBytes(
+    acct: AccountInfo,
+    bytes: Uint8Array,
+    ctx: SignContext
+  ) {
     if (!acct.isFalcon25) throw Error("Not a Falcon account");
     const keySeed = await falconKeySeed(acct, ctx);
     const { publicKey, privateKey } = generateKey(keySeed);

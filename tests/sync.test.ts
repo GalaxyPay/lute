@@ -69,10 +69,15 @@ async function migratedWallet() {
 async function receiverWallet() {
   const env = await fresh();
   await env.Seed.storePasskeyCred("local-passkey");
-  await env.Keystore.storeMnemonic(await env.Keystore.getMk(), "algo25", B_HOT, {
-    id: `algo25:${B_HOT_ADDR}`,
-    accounts: (cur) => [...cur, { addr: B_HOT_ADDR }],
-  });
+  await env.Keystore.storeMnemonic(
+    await env.Keystore.getMk(),
+    "algo25",
+    B_HOT,
+    {
+      id: `algo25:${B_HOT_ADDR}`,
+      accounts: (cur) => [...cur, { addr: B_HOT_ADDR }],
+    }
+  );
   return env;
 }
 
@@ -90,7 +95,10 @@ async function snapshot(env: Env) {
 }
 
 /** Both outcomes, observed together so neither rejection goes unhandled. */
-async function settle(s: { sent: Promise<unknown>; received: Promise<unknown> }) {
+async function settle(s: {
+  sent: Promise<unknown>;
+  received: Promise<unknown>;
+}) {
   const [sent, received] = await Promise.allSettled([s.sent, s.received]);
   const reason = (r: PromiseSettledResult<unknown>) =>
     r.status === "rejected" ? r.reason : undefined;
@@ -133,8 +141,18 @@ describe("session crypto", () => {
     const { SyncSession: S, Transfer } = await fresh();
     const web = await S.createKeys();
     const ext = await S.createKeys();
-    const kWeb = await S.deriveSessionKey(web.privateKey, ext.pub, web.pub, ext.pub);
-    const kExt = await S.deriveSessionKey(ext.privateKey, web.pub, web.pub, ext.pub);
+    const kWeb = await S.deriveSessionKey(
+      web.privateKey,
+      ext.pub,
+      web.pub,
+      ext.pub
+    );
+    const kExt = await S.deriveSessionKey(
+      ext.privateKey,
+      web.pub,
+      web.pub,
+      ext.pub
+    );
     const payload = {
       createdAt: "now",
       from: "web" as const,
@@ -156,7 +174,12 @@ describe("session crypto", () => {
     });
     // A third party's key derives something else.
     const eve = await S.createKeys();
-    const kEve = await S.deriveSessionKey(eve.privateKey, web.pub, web.pub, eve.pub);
+    const kEve = await S.deriveSessionKey(
+      eve.privateKey,
+      web.pub,
+      web.pub,
+      eve.pub
+    );
     await expect(S.open("web", sealed, kEve)).rejects.toMatchObject({
       name: "OperationError",
     });
@@ -190,15 +213,17 @@ describe("one-way sync", () => {
     expect(a0.seedId).not.toBe(1);
     expect(find(fx.hdA2.addr).seedId).toBe(a0.seedId);
     const mk = await b.Keystore.getMk();
-    expect(await b.Keystore.exportMnemonic(mk, `bip39:${a0.seedId}`)).toBe(HD_MN);
+    expect(await b.Keystore.exportMnemonic(mk, `bip39:${a0.seedId}`)).toBe(
+      HD_MN
+    );
     expect(await b.Keystore.exportMnemonic(mk, `algo25:${NEW_HOT_ADDR}`)).toBe(
       NEW_HOT
     );
     // One-way material travels too, and stays signable.
     const b0 = find(fx.hdB0.addr);
-    expect(((await b.db.get("keystore", `bip39:${b0.seedId}`)) as any).form).toBe(
-      "seed"
-    );
+    expect(
+      ((await b.db.get("keystore", `bip39:${b0.seedId}`)) as any).form
+    ).toBe("seed");
     expect(find(MSIG_ADDR).appId).toBe(123n);
     expect(find(fx.hotAddr)).toBeUndefined();
     // The receiver's own passkey seed is untouched.
@@ -336,7 +361,9 @@ describe("sync upgrades", () => {
     const { fx, hdA1 } = a;
     const b = await migratedWallet();
     const receiverGetMk = () => b.Keystore.unwrap(PASS);
-    const beforeKeystore = (await b.db.getAll("keystore")).map((r: any) => r.id);
+    const beforeKeystore = (await b.db.getAll("keystore")).map(
+      (r: any) => r.id
+    );
 
     const { sent, received } = await run(a, b, { receiverGetMk });
     const [s, r] = await Promise.all([sent, received]);
@@ -355,7 +382,9 @@ describe("sync upgrades", () => {
 
     const mk = await b.Keystore.unwrap(PASS);
     expect(await b.Keystore.exportMnemonic(mk, "bip39:1")).toBe(HD_MN);
-    expect(await b.Keystore.exportMnemonic(mk, `algo25:${fx.hotAddr}`)).toBe(HOT_MN);
+    expect(await b.Keystore.exportMnemonic(mk, `algo25:${fx.hotAddr}`)).toBe(
+      HOT_MN
+    );
     expect(
       await b.Keystore.exportMnemonic(mk, `falcon25:${fx.falconAddr}`)
     ).toBe(FALCON_MN);
@@ -368,7 +397,9 @@ describe("sync upgrades", () => {
     expect(ids.filter((id: string) => id.startsWith("bip39:")).sort()).toEqual(
       beforeKeystore.filter((id: string) => id.startsWith("bip39:")).sort()
     );
-    expect(accounts.find((x) => x.addr === fx.falconAddr).falconPk).toBeTruthy();
+    expect(
+      accounts.find((x) => x.addr === fx.falconAddr).falconPk
+    ).toBeTruthy();
 
     // An exportable copy is never replaced.
     const again = await run(a, b, { receiverGetMk });
@@ -381,17 +412,23 @@ describe("sync upgrades", () => {
     const a = await upgradedWallet();
     const { fx } = a;
     const b = await migratedWallet();
-    const payload = await a.Transfer.buildPayload(await a.Keystore.unwrap(PASS), {
-      from: "web",
-      appVersion: "test",
-    });
+    const payload = await a.Transfer.buildPayload(
+      await a.Keystore.unwrap(PASS),
+      {
+        from: "web",
+        appVersion: "test",
+      }
+    );
     const swap = (id: string, data: string) => {
       const s = payload.secrets.find((x) => x.id === id)!;
       s.data = data;
     };
     swap(
       "bip39:1",
-      a.Keystore.plaintextFromMnemonic("bip39", HD_OTHER_MN).plaintext.toBase64()
+      a.Keystore.plaintextFromMnemonic(
+        "bip39",
+        HD_OTHER_MN
+      ).plaintext.toBase64()
     );
     swap(
       `algo25:${fx.hotAddr}`,
@@ -402,7 +439,10 @@ describe("sync upgrades", () => {
     const r = await b.Transfer.addPayload(mk, payload);
     expect(r.upgraded).toBe(1); // only the untouched Falcon secret
     for (const addr of [fx.hdA0.addr, fx.hotAddr])
-      expect(r.skipped).toContainEqual({ addr, reason: "Already in this wallet" });
+      expect(r.skipped).toContainEqual({
+        addr,
+        reason: "Already in this wallet",
+      });
     const rec: any = await b.db.get("keystore", "bip39:1");
     expect(rec.form).toBe("seed");
     expect(await b.db.get("keystore", `algo25:${fx.hotAddr}`)).toBeUndefined();

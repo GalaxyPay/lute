@@ -4,7 +4,7 @@
     :class="!smAndUp && ['page--flush', store.isWeb ? 'touch' : 'panel']"
   >
     <div
-      v-if="!store.acctInfo.length && !store.loading"
+      v-if="store.cacheLoaded && !store.acctInfo.length"
       class="empty-state text-center"
     >
       <div class="title-page">Accounts</div>
@@ -15,14 +15,15 @@
       </p>
       <v-btn variant="flat" text="Add an account" @click="addAccount()" />
     </div>
-    <template v-else>
+    <!-- Blank until the first local cache load, which is too quick to show a
+         placeholder for. -->
+    <template v-else-if="store.cacheLoaded">
       <div class="page-header">
         <div :class="smAndUp || store.isWeb ? 'title-page' : 'title-panel'">
           Accounts
         </div>
         <div v-if="smAndUp" class="d-flex ga-2">
           <v-btn
-            v-show="store.acctInfo.length"
             variant="outlined"
             icon
             class="square-btn"
@@ -34,7 +35,6 @@
             <v-tooltip activator="parent" location="bottom" :text="hideLabel" />
           </v-btn>
           <v-btn
-            v-show="store.acctInfo.length"
             variant="outlined"
             text="Refresh"
             :disabled="!!store.loading"
@@ -44,7 +44,6 @@
         </div>
         <div v-else class="d-flex ga-2">
           <v-btn
-            v-show="store.acctInfo.length"
             variant="outlined"
             icon
             class="square-btn"
@@ -56,7 +55,6 @@
             <v-tooltip activator="parent" location="bottom" :text="hideLabel" />
           </v-btn>
           <v-btn
-            v-show="store.acctInfo.length"
             variant="outlined"
             :icon="mdiRefresh"
             class="square-btn"
@@ -86,7 +84,7 @@
           profile can sign with its accounts. Set one in Settings.
         </v-alert>
       </div>
-      <accounts-overview v-if="store.acctInfo.length" />
+      <accounts-overview />
       <v-data-table
         :loading="!!store.loading"
         :headers="headers"
@@ -98,10 +96,6 @@
       >
         <template #headers />
         <template #bottom />
-        <!-- Only before the first load: a loading slot replaces existing rows. -->
-        <template v-if="!store.acctInfo.length" #loading>
-          <v-skeleton-loader type="table-row@3" />
-        </template>
         <template #[`item.addr`]="{ item }">
           <div class="acct-cell" :class="item.subType && 'acct-cell--sub'">
             <v-text-field
@@ -335,12 +329,17 @@ const rename = ref<any>({});
 const exportAcct = ref<AccountInfo>();
 const upgradeAcct = ref<AccountInfo>();
 
-const upgradeCount = computed(
-  () =>
-    store.acctInfo.filter((a) => !a.subType && isUpgradeable(a.secret)).length
+// Both count top-level rows, which are only final once on-chain info shows
+// which accounts are rekeyed under another (and so have no menu of their own).
+const infoReady = computed(() => store.infoNetwork === store.networkName);
+const upgradeCount = computed(() =>
+  infoReady.value
+    ? store.acctInfo.filter((a) => !a.subType && isUpgradeable(a.secret)).length
+    : 0
 );
 const noPassword = computed(
   () =>
+    infoReady.value &&
     store.keystoreMode === "device" &&
     store.acctInfo.some((a) => !a.subType && isLocalSecret(a.secret))
 );

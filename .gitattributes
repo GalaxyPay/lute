@@ -1,0 +1,8 @@
+# Normalize line endings to LF in the repo and working tree on every OS,
+# so Prettier (endOfLine: "lf") agrees with what git checks out on Windows.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.jpg binary
+*.zip binary

@@ -10,6 +10,7 @@ import { aliases, mdi } from "vuetify/iconsets/mdi-svg";
 
 // Composables
 import { createVuetify, type ThemeDefinition } from "vuetify";
+import { readTheme } from "@/services/themePref";
 
 /*
  * Design tokens. oklch is the source of truth (in the comments); Vuetify
@@ -198,6 +199,9 @@ export default createVuetify({
     },
     VProgressLinear: {
       color: "primary",
+      // The track defaults to --v-border-opacity, which the themes set to 1:
+      // a solid track hides the indeterminate bars moving over it.
+      bgOpacity: 0.12,
     },
     VProgressCircular: {
       color: "primary",
@@ -210,7 +214,7 @@ export default createVuetify({
     },
   },
   theme: {
-    defaultTheme: "dark",
+    defaultTheme: readTheme() || "dark",
     themes: { dark, light, gold },
   },
   icons: {
