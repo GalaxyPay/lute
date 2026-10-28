@@ -161,6 +161,8 @@ export default defineConfig({
       "@algorandfoundation/algokit-utils/types/composer",
       "@ledgerhq/hw-transport-webhid",
       "@ledgerhq/hw-transport-webusb",
+      "@noble/hashes/hmac.js",
+      "@noble/hashes/sha2.js",
       "@scure/bip32",
       "@scure/bip39",
       "@scure/bip39/wordlists/english.js",

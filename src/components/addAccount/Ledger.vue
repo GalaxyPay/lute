@@ -2,7 +2,6 @@
   <account-table
     :accounts="accounts"
     :loading="loading"
-    slow
     @get-addrs="getLedgerAddresses"
     @add-accounts="addAccounts"
   />

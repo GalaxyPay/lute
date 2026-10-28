@@ -19,7 +19,7 @@
            it. One row, as rows arrive one at a time and the list should only
            grow. -->
       <template v-if="!accounts.length" #loading>
-        <v-skeleton-loader v-if="slow" type="list-item-two-line" />
+        <v-skeleton-loader type="list-item-two-line" />
       </template>
       <template #bottom />
       <template #[`item.address`]="{ item, index }">
@@ -64,7 +64,7 @@
         v-show="!loading || accounts.length"
         size="small"
         :disabled="loading"
-        :loading="slow && loading"
+        :loading="loading"
         @click="$emit('getAddrs', accounts.length)"
         :append-icon="mdiChevronDown"
         text="Load more accounts"
@@ -96,8 +96,6 @@ const props = defineProps({
   added: { type: Array as PropType<string[]>, default: () => [] },
   preselect: { type: Object as PropType<AccountSubs> },
   loading: { type: Boolean, default: false },
-  // A slow source (a Ledger device): loading feedback has time to register.
-  slow: { type: Boolean, default: false },
 });
 
 defineEmits(["getAddrs", "addAccounts"]);

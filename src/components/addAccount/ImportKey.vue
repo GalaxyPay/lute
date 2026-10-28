@@ -36,7 +36,7 @@
               </template>
               <template #append-inner>
                 <v-icon
-                  :icon="visible.includes(n) ? mdiEye : mdiEyeOff"
+                  :icon="visible.includes(n) ? mdiEyeOff : mdiEye"
                   size="14"
                   @click="toggleVisible(n)"
                 />
