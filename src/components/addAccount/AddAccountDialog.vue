@@ -84,7 +84,11 @@
       <multi-sig v-else-if="type === MSIG" @close="show = false" />
       <watch v-else-if="type === WATCH" @close="show = false" />
       <hot v-else-if="type === HOT" @close="show = false" />
-      <mn12 v-else-if="type === MN12" @close="show = false" />
+      <convert
+        v-else-if="type === CONVERT"
+        @close="show = false"
+        @back="type = undefined"
+      />
       <falcon v-else-if="type === FALCON" @close="show = false" />
     </v-card>
   </v-dialog>
@@ -113,7 +117,7 @@ const WATCH = "Watch account";
 const HD = "HD wallet";
 const MSIG = "Multi-sig account";
 const HOT = "Algo25 account";
-const MN12 = "12-word account";
+const CONVERT = "Non-standard wallets";
 const FALCON = "Falcon25 account";
 
 const showMore = ref(false);
@@ -152,10 +156,10 @@ const moreTypes = [
     select: () => (type.value = MSIG),
   },
   {
-    title: MN12,
-    subtitle: "Convert your Exodus, Trust, or Coinomi to Algo25",
+    title: CONVERT,
+    subtitle: "Exodus, Trust, Coinomi...",
     icon: mdiImport,
-    select: () => alertSelect(MN12),
+    select: () => alertSelect(CONVERT),
   },
   {
     title: WATCH,
