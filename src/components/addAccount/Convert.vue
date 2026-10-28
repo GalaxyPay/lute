@@ -15,8 +15,8 @@
           <div class="d-flex flex-column ga-3">
             <p>
               <span class="font-weight-bold">Emergency recovery only.</span> If
-              your Ledger device is lost or broken, you can recover one of its
-              Algorand accounts here as a hot account.
+              your Ledger device is lost or broken, you can recover its Algorand
+              accounts here as a hot accounts.
             </p>
             <p>
               Entering your Ledger mnemonic exposes it to this computer and
