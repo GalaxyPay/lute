@@ -111,8 +111,8 @@
             class="refresh-btn"
             :loading="quoting"
             :disabled="swapping"
-            :title="`Refreshes in ${remaining}s. Click to refresh now.`"
-            :aria-label="`Refresh quote, auto-refresh in ${remaining} seconds`"
+            title="Refresh quote now"
+            aria-label="Refresh quote"
             @click="refreshNow()"
           >
             <template #prepend>
@@ -354,6 +354,7 @@ async function fetchQuote() {
       amount: base.value,
       address: props.acct.addr,
       optIn: needsOptIn.value,
+      slippage: slippage.value,
       // A Ledger confirms each txn on the device.
       maxGroupSize:
         props.acct.slot != null && props.acct.seedId == null ? 8 : undefined,
@@ -370,7 +371,8 @@ async function fetchQuote() {
     if (id === run) quoting.value = false;
   }
 }
-watch([fromId, toId, base], () => {
+// Launch-token quotes are priced at the slippage, so it requotes too.
+watch([fromId, toId, base, slippage], () => {
   quote.value = undefined;
   impactOk.value = false;
   window.clearTimeout(debounce);
