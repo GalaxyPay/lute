@@ -62,6 +62,8 @@ export function getQuote(p: {
   address: string;
   /** Whether the account must opt in to `to`; the caller knows its holdings. */
   optIn: boolean;
+  /** Percent; the same value the swap executes with. */
+  slippage: number;
   maxGroupSize?: number;
 }) {
   return client().newQuote({
@@ -70,6 +72,7 @@ export function getQuote(p: {
     amount: p.amount,
     address: p.address,
     optIn: p.optIn,
+    slippage: p.slippage,
     maxGroupSize: p.maxGroupSize,
   });
 }
