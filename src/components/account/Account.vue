@@ -10,8 +10,72 @@
       :style="{ '--chars': amountChars }"
     >
       <v-card class="stat-card stat-card--address">
-        <div class="stat-label">
-          Address
+        <form
+          v-if="nickname != null"
+          class="acct-head acct-head--edit"
+          @submit.prevent="saveNickname(nickname)"
+          @keydown.esc="nickname = undefined"
+        >
+          <v-text-field
+            v-model="nickname"
+            label="Nickname"
+            :placeholder="acct.ns?.name"
+            variant="outlined"
+            density="compact"
+            hide-details
+            autofocus
+          />
+          <div class="acct-edit-actions">
+            <v-btn
+              type="submit"
+              :icon="mdiCheck"
+              variant="text"
+              size="small"
+              aria-label="Save nickname"
+            />
+            <v-btn
+              v-if="!acct.name"
+              :icon="mdiClose"
+              variant="text"
+              size="small"
+              aria-label="Cancel"
+              @click="nickname = undefined"
+            />
+            <v-btn
+              v-else
+              text="Remove"
+              variant="text"
+              size="small"
+              color="error"
+              @click="saveNickname('')"
+            />
+          </div>
+        </form>
+        <div v-else class="acct-head">
+          <span v-if="acctName" class="acct-title ellipsis">{{
+            acctName
+          }}</span>
+          <span v-else class="stat-label">Address</span>
+          <v-btn
+            v-if="canNickname"
+            icon
+            variant="text"
+            size="x-small"
+            class="text-icon"
+            :aria-label="acct.name ? 'Edit nickname' : 'Add nickname'"
+            @click="nickname = acct.name ?? ''"
+          >
+            <v-icon :icon="mdiPencilOutline" size="15" />
+            <v-tooltip
+              activator="parent"
+              location="top"
+              :text="acct.name ? 'Edit nickname' : 'Add nickname'"
+            />
+          </v-btn>
+          <expire-chip :ns="acct.ns" />
+        </div>
+        <div class="acct-meta">
+          <account-icon v-if="acct.subType !== 'rekey'" :item="acct" />
           <v-chip
             v-if="acct.info.authAddr"
             size="x-small"
@@ -26,32 +90,21 @@
               :text="acct.info.authAddr.toString()"
             />
           </v-chip>
-          <v-chip
-            v-if="acct.ns?.name"
-            size="x-small"
-            @click="showNsTip = !showNsTip"
-          >
-            {{ store.isVoi ? "EnVoi" : "NFD" }}
-            <v-tooltip
-              activator="parent"
-              v-model="showNsTip"
-              :text="acct.ns.name"
-            />
-          </v-chip>
-          <v-btn
-            :icon="mdiRefresh"
-            variant="text"
-            :size="xs && store.isWeb ? 'large' : 'small'"
-            class="ml-auto stat-refresh"
-            aria-label="Refresh"
-            :disabled="!!store.loading"
-            @click="store.refresh++"
-          />
+          <span v-if="hdPath" class="acct-path">{{ hdPath }}</span>
+        </div>
+        <v-btn
+          :icon="mdiRefresh"
+          variant="text"
+          :size="xs && store.isWeb ? 'large' : 'small'"
+          class="stat-refresh"
+          aria-label="Refresh"
+          :disabled="!!store.loading"
+          @click="store.refresh++"
+        />
+        <div v-if="acct.name && acct.ns?.name" class="acct-ns">
+          <span class="text-on-surface">{{ acct.ns.name }}</span>
         </div>
         <div class="stat-address">{{ acct.info.address }}</div>
-        <div v-if="acct.info.addrIdx != null || acct.xpub" class="address">
-          {{ `44'/283'/${acct.slot}'/0/${acct.info.addrIdx || 0}` }}
-        </div>
       </v-card>
       <v-card class="stat-card stat-card--balance">
         <div class="stat-label">Balance</div>
@@ -147,8 +200,17 @@
 import Algo from "@/services/Algo";
 import { algoValue, formatAlgoValue } from "@/services/Prices";
 import { swapSupported } from "@/services/Swap";
-import { bigintToString } from "@/utils";
-import { mdiInformationOutline, mdiKey, mdiRefresh } from "@mdi/js";
+import type { LuteAccount } from "@/types";
+import { set } from "@/dbLute";
+import { bigintToString, deepClone } from "@/utils";
+import {
+  mdiCheck,
+  mdiClose,
+  mdiInformationOutline,
+  mdiKey,
+  mdiPencilOutline,
+  mdiRefresh,
+} from "@mdi/js";
 import algosdk, { modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
@@ -196,8 +258,37 @@ const amountChars = computed(
     Math.max(balance.value.length, assetText.value.length) +
     (store.isVoi ? 1 : 0)
 );
+// Nickname first, then the NFD/EnVoi name, as on the accounts list.
+const acctName = computed(() => acct.value?.name || acct.value?.ns?.name);
+const hdPath = computed(() =>
+  acct.value?.info?.addrIdx != null || acct.value?.xpub
+    ? `44'/283'/${acct.value.slot}'/0/${acct.value.info?.addrIdx || 0}`
+    : undefined
+);
 const showRekeyTip = ref(false);
-const showNsTip = ref(false);
+
+// HD and rekeyed sub-accounts have no saved entry to hold a nickname.
+const canNickname = computed(() =>
+  store.accounts.some((a) => a.addr === props.addr)
+);
+// The draft while editing; undefined when not.
+const nickname = ref<string>();
+watch(
+  () => props.addr,
+  () => (nickname.value = undefined)
+);
+async function saveNickname(name: string) {
+  const accts: LuteAccount[] = deepClone(store.accounts);
+  const ix = accts.findIndex((a) => a.addr === props.addr);
+  if (ix !== -1) {
+    // Blank removes it, falling back to the NFD name or the address.
+    if (name.trim()) accts[ix]!.name = name.trim();
+    else delete accts[ix]!.name;
+    await set("app", "accounts", accts);
+    await store.getCache();
+  }
+  nickname.value = undefined;
+}
 const tab = ref(MSIG);
 const tabs = computed(() => {
   const val = [];
@@ -283,6 +374,79 @@ watch(
 .stat-refresh {
   margin: -8px -8px -8px auto;
 }
+/* Above xs the type, rekey and path tags ride on the name row; on xs they
+   drop below the address so the name keeps the full width. */
+.stat-card--address {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "head meta refresh"
+    "ns ns ns"
+    "addr addr addr";
+  align-items: center;
+  gap: 8px 10px;
+}
+.acct-head {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 20px;
+}
+/* The field's label sits above it, so the actions line up with the 40px
+   input box below that. */
+.acct-head--edit {
+  align-items: flex-end;
+}
+.acct-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+}
+.acct-head--edit .v-text-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: 4px;
+}
+/* While editing the field takes the whole top row; above xs that hides the
+   tags too, on xs they stay below the address. */
+.stat-card--address .acct-head--edit {
+  grid-column: 1 / -1;
+}
+.acct-head--edit ~ .stat-refresh,
+.detail-page:not(.page--flush) .acct-head--edit + .acct-meta {
+  display: none;
+}
+.acct-title {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.acct-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.acct-path {
+  font: 11.5px/1.3 var(--font-mono);
+  color: rgb(var(--v-theme-text-dim));
+}
+.stat-card--address .stat-refresh {
+  grid-area: refresh;
+}
+.acct-ns {
+  grid-area: ns;
+  margin-top: -6px;
+  font-size: 12px;
+  color: rgb(var(--v-theme-text-muted));
+}
+.stat-card--address .stat-address {
+  grid-area: addr;
+}
 .stat-address {
   font: 13px/1.5 var(--font-mono);
   color: rgb(var(--v-theme-on-surface));
@@ -359,8 +523,20 @@ watch(
   gap: 4px;
 }
 .page--flush .stat-card--address {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head refresh"
+    "ns ns"
+    "addr addr"
+    "meta meta";
   padding: 14px;
   gap: 6px;
+}
+.page--flush .acct-title {
+  font-size: 16px;
+}
+.page--flush .acct-ns {
+  margin-top: -4px;
 }
 .page--flush .stat-address {
   font-size: 12.5px;
