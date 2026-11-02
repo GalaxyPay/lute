@@ -98,19 +98,7 @@
         <template #bottom />
         <template #[`item.addr`]="{ item }">
           <div class="acct-cell" :class="item.subType && 'acct-cell--sub'">
-            <v-text-field
-              v-if="rename?.addr === item.addr"
-              v-model="rename.name"
-              variant="underlined"
-              density="compact"
-              hide-details
-              :append-inner-icon="mdiContentSave"
-              autofocus
-              @click:append-inner="renameAccount()"
-              @keyup.enter="renameAccount()"
-              @click.stop
-            />
-            <div v-else class="acct-name">
+            <div class="acct-name">
               <span v-if="item.subType" class="text-icon">↳</span>
               <span class="ellipsis">
                 {{ item.name || item.ns?.name || item.title }}
@@ -200,14 +188,6 @@
                     target="_blank"
                   />
                   <template v-if="!item.subType">
-                    <v-list-item
-                      title="Nickname"
-                      @click="
-                        rename = store.accounts.find(
-                          (a) => a.addr === item.addr
-                        )
-                      "
-                    />
                     <v-list-item
                       v-if="store.accounts.length > 1"
                       title="Move"
@@ -311,7 +291,6 @@ import {
   mdiCheck,
   mdiChevronRight,
   mdiContentCopy,
-  mdiContentSave,
   mdiDotsHorizontal,
   mdiEye,
   mdiEyeOff,
@@ -325,7 +304,6 @@ import { useDisplay } from "vuetify";
 const { smAndUp, mdAndUp } = useDisplay();
 const store = useAppStore();
 const showAdd = ref(false);
-const rename = ref<any>({});
 const exportAcct = ref<AccountInfo>();
 const upgradeAcct = ref<AccountInfo>();
 
@@ -385,17 +363,6 @@ async function addAccount() {
     });
     browser.runtime.openOptionsPage();
   }
-}
-
-async function renameAccount() {
-  const ix = store.accounts.findIndex((a) => a.addr === rename.value.addr);
-  if (ix !== -1) {
-    const accts = deepClone(store.accounts);
-    accts[ix].name = rename.value.name;
-    await set("app", "accounts", accts);
-    await store.getCache();
-  }
-  rename.value = undefined;
 }
 
 async function removeAccount(addr: string) {
