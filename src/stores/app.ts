@@ -159,6 +159,9 @@ export const useAppStore = defineStore("app", {
               .forEach((i) => {
                 val.push({
                   addr: i.address,
+                  // A saved watch account rekeyed here keeps its nickname.
+                  name: this.accounts.find((sa) => sa.addr === i.address)
+                    ?.name,
                   title: formatAddr(i.address),
                   isHot: false,
                   isFalcon25,
