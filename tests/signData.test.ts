@@ -10,6 +10,7 @@ import { fresh, loadCaches } from "./helpers";
 const posted = vi.hoisted(() => [] as any[]);
 
 vi.mock("@/utils", () => ({
+  formatAddr: (a: string) => `${a.slice(0, 6)}…${a.slice(52)}`,
   isBadPassword: () => false,
   needsPassword: () => false,
   signDataResponseSafe: (x: any) => x,
@@ -51,6 +52,7 @@ async function setup() {
   Object.assign(env.store, {
     debug: false,
     device: { transport: undefined, list: [] },
+    accounts,
     acctInfo: accounts.map((a) => ({
       ...a,
       canSign: true,
@@ -131,7 +133,7 @@ describe("SIWA falcon-1024-det", () => {
     expect(posted[0]).toMatchObject({ action: "error", code: 4603 });
   });
 
-  it("rejects a Falcon key the wallet does not hold", async () => {
+  it("rejects a Falcon key the wallet does not hold before Sign", async () => {
     const { LuteData } = await setup();
     const { publicKey } = generateKey(new Uint8Array(48).fill(9));
     const addr = algosdk
@@ -145,9 +147,15 @@ describe("SIWA falcon-1024-det", () => {
       DOMAIN,
       "falcon-1024-det"
     );
+    // Shown with the reason, not answered until the user closes it.
     expect(posted).toEqual([]);
-    await ld.sign(PASS);
-    expect(posted[0]).toMatchObject({ action: "error", code: 4603 });
+    const message = `Account ${addr.slice(0, 6)}…${addr.slice(52)} is not in Lute`;
+    expect(ld.signerError).toMatchObject({ code: 4603, message });
+    ld.rejectUnsignable();
+    ld.rejectUnsignable();
+    expect(posted).toEqual([
+      expect.objectContaining({ action: "error", code: 4603, message }),
+    ]);
   });
 
   it("rejects falcon-1024-det for an ed25519 account", async () => {
@@ -162,8 +170,21 @@ describe("SIWA falcon-1024-det", () => {
       DOMAIN,
       "falcon-1024-det"
     );
+    expect(ld.signerError?.message).toMatch(/is not in Lute$/);
     await ld.sign(PASS);
     expect(posted[0]).toMatchObject({ action: "error", code: 4603 });
+  });
+
+  it("names a watch account before Sign", async () => {
+    const { LuteData, env, fx } = await setup();
+    const watch = (env.store as any).acctInfo.find(
+      (a: any) => a.addr === fx.hotAddr
+    );
+    watch.canSign = false;
+    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    const { ld } = await request(LuteData, fx.hotAddr, "ed25519", signer);
+    expect(posted).toEqual([]);
+    expect(ld.signerError?.message).toMatch(/has no signing key in Lute$/);
   });
 
   it("still signs ed25519 requests", async () => {
@@ -213,9 +234,8 @@ describe("SIWA validation gates signing", () => {
     ]);
     posted.length = 0;
     await ld.sign(PASS);
-    expect(posted).toEqual([
-      expect.objectContaining({ action: "error", code: 4300 }),
-    ]);
+    // Not signed, and one answer to the dapp, not a second error.
+    expect(posted).toEqual([]);
   });
 
   it("does not sign a request that was never validated", async () => {
@@ -274,9 +294,8 @@ describe("StdSignData.scheme", () => {
       ]);
       posted.length = 0;
       await ld.sign(PASS);
-      expect(posted).toEqual([
-        expect.objectContaining({ action: "error", code: 4300 }),
-      ]);
+      // Already answered: not signed, and no second error.
+      expect(posted).toEqual([]);
     }
   );
 });

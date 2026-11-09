@@ -75,6 +75,8 @@ const show = computed({
 });
 
 function close() {
+  // A request Lute cannot sign fails with its reason, not as a rejection.
+  if (store.luteTxns?.signerError) return store.luteTxns.rejectUnsignable();
   const message = { action: "close", debug: store.debug };
   window.dispatchEvent(new CustomEvent("modal-signer", { detail: message }));
   store.luteTxns = undefined;

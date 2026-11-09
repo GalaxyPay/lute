@@ -79,7 +79,9 @@ function signDialog(answer: "sign" | "close" = "sign") {
           );
           store.luteTxns = undefined;
         } else if ((await lt.validateNetwork()) && (await lt.prepare())) {
-          await lt.sign();
+          // A request Lute cannot sign shows why; the user closes it.
+          if (lt.signerError) lt.rejectUnsignable();
+          else await lt.sign();
         }
       }
       await new Promise((r) => setTimeout(r, 20));
@@ -205,7 +207,10 @@ describe("the sign dialog refusing", () => {
 
     await Msig.clearSigs(d.appId, nonce, d.members[1]!.toString());
 
-    expect(errors()).toEqual(["Account Not Found"]);
+    const addr = d.members[1]!.toString();
+    expect(errors()).toEqual([
+      `Account ${addr.slice(0, 6)}…${addr.slice(52)} is not in Lute`,
+    ]);
     expect((await group(d, nonce)).sigs).toHaveLength(2);
   });
 });

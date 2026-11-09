@@ -3,7 +3,7 @@ import Signer, { SignContext } from "@/services/Signer";
 import type { LuteMsig, WalletTransaction } from "@/types";
 import { selectDevice } from "@/utils";
 import { priceTxns } from "@/utils/simulateFees";
-import { signingAddr } from "@/utils/signingAddr";
+import { findSigner } from "@/utils/findSigner";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 import algosdk, {
@@ -71,9 +71,8 @@ export async function signer(
     const signedTxns: Uint8Array[] = [];
     for (const [idx, txn] of txnGroup.entries()) {
       if (!indexesToSign || indexesToSign.includes(idx)) {
-        const addr = signingAddr(txn, authAddrs?.[idx], msig, store.info);
-        const acct = store.acctInfo.find((a) => a.addr === addr);
-        if (!acct) throw Error("Account Not Found");
+        const acct = findSigner(txn, authAddrs?.[idx], msig, store);
+        const addr = acct.addr;
         let sig: Uint8Array;
         if (acct.isFalcon25) {
           const f25 = await Signer.falconSigner(acct, ctx);

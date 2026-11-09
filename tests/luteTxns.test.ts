@@ -71,6 +71,8 @@ beforeEach(() => {
     networkName: "MainNet",
     refresh: 0,
     accounts: [],
+    acctInfo: [],
+    info: [],
     device: { transport: undefined },
     allNetworks: [
       {
@@ -359,6 +361,7 @@ describe("prepare", () => {
   it("is ready once the network and group pass", async () => {
     // A wallet account, so msigCheck needs no algod lookup.
     testStore.accounts = [{ addr: alice }];
+    testStore.acctInfo = [{ addr: alice, canSign: true }];
     const lt = new LuteTxns([wtxn(pay())], 1);
     await lt.validateNetwork();
     expect(await lt.prepare()).toBe(true);
@@ -385,5 +388,62 @@ describe("prepare", () => {
   it("is not ready before the network was checked", async () => {
     const lt = new LuteTxns([wtxn(pay())], 1);
     expect(await lt.prepare()).toBe(false);
+  });
+
+  describe("a request Lute cannot sign", () => {
+    /** Shown, not answered: the user reads the reason and closes it. */
+    async function prepared(txns: WalletTransaction[]) {
+      const lt = new LuteTxns(txns, 1);
+      await lt.validateNetwork();
+      expect(await lt.prepare()).toBe(true);
+      expect(posted).toEqual([]);
+      return lt;
+    }
+
+    it("names a watch account and replies with it on close", async () => {
+      testStore.accounts = [{ addr: alice }];
+      testStore.acctInfo = [{ addr: alice, canSign: false }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError?.message).toMatch(/has no signing key in Lute$/);
+      lt.rejectUnsignable();
+      expect(posted).toEqual([
+        expect.objectContaining({
+          action: "error",
+          code: 4100,
+          message: lt.signerError!.message,
+        }),
+      ]);
+    });
+
+    it("names the signer of an account rekeyed away from Lute", async () => {
+      testStore.accounts = [{ addr: alice }];
+      testStore.acctInfo = [{ addr: alice, canSign: true }];
+      testStore.info = [{ address: alice, authAddr: bob }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError?.message).toMatch(
+        /is rekeyed to .+, which is not in Lute$/
+      );
+    });
+
+    it("refuses to sign it anyway", async () => {
+      // Saved, but set to another network, so acctInfo leaves it out.
+      testStore.accounts = [{ addr: alice, network: "TestNet" }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError?.message).toMatch(
+        /is limited to TestNet in Lute, not LocalNet$/
+      );
+      await lt.sign();
+      expect(signer).not.toHaveBeenCalled();
+      expect(lastError()).toMatchObject({ code: 4100 });
+    });
+
+    it("ignores txns the request does not ask Lute to sign", async () => {
+      // bob holds no account here, but his txn is signed elsewhere.
+      testStore.accounts = [{ addr: alice }];
+      testStore.acctInfo = [{ addr: alice, canSign: true }];
+      const [a, b] = grouped(pay(), pay({ sender: bob }));
+      const lt = await prepared([wtxn(a!), wtxn(b!, { signers: [] })]);
+      expect(lt.signerError).toBeUndefined();
+    });
   });
 });

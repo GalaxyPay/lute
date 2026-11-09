@@ -15,6 +15,7 @@ import type {
   MasterKey,
   SeedData,
 } from "@/types";
+import { formatAddr } from "@/utils/formatAddr";
 import { ed25519Sign, isBadPassword } from "@/utils/keys";
 import algosdk, {
   type Address,
@@ -79,7 +80,10 @@ export class SignContext {
 /** @legacy-read Sign with a 1.x non-extractable Algo25 CryptoKey. */
 export async function hotSign(addr: string, bytes: Uint8Array) {
   const privateKey: CryptoKey | undefined = await get("keys", addr);
-  if (!privateKey) throw Error("Account Not Found", { cause: 4300 });
+  if (!privateKey)
+    throw Error(`No signing key stored for ${formatAddr(addr)}`, {
+      cause: 4100,
+    });
   const sig = await crypto.subtle.sign(
     { name: "Ed25519" },
     privateKey,

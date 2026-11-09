@@ -46,6 +46,15 @@
           }}
         </div>
         <v-alert
+          v-if="luteTxns.signerError"
+          type="error"
+          variant="tonal"
+          density="compact"
+          class="sign-summary"
+          title="Lute cannot sign this request"
+          :text="luteTxns.signerError.message"
+        />
+        <v-alert
           v-if="luteTxns.summary"
           type="info"
           variant="tonal"
@@ -68,6 +77,15 @@
         </div>
         <div class="ext-footer">
           <v-btn
+            v-if="luteTxns.signerError"
+            block
+            size="large"
+            variant="flat"
+            text="Close"
+            @click="luteTxns.rejectUnsignable()"
+          />
+          <v-btn
+            v-else
             block
             size="large"
             variant="flat"
@@ -262,6 +280,9 @@ async function handlePass(success: boolean, pass: string) {
 }
 
 window.onbeforeunload = () => {
+  // Closed by the window's own X: still give the dapp the reason.
+  if (luteTxns.value.signerError && !luteTxns.value.finished)
+    return luteTxns.value.rejectUnsignable();
   const message = { action: "close", debug: store.debug };
   sendOrPostMessage(message, tabId);
 };

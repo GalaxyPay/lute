@@ -3,6 +3,7 @@ import Algo from "@/services/Algo";
 import Msig from "@/services/Msig";
 import type { Base64, LuteMsig, WalletTransaction } from "@/types";
 import { isBadPassword, needsPassword, sendOrPostMessage } from "@/utils";
+import { findSigner } from "@/utils/findSigner";
 import { findNetwork } from "@/utils/networks";
 import { signer } from "@/utils/signers";
 import algosdk, { Transaction, type BoxReference } from "algosdk";
@@ -27,6 +28,11 @@ export default class LuteTxns {
   groupValid = false;
   // A reply was sent; the dapp gets only one.
   finished = false;
+  /**
+   * Why Lute cannot sign this request, found before the user pressed Sign.
+   * The dialog shows it instead of Sign and replies with it on close.
+   */
+  signerError?: Error;
   // The ATC calls its signer without a password, so the msig signer reads the
   // one handed to sign() from here.
   private password?: string;
@@ -148,7 +154,33 @@ export default class LuteTxns {
     await this.validateGroup();
     if (!this.groupValid) return false;
     await this.msigCheck();
+    if (!this.finished) this.signerCheck();
     return !this.finished;
+  }
+
+  /**
+   * Finds up front a txn Lute holds no signer for and keeps the reason in
+   * signerError, so the user reads why rather than pressing Sign to find out.
+   * Nothing is sent yet: the dialog stays open until the user closes it.
+   */
+  signerCheck() {
+    this.signerError = undefined;
+    try {
+      // Stored in the ARC-55 app, not signed; msigCheck found the member.
+      if (this.msig && !this.msig.bypass) return;
+      this.dtxns.forEach((txn, idx) => {
+        // sign() refuses these with its own errors.
+        if (!this.toSign(idx) || this.txns[idx]?.msig) return;
+        findSigner(txn, this.txns[idx]?.authAddr, this.msig, this.store);
+      });
+    } catch (err: any) {
+      this.signerError = err;
+    }
+  }
+
+  /** The user closed a request signerCheck refused: tell the dapp why. */
+  rejectUnsignable() {
+    if (this.signerError) this.handleError(this.signerError);
   }
 
   private toSign(ix: number): boolean {
@@ -326,6 +358,7 @@ export default class LuteTxns {
     try {
       if (this.finished || !this.networkValid || !this.groupValid)
         throw Error("Invalid Request", INVALID);
+      if (this.signerError) throw this.signerError;
       if (this.atc.getStatus()) {
         this.password = password;
         try {

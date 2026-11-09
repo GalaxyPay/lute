@@ -6,6 +6,7 @@ import type {
   StdSignMetadata,
 } from "@/types";
 import {
+  formatAddr,
   isBadPassword,
   needsPassword,
   signDataResponseSafe,
@@ -72,6 +73,13 @@ export default class LuteData {
   siwa?: Siwa;
   // siwa is parsed before checks that can fail, so siwa alone does not mean valid.
   validated = false;
+  /**
+   * Why Lute cannot sign this request, found before the user pressed Sign.
+   * The page shows it instead of Sign and replies with it on close.
+   */
+  signerError?: SignDataError;
+  // A reply was sent; the dapp gets only one.
+  finished = false;
 
   constructor(
     stdSignData: StdSignData,
@@ -86,15 +94,21 @@ export default class LuteData {
     this.tabId = tabId;
   }
 
+  private sendAndClose(message: any) {
+    this.finished = true;
+    sendOrPostMessage(message, this.tabId);
+    window.close();
+  }
+
   async handleError(err: SignDataError) {
-    const message = {
+    // The dapp already has its answer.
+    if (this.finished) return;
+    this.sendAndClose({
       action: "error",
       code: err.code || 4300,
       message: err.message,
       debug: this.store.debug,
-    };
-    sendOrPostMessage(message, this.tabId);
-    window.close();
+    });
   }
 
   async validate() {
@@ -172,10 +186,69 @@ export default class LuteData {
         default:
           throw ERROR_INVALID_SCOPE;
       }
+      this.signerError = undefined;
+      try {
+        this.earlySignerCheck();
+      } catch (err: any) {
+        this.signerError = err;
+      }
       this.validated = true;
     } catch (err: any) {
       this.handleError(err);
     }
+  }
+
+  /**
+   * The wallet account holding the key the request names, or a 4603 saying
+   * why there is none, worded for the dapp to show as is.
+   */
+  private signerAddr() {
+    if (!this.siwa) throw ERROR_BAD_JSON;
+    const signer = this.stdSignData.signer;
+    // A Falcon address is a hash of its public key, an ed25519 address is
+    // the key itself.
+    return this.siwa.type === "falcon-1024-det"
+      ? algosdk
+          .addressFromPQKey(algosdk.FALCON_1024_SCHEME, signer)
+          .address.toString()
+      : encodeAddress(signer);
+  }
+
+  private signerAcct() {
+    const signerAddr = this.signerAddr();
+    const signer = this.stdSignData.signer;
+    const isFalcon = this.siwa!.type === "falcon-1024-det";
+    const acct = this.store.acctInfo.find((a) => a.addr === signerAddr);
+    const who = `Account ${formatAddr(signerAddr)}`;
+    const fail = (why: string) => new SignDataError(`${who} ${why}`, 4603);
+    if (!acct) throw fail("is not in Lute");
+    // A rekey row borrows its signer's canSign but holds no key of its own.
+    if (acct.subType === "rekey")
+      throw fail("is rekeyed; sign in with the account it is rekeyed to");
+    // A watch or multi-sig account.
+    if (!acct.canSign) throw fail("has no signing key in Lute");
+    // The account must sign with the scheme the request names.
+    if (!!acct.isFalcon25 !== isFalcon)
+      throw fail(`is not a ${isFalcon ? "Falcon" : "ed25519"} account`);
+    return { acct, isFalcon, signer };
+  }
+
+  /**
+   * signerAcct before the user presses Sign, for what it can already tell:
+   * HD sibling and rekey rows come from on-chain info, which a modal page
+   * may not have loaded yet, so a miss is only final with none possible.
+   */
+  private earlySignerCheck() {
+    const addr = this.signerAddr();
+    const mayLoadLater =
+      !this.store.acctInfo.some((a) => a.addr === addr) &&
+      this.store.accounts.some((a) => a.xpub && a.idxs?.length);
+    if (!mayLoadLater) this.signerAcct();
+  }
+
+  /** The user closed a request earlySignerCheck refused: tell the dapp why. */
+  rejectUnsignable() {
+    if (this.signerError) this.handleError(this.signerError);
   }
 
   async setNetwork() {
@@ -209,20 +282,7 @@ export default class LuteData {
     try {
       if (!this.validated || !this.jsonString || !this.siwa)
         throw ERROR_INVALID;
-      const signer = this.stdSignData.signer;
-      const isFalcon = this.siwa.type === "falcon-1024-det";
-      // A Falcon address is a hash of its public key, an ed25519 address is
-      // the key itself.
-      const signerAddr = isFalcon
-        ? algosdk
-            .addressFromPQKey(algosdk.FALCON_1024_SCHEME, signer)
-            .address.toString()
-        : encodeAddress(signer);
-      const acct = this.store.acctInfo
-        .filter((a) => a.canSign && a.subType !== "rekey")
-        .find((a) => a.addr === signerAddr);
-      // The account must sign with the scheme the request names.
-      if (!acct || !!acct.isFalcon25 !== isFalcon) throw ERROR_INVALID_SIGNER;
+      const { acct, isFalcon, signer } = this.signerAcct();
 
       const enc = new TextEncoder();
       const dataHash = await sha256(enc.encode(this.jsonString));
@@ -290,8 +350,7 @@ export default class LuteData {
         debug: this.store.debug,
       };
       this.store.snackbar.display = false;
-      sendOrPostMessage(message, this.tabId);
-      window.close();
+      this.sendAndClose(message);
       return true;
     } catch (err: any) {
       const t = this.store.device.transport;
