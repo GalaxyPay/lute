@@ -1,17 +1,15 @@
-// Plugins
+import Vue from "@vitejs/plugin-vue";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
-import Vue from "@vitejs/plugin-vue";
-import VueRouter from "vue-router/vite";
-import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
-import { VitePWA } from "vite-plugin-pwa";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
-import sri from "vite-plugin-sri-gen";
-import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.ts";
-
-// Utilities
+import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
-import { fileURLToPath, URL } from "node:url";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
+import { VitePWA } from "vite-plugin-pwa";
+import sri from "vite-plugin-sri-gen";
+import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
+import VueRouter from "vue-router/vite";
+import { algosdkSideEffectFree } from "./scripts/treeshake";
+import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback";
 
 const vuetifySettings = fileURLToPath(
   new URL("./src/styles/settings.scss", import.meta.url)
@@ -78,7 +76,13 @@ export default defineConfig({
       styles: { configFile: vuetifySettings },
     }),
     vuetifyStylesFallback(vuetifySettings),
-    nodePolyfills(),
+    nodePolyfills({
+      overrides: {
+        crypto: fileURLToPath(
+          new URL("./src/shims/crypto.ts", import.meta.url)
+        ),
+      },
+    }),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: [
@@ -137,6 +141,7 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1024,
     rollupOptions: {
+      treeshake: { moduleSideEffects: algosdkSideEffectFree },
       output: {
         codeSplitting: {
           groups: [

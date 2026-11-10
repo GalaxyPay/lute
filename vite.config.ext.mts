@@ -1,14 +1,14 @@
-import { dirname, relative } from "node:path";
-import type { UserConfig } from "vite";
-import { defineConfig } from "vite";
 import Vue from "@vitejs/plugin-vue";
+import { dirname, relative } from "node:path";
 import Components from "unplugin-vue-components/vite";
 import AutoImport from "unplugin-auto-import/vite";
-import { isDev, port, r } from "./scripts/utils.js";
-import packageJson from "./package.json" with { type: "json" };
-import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
+import { defineConfig, type UserConfig } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import VueRouter from "vue-router/vite";
+import packageJson from "./package.json" with { type: "json" };
+import { algosdkSideEffectFree } from "./scripts/treeshake.js";
+import { isDev, port, r } from "./scripts/utils.js";
 import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.js";
 
 export const sharedConfig: UserConfig = {
@@ -62,7 +62,7 @@ export const sharedConfig: UserConfig = {
       // generate `components.d.ts` for ts support with Volar
       dts: r("src/components.d.ts"),
     }),
-    nodePolyfills(),
+    nodePolyfills({ overrides: { crypto: r("src/shims/crypto.ts") } }),
 
     // rewrite assets to use relative path
     {
@@ -131,6 +131,7 @@ export default defineConfig(({ command }) => ({
         options: r("src/options/index.html"),
         popup: r("src/popup/index.html"),
       },
+      treeshake: { moduleSideEffects: algosdkSideEffectFree },
       output: {
         entryFileNames,
         codeSplitting: {
