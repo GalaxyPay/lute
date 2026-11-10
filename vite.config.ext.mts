@@ -7,7 +7,6 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import VueRouter from "vue-router/vite";
 import packageJson from "./package.json" with { type: "json" };
-import { algosdkSideEffectFree } from "./scripts/treeshake.js";
 import { isDev, port, r } from "./scripts/utils.js";
 import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.js";
 
@@ -131,7 +130,7 @@ export default defineConfig(({ command }) => ({
         options: r("src/options/index.html"),
         popup: r("src/popup/index.html"),
       },
-      treeshake: { moduleSideEffects: algosdkSideEffectFree },
+      checks: { bundlerTimings: false },
       output: {
         entryFileNames,
         codeSplitting: {

@@ -8,7 +8,6 @@ import { VitePWA } from "vite-plugin-pwa";
 import sri from "vite-plugin-sri-gen";
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import VueRouter from "vue-router/vite";
-import { algosdkSideEffectFree } from "./scripts/treeshake.ts";
 import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.ts";
 
 const vuetifySettings = fileURLToPath(
@@ -141,7 +140,8 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1024,
     rollupOptions: {
-      treeshake: { moduleSideEffects: algosdkSideEffectFree },
+      // Timing report only; slowest is vite-plugin-pwa generating the SW (expected).
+      checks: { bundlerTimings: false },
       output: {
         codeSplitting: {
           groups: [
