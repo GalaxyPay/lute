@@ -8,7 +8,7 @@ import {
   KeyContext,
   XHDWalletAPI,
 } from "@algorandfoundation/xhd-wallet-api";
-import algosdk from "algosdk";
+import { Address, encodeAddress } from "algosdk";
 
 const HdWallet = {
   async deriveAccts(seed: Buffer, startIndex: number = 0) {
@@ -17,7 +17,7 @@ const HdWallet = {
     const rootKey = fromSeed(seed);
     for (let i = startIndex; i < 4 + startIndex; i++) {
       const key = await cryptoService.keyGen(rootKey, KeyContext.Address, i, 0);
-      const addr = new algosdk.Address(key).toString();
+      const addr = new Address(key).toString();
       const ai: AccountSubs = await Algo.algod.accountInformation(addr).do();
       const aa = await getAuthAccts(addr);
       ai.subs = aa;
@@ -38,7 +38,7 @@ const HdWallet = {
     const xpubArr = Uint8Array.fromBase64(xpub);
     const childExtended = await deriveChildNodePublic(xpubArr, index);
     const childPub = childExtended.slice(0, 32);
-    return algosdk.encodeAddress(childPub);
+    return encodeAddress(childPub);
   },
 
   async sign(

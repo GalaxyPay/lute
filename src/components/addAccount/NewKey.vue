@@ -72,7 +72,11 @@ import { copyToClipboard, getFalconKey, isCancelled } from "@/utils";
 import { mdiContentCopy } from "@mdi/js";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import algosdk from "algosdk";
+import {
+  generateAccount,
+  mnemonicToSecretKey,
+  secretKeyToMnemonic,
+} from "algosdk";
 
 const props = defineProps({
   numberOfWords: { type: Number, required: true },
@@ -86,11 +90,11 @@ const unlocker = ref<Unlocker>();
 const saving = ref(false);
 const isBip39 = computed(() => props.numberOfWords === 24);
 const acct = props.convertion
-  ? algosdk.mnemonicToSecretKey(props.convertion)
-  : algosdk.generateAccount();
+  ? mnemonicToSecretKey(props.convertion)
+  : generateAccount();
 const mn = isBip39.value
   ? bip39.generateMnemonic(wordlist, 256)
-  : algosdk.secretKeyToMnemonic(acct.sk);
+  : secretKeyToMnemonic(acct.sk);
 const falconKey = props.isFalcon ? getFalconKey(mn) : undefined;
 const addr = falconKey?.address || acct.addr;
 const mnemonicArray = mn.split(" ");

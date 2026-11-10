@@ -1,6 +1,11 @@
 // ARC-60 sign-in (SIWA) requests through LuteData, signed by the real Signer
 // over the v3 fixture wallet. Ledger and the UI helpers are stubbed out.
-import algosdk from "algosdk";
+import {
+  Address,
+  addressFromPQKey,
+  FALCON_1024_SCHEME,
+  pq25WordMnemonicToSeed,
+} from "algosdk";
 import { canonify } from "canonify";
 import { generateKey, verifyCompressed } from "falcon-1024";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,15 +35,9 @@ async function sha256(data: Uint8Array<ArrayBuffer>) {
 }
 
 function falconKey() {
-  const keySeed = algosdk.pq25WordMnemonicToSeed(
-    FALCON_MN,
-    algosdk.FALCON_1024_SCHEME
-  );
+  const keySeed = pq25WordMnemonicToSeed(FALCON_MN, FALCON_1024_SCHEME);
   const { publicKey } = generateKey(keySeed);
-  const { address } = algosdk.addressFromPQKey(
-    algosdk.FALCON_1024_SCHEME,
-    publicKey
-  );
+  const { address } = addressFromPQKey(FALCON_1024_SCHEME, publicKey);
   return { publicKey, addr: address.toString() };
 }
 
@@ -136,9 +135,10 @@ describe("SIWA falcon-1024-det", () => {
   it("rejects a Falcon key the wallet does not hold before Sign", async () => {
     const { LuteData } = await setup();
     const { publicKey } = generateKey(new Uint8Array(48).fill(9));
-    const addr = algosdk
-      .addressFromPQKey(algosdk.FALCON_1024_SCHEME, publicKey)
-      .address.toString();
+    const addr = addressFromPQKey(
+      FALCON_1024_SCHEME,
+      publicKey
+    ).address.toString();
     const { ld } = await request(
       LuteData,
       addr,
@@ -181,7 +181,7 @@ describe("SIWA falcon-1024-det", () => {
       (a: any) => a.addr === fx.hotAddr
     );
     watch.canSign = false;
-    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    const signer = Address.fromString(fx.hotAddr).publicKey;
     const { ld } = await request(LuteData, fx.hotAddr, "ed25519", signer);
     expect(posted).toEqual([]);
     expect(ld.signerError?.message).toMatch(/has no signing key in Lute$/);
@@ -189,7 +189,7 @@ describe("SIWA falcon-1024-det", () => {
 
   it("still signs ed25519 requests", async () => {
     const { LuteData, fx } = await setup();
-    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    const signer = Address.fromString(fx.hotAddr).publicKey;
     const { ld, toSign } = await request(
       LuteData,
       fx.hotAddr,
@@ -218,7 +218,7 @@ function publicKeySize() {
 describe("SIWA validation gates signing", () => {
   it("does not sign a request whose domain is not the referrer", async () => {
     const { LuteData, fx } = await setup();
-    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    const signer = Address.fromString(fx.hotAddr).publicKey;
     // validate() parses the SIWA message before it compares domains, so the
     // request object looks complete even though validation failed.
     const { ld } = await request(
@@ -240,7 +240,7 @@ describe("SIWA validation gates signing", () => {
 
   it("does not sign a request that was never validated", async () => {
     const { LuteData, fx } = await setup();
-    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    const signer = Address.fromString(fx.hotAddr).publicKey;
     const { ld } = await request(LuteData, fx.hotAddr, "ed25519", signer);
     ld.validated = false;
     await ld.sign(PASS);
@@ -253,7 +253,7 @@ describe("SIWA validation gates signing", () => {
 describe("StdSignData.scheme", () => {
   it.each(["ed25519", undefined])("signs with scheme %s", async (scheme) => {
     const { LuteData, fx } = await setup();
-    const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+    const signer = Address.fromString(fx.hotAddr).publicKey;
     const { ld } = await request(
       LuteData,
       fx.hotAddr,
@@ -280,7 +280,7 @@ describe("StdSignData.scheme", () => {
     "rejects scheme %s that does not match siwa.type",
     async (scheme) => {
       const { LuteData, fx } = await setup();
-      const signer = algosdk.Address.fromString(fx.hotAddr).publicKey;
+      const signer = Address.fromString(fx.hotAddr).publicKey;
       const { ld } = await request(
         LuteData,
         fx.hotAddr,

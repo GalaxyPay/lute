@@ -104,7 +104,7 @@ import type { AccountInfo, KeyRegTxn } from "@/types";
 import { priceTxns, send } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiInformationOutline } from "@mdi/js";
-import algosdk from "algosdk";
+import { makeKeyRegistrationTxnWithSuggestedParamsFromObject } from "algosdk";
 
 const props = defineProps<{ acct: AccountInfo }>();
 
@@ -210,7 +210,7 @@ async function calcAvgBlockTime() {
 async function offline() {
   try {
     const suggestedParams = await Algo.algod.getTransactionParams().do();
-    const txn = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
+    const txn = makeKeyRegistrationTxnWithSuggestedParamsFromObject({
       sender: props.acct.addr,
       suggestedParams,
       nonParticipation: false,
@@ -241,8 +241,7 @@ async function submit() {
       stateProofKey: b64ToUint8(keyreg.value.stateProofKey),
       suggestedParams,
     };
-    const txn =
-      algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject(obj);
+    const txn = makeKeyRegistrationTxnWithSuggestedParamsFromObject(obj);
     if (incentiveEligible.value) {
       txn.fee = 2n * 10n ** 6n;
     } else {

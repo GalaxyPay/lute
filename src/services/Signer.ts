@@ -17,8 +17,9 @@ import type {
 } from "@/types";
 import { formatAddr } from "@/utils/formatAddr";
 import { ed25519Sign, isBadPassword } from "@/utils/keys";
-import algosdk, {
+import {
   type Address,
+  addressWithSignersFromRawFalcon1024Signer,
   type Falcon1024SigningKey,
   type TransactionSigner,
 } from "algosdk";
@@ -199,8 +200,7 @@ const Signer = {
       falcon1024Signer: async (bytesToSign: Uint8Array) =>
         signCompressed(privateKey, bytesToSign),
     };
-    const signer =
-      algosdk.addressWithSignersFromRawFalcon1024Signer(signingKey);
+    const signer = addressWithSignersFromRawFalcon1024Signer(signingKey);
     ctx.setFalconSigner(acct.addr, signer, privateKey);
     return signer;
   },

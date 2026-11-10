@@ -1,11 +1,14 @@
-import algosdk from "algosdk";
+import {
+  generateAccount,
+  makePaymentTxnWithSuggestedParamsFromObject,
+} from "algosdk";
 import { describe, expect, it } from "vitest";
 import { signingAddr } from "@/utils/signingAddr";
 
 const [sender, dappAuth, chainAuth, member] = [0, 1, 2, 3].map(
-  () => algosdk.generateAccount().addr
+  () => generateAccount().addr
 );
-const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+const txn = makePaymentTxnWithSuggestedParamsFromObject({
   sender: sender!,
   receiver: sender!,
   amount: 0,

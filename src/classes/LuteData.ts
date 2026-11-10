@@ -15,7 +15,7 @@ import {
 } from "@/utils";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import algosdk, { encodeAddress } from "algosdk";
+import { addressFromPQKey, encodeAddress, FALCON_1024_SCHEME } from "algosdk";
 import { canonify } from "canonify";
 import { FALCON_DET1024_PUBKEY_SIZE } from "falcon-1024";
 import { AlgorandApp } from "ledger-algorand-js";
@@ -238,9 +238,7 @@ export default class LuteData {
     // A Falcon address is a hash of its public key, an ed25519 address is
     // the key itself.
     return this.siwa.type === "falcon-1024-det"
-      ? algosdk
-          .addressFromPQKey(algosdk.FALCON_1024_SCHEME, signer)
-          .address.toString()
+      ? addressFromPQKey(FALCON_1024_SCHEME, signer).address.toString()
       : encodeAddress(signer);
   }
 

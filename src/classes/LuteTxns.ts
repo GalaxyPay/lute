@@ -6,7 +6,16 @@ import { isBadPassword, needsPassword, sendOrPostMessage } from "@/utils";
 import { findSigner } from "@/utils/findSigner";
 import { findNetwork } from "@/utils/networks";
 import { signer } from "@/utils/signers";
-import algosdk, { Transaction, type BoxReference } from "algosdk";
+import {
+  AtomicTransactionComposer,
+  type BoxReference,
+  computeGroupID,
+  decodeSignedTransaction,
+  decodeUnsignedTransaction,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  Transaction,
+  type TransactionSigner,
+} from "algosdk";
 
 const INVALID = { cause: 4300 };
 const MAX_SCANNED_ROUNDS = 4n;
@@ -16,7 +25,7 @@ export default class LuteTxns {
   dtxns: Transaction[];
   store = useAppStore();
   msig?: LuteMsig;
-  atc = new algosdk.AtomicTransactionComposer();
+  atc = new AtomicTransactionComposer();
   nonce?: bigint;
   groupWarn: boolean = false;
   tabId?: number;
@@ -36,7 +45,7 @@ export default class LuteTxns {
   // The ATC calls its signer without a password, so the msig signer reads the
   // one handed to sign() from here.
   private password?: string;
-  private atcSigner: algosdk.TransactionSigner = (txnGroup, indexesToSign) =>
+  private atcSigner: TransactionSigner = (txnGroup, indexesToSign) =>
     signer(txnGroup, indexesToSign, undefined, this.password);
   constructor(txns: WalletTransaction[], tabId?: number) {
     this.txns = txns;
@@ -46,7 +55,7 @@ export default class LuteTxns {
 
   private decode() {
     return this.txns.map((t) =>
-      algosdk.decodeUnsignedTransaction(Uint8Array.fromBase64(t.txn))
+      decodeUnsignedTransaction(Uint8Array.fromBase64(t.txn))
     );
   }
 
@@ -134,7 +143,7 @@ export default class LuteTxns {
         // validate groupIDs
         groups.forEach((grp) => {
           if (grp.gid) {
-            const groupID = algosdk.computeGroupID(grp.txns).toBase64();
+            const groupID = computeGroupID(grp.txns).toBase64();
             if (groupID !== grp.gid) throw Error("Invalid Group", INVALID);
           }
         });
@@ -264,7 +273,7 @@ export default class LuteTxns {
           2500 +
           400 * (9 + txn.length);
         const mbrPayment = {
-          txn: algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+          txn: makePaymentTxnWithSuggestedParamsFromObject({
             sender: sender,
             suggestedParams,
             receiver: this.msig.app.acct.address,
@@ -391,7 +400,7 @@ export default class LuteTxns {
           if (txn.signers) {
             if (!txn.signers.length) {
               if (txn.stxn) {
-                const dstxn = algosdk.decodeSignedTransaction(
+                const dstxn = decodeSignedTransaction(
                   Uint8Array.fromBase64(txn.stxn)
                 );
                 if (txn.txn === dstxn.txn.toByte().toBase64()) {

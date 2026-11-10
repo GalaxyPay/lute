@@ -12,7 +12,7 @@
       />
     </div>
     <pre v-show="viewRaw" class="review-raw">{{
-      algosdk.encodeJSON(txn, { space: 2 })
+      encodeJSON(txn, { space: 2 })
     }}</pre>
     <dl v-show="!viewRaw" class="review-fields">
       <dt>From</dt>
@@ -87,10 +87,10 @@
 
 <script lang="ts" setup>
 import { formatTxn } from "@/utils/formatTxn";
-import algosdk, { modelsv2 } from "algosdk";
+import { encodeJSON, modelsv2, Transaction } from "algosdk";
 
 const props = defineProps({
-  txn: { type: algosdk.Transaction, required: true },
+  txn: { type: Transaction, required: true },
   idx: { type: Number, required: true },
   toSign: { type: Boolean, required: true },
   assets: { type: Array<modelsv2.Asset>, required: true },

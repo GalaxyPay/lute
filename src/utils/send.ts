@@ -1,5 +1,5 @@
 import Algo from "@/services/Algo";
-import algosdk from "algosdk";
+import { waitForConfirmation } from "algosdk";
 
 export async function send(
   signedTxn: Uint8Array | Uint8Array[],
@@ -8,7 +8,7 @@ export async function send(
   const store = useAppStore();
   try {
     const { txid } = await Algo.algod.sendRawTransaction(signedTxn).do();
-    const res = await algosdk.waitForConfirmation(Algo.algod, txid, 10);
+    const res = await waitForConfirmation(Algo.algod, txid, 10);
     store.refresh++;
     store.setSnackbar(success, "success");
     store.overlay = false;

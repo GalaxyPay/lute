@@ -1,6 +1,6 @@
 import type { NsLookup, NsObject } from "@/types";
 import { fetchAsync } from "@/utils";
-import algosdk from "algosdk";
+import { decodeSignedTransaction, decodeUnsignedTransaction } from "algosdk";
 
 interface SendFromVaultRequest {
   amount: number;
@@ -44,8 +44,8 @@ export async function sendFromVault(name: string, data: SendFromVaultRequest) {
   const json = JSON.parse(await resp.json()) as [string, string][];
   const txns = json.map((x) =>
     x[0] === "u"
-      ? algosdk.decodeUnsignedTransaction(Uint8Array.fromBase64(x[1]))
-      : algosdk.decodeSignedTransaction(Uint8Array.fromBase64(x[1])).txn
+      ? decodeUnsignedTransaction(Uint8Array.fromBase64(x[1]))
+      : decodeSignedTransaction(Uint8Array.fromBase64(x[1])).txn
   );
   const indexesToSign = json.some((x) => x[0] == "s")
     ? json.flatMap((x, idx) => (x[0] === "u" ? idx : []))

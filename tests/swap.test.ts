@@ -1,6 +1,14 @@
 // Swap groups are written by the router's API; the wallet checks what the
 // user signs before the sign dialog opens.
-import algosdk from "algosdk";
+import {
+  generateAccount,
+  makeApplicationCallTxnFromObject,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  makeKeyRegistrationTxnWithSuggestedParamsFromObject,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  OnApplicationComplete,
+  Transaction,
+} from "algosdk";
 import { describe, expect, it } from "vitest";
 import {
   MAX_SWAP_FEE,
@@ -11,9 +19,9 @@ import {
   validateSwapGroup,
 } from "@/utils/swap";
 
-const user = algosdk.generateAccount().addr.toString();
-const pool = algosdk.generateAccount().addr.toString();
-const thief = algosdk.generateAccount().addr.toString();
+const user = generateAccount().addr.toString();
+const pool = generateAccount().addr.toString();
+const thief = generateAccount().addr.toString();
 const genesisHash = new Uint8Array(32).fill(1);
 
 const sp = (fee = 1000n, hash = genesisHash) => ({
@@ -27,22 +35,22 @@ const sp = (fee = 1000n, hash = genesisHash) => ({
 });
 
 const pay = (extra: Record<string, unknown> = {}, fee?: bigint) =>
-  algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  makePaymentTxnWithSuggestedParamsFromObject({
     sender: user,
     receiver: pool,
     amount: 1_000_000,
     suggestedParams: sp(fee),
     ...extra,
   });
-const call = (onComplete = algosdk.OnApplicationComplete.NoOpOC) =>
-  algosdk.makeApplicationCallTxnFromObject({
+const call = (onComplete = OnApplicationComplete.NoOpOC) =>
+  makeApplicationCallTxnFromObject({
     sender: user,
     appIndex: 42,
     onComplete,
     suggestedParams: sp(),
   });
 const optIn = (assetIndex = 31566704) =>
-  algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+  makeAssetTransferTxnWithSuggestedParamsFromObject({
     sender: user,
     receiver: user,
     assetIndex,
@@ -50,7 +58,7 @@ const optIn = (assetIndex = 31566704) =>
     suggestedParams: sp(),
   });
 const send = (assetIndex: number, amount: number) =>
-  algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+  makeAssetTransferTxnWithSuggestedParamsFromObject({
     sender: user,
     receiver: pool,
     assetIndex,
@@ -59,7 +67,7 @@ const send = (assetIndex: number, amount: number) =>
   });
 // Router escrow txn, signed by its lsig, not the user.
 const routerTxn = () =>
-  algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+  makeAssetTransferTxnWithSuggestedParamsFromObject({
     sender: pool,
     receiver: user,
     assetIndex: 31566704,
@@ -73,7 +81,7 @@ const expect0 = {
   amount: 1_000_000n,
   genesisHash,
 };
-const check = (group: algosdk.Transaction[], exp = expect0) =>
+const check = (group: Transaction[], exp = expect0) =>
   validateSwapGroup(group, userIndexes(group, user), exp);
 
 describe("validateSwapGroup", () => {
@@ -81,7 +89,7 @@ describe("validateSwapGroup", () => {
     expect(() =>
       check([
         optIn(),
-        call(algosdk.OnApplicationComplete.OptInOC),
+        call(OnApplicationComplete.OptInOC),
         pay(),
         call(),
         routerTxn(),
@@ -98,7 +106,7 @@ describe("validateSwapGroup", () => {
   it("rejects rekey, close and clawback", () => {
     expect(() => check([pay({ rekeyTo: thief })])).toThrow("rekey");
     expect(() => check([pay({ closeRemainderTo: thief })])).toThrow("close");
-    const claw = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    const claw = makeAssetTransferTxnWithSuggestedParamsFromObject({
       sender: user,
       receiver: thief,
       assetSender: pool,
@@ -141,12 +149,12 @@ describe("validateSwapGroup", () => {
 
   it("rejects app updates, deletes and other txn types", () => {
     expect(() =>
-      check([call(algosdk.OnApplicationComplete.DeleteApplicationOC)])
+      check([call(OnApplicationComplete.DeleteApplicationOC)])
     ).toThrow("app call");
     expect(() =>
-      check([call(algosdk.OnApplicationComplete.UpdateApplicationOC)])
+      check([call(OnApplicationComplete.UpdateApplicationOC)])
     ).toThrow("app call");
-    const keyreg = algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
+    const keyreg = makeKeyRegistrationTxnWithSuggestedParamsFromObject({
       sender: user,
       suggestedParams: sp(),
     });
@@ -155,7 +163,7 @@ describe("validateSwapGroup", () => {
 
   it("rejects excessive fees and other networks", () => {
     expect(() => check([pay({}, MAX_SWAP_FEE + 1n)])).toThrow("fee");
-    const foreign = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const foreign = makePaymentTxnWithSuggestedParamsFromObject({
       sender: user,
       receiver: pool,
       amount: 1,

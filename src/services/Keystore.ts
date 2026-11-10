@@ -68,7 +68,14 @@ import {
 } from "@algorandfoundation/xhd-wallet-api";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import algosdk, { FALCON_1024_SCHEME } from "algosdk";
+import {
+  Address,
+  FALCON_1024_SCHEME,
+  mnemonicFromSeed,
+  mnemonicToSecretKey,
+  pq25WordMnemonicToSeed,
+  seedFromMnemonic,
+} from "algosdk";
 
 const BIP39_SEED_BYTES = 64;
 const BIP39_ENTROPY_BYTES = 32;
@@ -144,10 +151,10 @@ export function plaintextFromMnemonic(kind: KeystoreKind, mn: string) {
     }
     case "algo25":
       // Validates the checksum word.
-      return { form: "seed" as const, plaintext: algosdk.seedFromMnemonic(mn) };
+      return { form: "seed" as const, plaintext: seedFromMnemonic(mn) };
     case "falcon25": {
-      const seed = algosdk.seedFromMnemonic(mn);
-      const keySeed = algosdk.pq25WordMnemonicToSeed(mn, FALCON_1024_SCHEME);
+      const seed = seedFromMnemonic(mn);
+      const keySeed = pq25WordMnemonicToSeed(mn, FALCON_1024_SCHEME);
       const plaintext = concat(seed, keySeed);
       seed.fill(0);
       keySeed.fill(0);
@@ -164,9 +171,9 @@ export function mnemonicFromPlaintext(kind: KeystoreKind, pt: Uint8Array) {
         wordlist
       );
     case "algo25":
-      return algosdk.mnemonicFromSeed(pt);
+      return mnemonicFromSeed(pt);
     case "falcon25":
-      return algosdk.mnemonicFromSeed(pt.subarray(0, 32));
+      return mnemonicFromSeed(pt.subarray(0, 32));
   }
 }
 
@@ -673,7 +680,7 @@ const Keystore = {
       switch (kind) {
         case "algo25":
           return accts.every(
-            (a) => algosdk.mnemonicToSecretKey(mn).addr.toString() === a.addr
+            (a) => mnemonicToSecretKey(mn).addr.toString() === a.addr
           );
         case "falcon25":
           return accts.every((a) => getFalconAddress(mn).toString() === a.addr);
@@ -712,7 +719,7 @@ const Keystore = {
           if (xpub.toBase64() !== a.xpub) return false;
         } else {
           const pk = await api.keyGen(root, KeyContext.Address, a.slot, 0);
-          if (new algosdk.Address(pk).toString() !== a.addr) return false;
+          if (new Address(pk).toString() !== a.addr) return false;
         }
       }
       return true;

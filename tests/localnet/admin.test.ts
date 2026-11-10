@@ -3,7 +3,7 @@
 // the dialog (signDialog below) runs LuteTxns the way SignView does, so the
 // handshake, the dialog's checks, the signer's account choice and the chain
 // are all real; only the user's click and the key store are not.
-import algosdk from "algosdk";
+import type { Account } from "algosdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Deployed, deploy, payFrom, propose, sign } from "./arc55";
 import { useLocalNet } from "./helpers";
@@ -112,7 +112,7 @@ async function group(d: Deployed, nonce: bigint) {
 }
 
 /** Give the wallet this account's key, as an ordinary hot account. */
-function holds(acct: { toString(): string; account: algosdk.Account }) {
+function holds(acct: { toString(): string; account: Account }) {
   held.set(acct.toString(), acct.account.sk);
   store.acctInfo.push({ addr: acct.toString(), canSign: true });
 }

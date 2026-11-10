@@ -1,6 +1,12 @@
 // ARC-1 sign requests through LuteTxns: what it refuses before anything is
 // signed. The signer itself is stubbed; it is covered by signer.test.ts.
-import algosdk from "algosdk";
+import {
+  assignGroupID,
+  generateAccount,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  signTransaction,
+  Transaction,
+} from "algosdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WalletTransaction } from "@/types";
 
@@ -23,8 +29,8 @@ const testStore = (await import("./stubs/store")).testStore as any;
 
 const LOCAL_HASH = new Uint8Array(32).fill(1);
 const TEST_HASH = new Uint8Array(32).fill(2);
-const alice = algosdk.generateAccount().addr.toString();
-const bob = algosdk.generateAccount().addr.toString();
+const alice = generateAccount().addr.toString();
+const bob = generateAccount().addr.toString();
 
 function pay(
   opts: {
@@ -34,7 +40,7 @@ function pay(
     genesisHash?: Uint8Array;
   } = {}
 ) {
-  return algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  return makePaymentTxnWithSuggestedParamsFromObject({
     sender: opts.sender ?? alice,
     receiver: bob,
     amount: opts.amount ?? 1,
@@ -50,11 +56,11 @@ function pay(
   });
 }
 
-const wtxn = (t: algosdk.Transaction, extra: Partial<WalletTransaction> = {}) =>
+const wtxn = (t: Transaction, extra: Partial<WalletTransaction> = {}) =>
   ({ txn: t.toByte().toBase64(), ...extra }) as WalletTransaction;
 
-function grouped(...txns: algosdk.Transaction[]) {
-  return algosdk.assignGroupID(txns);
+function grouped(...txns: Transaction[]) {
+  return assignGroupID(txns);
 }
 
 beforeEach(() => {
@@ -218,10 +224,7 @@ describe("validateGroup", () => {
 describe("sign", () => {
   it("signs what the request asks for and passes the rest through", async () => {
     const [a, b, c] = grouped(pay(), pay({ amount: 2 }), pay({ amount: 3 }));
-    const presigned = algosdk.signTransaction(
-      b!,
-      algosdk.generateAccount().sk
-    ).blob;
+    const presigned = signTransaction(b!, generateAccount().sk).blob;
     const lt = await validated([
       wtxn(a!),
       wtxn(b!, { signers: [], stxn: presigned.toBase64() }),
@@ -253,10 +256,7 @@ describe("sign", () => {
     [
       "Signed Transaction Mismatch",
       () => {
-        const other = algosdk.signTransaction(
-          pay({ amount: 7 }),
-          algosdk.generateAccount().sk
-        );
+        const other = signTransaction(pay({ amount: 7 }), generateAccount().sk);
         return [wtxn(pay(), { signers: [], stxn: other.blob.toBase64() })];
       },
     ],
@@ -264,7 +264,7 @@ describe("sign", () => {
       "Transaction already signed",
       () => {
         const t = pay();
-        const st = algosdk.signTransaction(t, algosdk.generateAccount().sk);
+        const st = signTransaction(t, generateAccount().sk);
         return [wtxn(t, { stxn: st.blob.toBase64() })];
       },
     ],
@@ -340,7 +340,7 @@ describe("sign", () => {
 describe("msigCheck", () => {
   it("accepts a request with nothing to sign", async () => {
     const t = pay();
-    const st = algosdk.signTransaction(t, algosdk.generateAccount().sk);
+    const st = signTransaction(t, generateAccount().sk);
     const lt = await validated([
       wtxn(t, { signers: [], stxn: st.blob.toBase64() }),
     ]);

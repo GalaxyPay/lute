@@ -82,7 +82,14 @@ import NameService from "@/services/NameService";
 import type { AccountInfo, NsLookup } from "@/types";
 import { b64url, getAssetInfo, probeFee, stringToBigint } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
-import algosdk, { modelsv2, Transaction } from "algosdk";
+import {
+  assignGroupID,
+  isValidAddress,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  modelsv2,
+  Transaction,
+} from "algosdk";
 
 const props = defineProps<{ sender: AccountInfo }>();
 
@@ -101,8 +108,7 @@ const theirClass = "text-info";
 
 const form = ref();
 const required = (v: any) => !!v || v === 0 || "Required";
-const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid address";
+const validAddress = (v: string) => isValidAddress(v) || "Invalid address";
 
 const receiver = ref<string>();
 const nsLookups = ref<NsLookup[]>();
@@ -141,7 +147,7 @@ watch(
 );
 
 watch(receiver, async (val) => {
-  if (!val || !algosdk.isValidAddress(val)) return;
+  if (!val || !isValidAddress(val)) return;
   receiverAssets.value = [store.nativeAsset];
   receiverAsset.value = undefined;
   receiveAmount.value = undefined;
@@ -159,7 +165,7 @@ watch(receiver, async (val) => {
 
 function receiverProps(item: any) {
   return {
-    subtitle: !algosdk.isValidAddress(item?.title) ? item?.value : undefined,
+    subtitle: !isValidAddress(item?.title) ? item?.value : undefined,
   };
 }
 function assetProps(item: modelsv2.Asset) {
@@ -189,14 +195,14 @@ async function propose() {
 
     let txn1: Transaction;
     if (!senderAsset.value.index) {
-      txn1 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      txn1 = makePaymentTxnWithSuggestedParamsFromObject({
         sender: props.sender.addr,
         receiver: receiver.value!,
         suggestedParams,
         amount: stringToBigint(sendAmount.value, 6),
       });
     } else {
-      txn1 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      txn1 = makeAssetTransferTxnWithSuggestedParamsFromObject({
         assetIndex: senderAsset.value.index,
         sender: props.sender.addr,
         receiver: receiver.value!,
@@ -209,14 +215,14 @@ async function propose() {
     }
     let txn2: Transaction;
     if (!receiverAsset.value.index) {
-      txn2 = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      txn2 = makePaymentTxnWithSuggestedParamsFromObject({
         sender: receiver.value!,
         receiver: props.sender.addr,
         suggestedParams,
         amount: stringToBigint(receiveAmount.value, 6),
       });
     } else {
-      txn2 = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      txn2 = makeAssetTransferTxnWithSuggestedParamsFromObject({
         assetIndex: receiverAsset.value.index,
         sender: receiver.value!,
         receiver: props.sender.addr,
@@ -228,7 +234,7 @@ async function propose() {
       });
     }
     txn1.fee = await probeFee(props.sender);
-    algosdk.assignGroupID([txn1, txn2]);
+    assignGroupID([txn1, txn2]);
     const resp = await luteSigner([txn1, txn2], [0]);
     store.snackbar.display = false;
     const query = {

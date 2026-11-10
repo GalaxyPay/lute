@@ -23,7 +23,7 @@ import { set } from "@/dbLute";
 import NameService from "@/services/NameService";
 import type { LuteAccount } from "@/types";
 import { deepClone } from "@/utils";
-import algosdk from "algosdk";
+import { isValidAddress } from "algosdk";
 
 const emit = defineEmits(["close"]);
 const store = useAppStore();
@@ -36,8 +36,7 @@ const form = ref();
 const addr = ref();
 const addrAuto = ref();
 const required = (v: string) => !!v || "Required";
-const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid address";
+const validAddress = (v: string) => isValidAddress(v) || "Invalid address";
 
 let nsTimeout: number;
 async function lookupNs(q: string) {

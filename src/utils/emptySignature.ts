@@ -4,21 +4,35 @@
 // plain ed25519 is "gA==". An account left out is of unknown type.
 // Kept free of the store and network so it can be tested on its own.
 import type { AccountInfo, MultisigMetadata } from "@/types";
-import algosdk, { SignedTransaction, type EncodedMultisig } from "algosdk";
+import {
+  Address,
+  addressFromPQKey,
+  ALGORAND_ZERO_ADDRESS_STRING,
+  type EncodedMultisig,
+  type EncodedPQSig,
+  encodeMsgpack,
+  FALCON_1024_SCHEME,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  msgpackRawDecodeAsMap,
+  msgpackRawEncode,
+  multisigAddress,
+  SignedTransaction,
+  Transaction,
+} from "algosdk";
 
 export type EmptySignatureFields = {
   msig?: EncodedMultisig;
-  pqsig?: algosdk.EncodedPQSig;
-  sgnr?: algosdk.Address;
+  pqsig?: EncodedPQSig;
+  sgnr?: Address;
 };
 
-let placeholderTxn: algosdk.Transaction | undefined;
+let placeholderTxn: Transaction | undefined;
 
 /** Only exists so algosdk's codec will encode the signature fields. */
 function getPlaceholderTxn() {
-  placeholderTxn ??= algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: algosdk.ALGORAND_ZERO_ADDRESS_STRING,
-    receiver: algosdk.ALGORAND_ZERO_ADDRESS_STRING,
+  placeholderTxn ??= makePaymentTxnWithSuggestedParamsFromObject({
+    sender: ALGORAND_ZERO_ADDRESS_STRING,
+    receiver: ALGORAND_ZERO_ADDRESS_STRING,
     amount: 0,
     suggestedParams: {
       fee: 0,
@@ -34,12 +48,12 @@ function getPlaceholderTxn() {
 
 export function encodeEmptySignature(fields: EmptySignatureFields) {
   const stxn = new SignedTransaction({ ...fields, txn: getPlaceholderTxn() });
-  const map = algosdk.msgpackRawDecodeAsMap(algosdk.encodeMsgpack(stxn)) as Map<
+  const map = msgpackRawDecodeAsMap(encodeMsgpack(stxn)) as Map<
     string,
     unknown
   >;
   map.delete("txn");
-  return algosdk.msgpackRawEncode(map).toBase64();
+  return msgpackRawEncode(map).toBase64();
 }
 
 export type MsigLoader = (
@@ -59,14 +73,11 @@ async function authorizerFields(
   if (auth.isFalcon25) {
     if (!auth.falconPk) return undefined;
     const pk = Uint8Array.fromBase64(auth.falconPk);
-    const { address, salt } = algosdk.addressFromPQKey(
-      algosdk.FALCON_1024_SCHEME,
-      pk
-    );
+    const { address, salt } = addressFromPQKey(FALCON_1024_SCHEME, pk);
     if (address.toString() !== authAddr) return undefined;
     return {
       pqsig: {
-        sch: algosdk.FALCON_1024_SCHEME,
+        sch: FALCON_1024_SCHEME,
         slt: salt,
         pk,
         sig: new Uint8Array(),
@@ -76,14 +87,13 @@ async function authorizerFields(
   if (auth.appId != null) {
     const params = await loadMsig(BigInt(auth.appId));
     if (!params) return undefined;
-    if (algosdk.multisigAddress(params).toString() !== authAddr)
-      return undefined;
+    if (multisigAddress(params).toString() !== authAddr) return undefined;
     return {
       msig: {
         v: params.version,
         thr: params.threshold,
         subsig: params.addrs.map((m) => ({
-          pk: algosdk.Address.fromString(m).publicKey,
+          pk: Address.fromString(m).publicKey,
         })),
       },
     };
@@ -118,8 +128,7 @@ export async function emptySignatures(
         const authAddr = acct.info?.authAddr?.toString() ?? addr;
         const fields = await authorizerFields(authAddr, accts, cachedLoad);
         if (!fields) return undefined;
-        if (authAddr !== addr)
-          fields.sgnr = algosdk.Address.fromString(authAddr);
+        if (authAddr !== addr) fields.sgnr = Address.fromString(authAddr);
         return [addr, encodeEmptySignature(fields)] as const;
       } catch (err) {
         console.error(err);

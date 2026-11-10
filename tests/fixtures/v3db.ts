@@ -12,7 +12,15 @@ import {
 } from "@algorandfoundation/xhd-wallet-api";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import algosdk, { FALCON_1024_SCHEME } from "algosdk";
+import {
+  Address,
+  addressFromPQKey,
+  encodeAddress,
+  FALCON_1024_SCHEME,
+  mnemonicFromSeed,
+  mnemonicToSecretKey,
+  pq25WordMnemonicToSeed,
+} from "algosdk";
 import { generateKey } from "falcon-1024";
 import { openDB } from "idb";
 
@@ -26,12 +34,12 @@ export const HD_MN = bip39.entropyToMnemonic(filled(32, 1), wordlist);
 export const HD2_MN = bip39.entropyToMnemonic(filled(32, 2), wordlist);
 export const HD_OTHER_MN = bip39.entropyToMnemonic(filled(32, 3), wordlist);
 export const HOT_SEED = filled(32, 4);
-export const HOT_MN = algosdk.mnemonicFromSeed(HOT_SEED);
-export const FALCON_MN = algosdk.mnemonicFromSeed(filled(32, 5));
-export const LEDGER_ADDR = algosdk.encodeAddress(filled(32, 6));
-export const WATCH_ADDR = algosdk.encodeAddress(filled(32, 7));
-export const MSIG_ADDR = algosdk.encodeAddress(filled(32, 8));
-export const PASSKEY_ADDR = algosdk.encodeAddress(filled(32, 9));
+export const HOT_MN = mnemonicFromSeed(HOT_SEED);
+export const FALCON_MN = mnemonicFromSeed(filled(32, 5));
+export const LEDGER_ADDR = encodeAddress(filled(32, 6));
+export const WATCH_ADDR = encodeAddress(filled(32, 7));
+export const MSIG_ADDR = encodeAddress(filled(32, 8));
+export const PASSKEY_ADDR = encodeAddress(filled(32, 9));
 
 export async function hdAccount(mn: string, slot: number) {
   const root = fromSeed(Buffer.from(bip39.mnemonicToSeedSync(mn)));
@@ -43,14 +51,14 @@ export async function hdAccount(mn: string, slot: number) {
     false,
     BIP32DerivationType.Peikert
   );
-  return { addr: new algosdk.Address(pk).toString(), xpub: xpub.toBase64() };
+  return { addr: new Address(pk).toString(), xpub: xpub.toBase64() };
 }
 
 export function falconAddress(mn: string) {
   // Same derivation as src/utils/keys.ts, kept local on purpose.
-  const keySeed = algosdk.pq25WordMnemonicToSeed(mn, FALCON_1024_SCHEME);
+  const keySeed = pq25WordMnemonicToSeed(mn, FALCON_1024_SCHEME);
   const { publicKey } = generateKey(keySeed);
-  const { address } = algosdk.addressFromPQKey(FALCON_1024_SCHEME, publicKey);
+  const { address } = addressFromPQKey(FALCON_1024_SCHEME, publicKey);
   return { keySeed, addr: address.toString() };
 }
 
@@ -175,7 +183,7 @@ export async function buildV3(
   const hdA2 = await hdAccount(HD_MN, 2);
   const hdB0 = await hdAccount(HD2_MN, 0);
   const hdOther0 = await hdAccount(HD_OTHER_MN, 0);
-  const hotAddr = algosdk.mnemonicToSecretKey(HOT_MN).addr.toString();
+  const hotAddr = mnemonicToSecretKey(HOT_MN).addr.toString();
   const key = await hotKey(HOT_SEED);
   const withPassword = verifierFormat !== "none";
 

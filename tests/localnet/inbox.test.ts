@@ -2,7 +2,7 @@
 // InboxAsset.vue use, priced as the wallet prices them. Each run deploys its
 // own router, as Settings > Create Router does.
 import { algo } from "@algorandfoundation/algokit-utils";
-import algosdk from "algosdk";
+import { makeEmptyTransactionSigner, Transaction } from "algosdk";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Arc59Factory } from "@/clients/Arc59Client";
 import Inbox from "@/services/Inbox";
@@ -50,9 +50,7 @@ async function newAsset() {
 
 /** Price as the wallet does for `by`, sign with its key, and submit. */
 async function run(
-  built:
-    | algosdk.Transaction[]
-    | { txns: algosdk.Transaction[]; feeIndexes: number[] },
+  built: Transaction[] | { txns: Transaction[]; feeIndexes: number[] },
   by: Acct
 ) {
   const { txns, feeIndexes } = Array.isArray(built)
@@ -81,7 +79,7 @@ async function inboxOf(receiver: string) {
       .newGroup()
       .arc59GetInbox({
         args: { receiver },
-        signer: algosdk.makeEmptyTransactionSigner(),
+        signer: makeEmptyTransactionSigner(),
       })
       .simulate({ allowEmptySignatures: true, allowUnnamedResources: true })
   ).returns[0]!;

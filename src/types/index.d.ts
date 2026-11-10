@@ -1,4 +1,4 @@
-import type { Transaction, modelsv2 } from "algosdk";
+import type { modelsv2, Transaction } from "algosdk";
 import type { ScopeType } from "@/classes/LuteData";
 
 export interface SnackBar {

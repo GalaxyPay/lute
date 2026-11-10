@@ -1,11 +1,11 @@
-import algosdk from "algosdk";
+import { mnemonicFromSeed, mnemonicToSecretKey } from "algosdk";
 import { describe, expect, it, vi } from "vitest";
 import { createSyncRelay, type RelayPort } from "@/ext/syncRelay";
 import { fresh } from "./helpers";
 
 const ORIGIN = "https://lute.app";
-const HOT = algosdk.mnemonicFromSeed(new Uint8Array(32).fill(21));
-const HOT_ADDR = algosdk.mnemonicToSecretKey(HOT).addr.toString();
+const HOT = mnemonicFromSeed(new Uint8Array(32).fill(21));
+const HOT_ADDR = mnemonicToSecretKey(HOT).addr.toString();
 const later = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Deliveries and disconnects not yet run, across every chromePorts pair.

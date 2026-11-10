@@ -47,14 +47,7 @@ import type {
   SendSingleTransactionResult,
   SendAtomicTransactionComposerResults,
 } from "@algorandfoundation/algokit-utils/types/transaction";
-import {
-  Address,
-  encodeAddress,
-  modelsv2,
-  OnApplicationComplete,
-  Transaction,
-  type TransactionSigner,
-} from "algosdk";
+import { Address, encodeAddress, modelsv2, OnApplicationComplete, Transaction, type TransactionSigner } from "algosdk";
 import SimulateResponse = modelsv2.SimulateResponse;
 
 export const APP_SPEC: Arc56Contract = {

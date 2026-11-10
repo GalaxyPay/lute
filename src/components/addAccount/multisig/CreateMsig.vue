@@ -61,7 +61,7 @@ import Algo from "@/services/Algo";
 import type { AccountInfo } from "@/types";
 import { pricedSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
-import algosdk from "algosdk";
+import { isValidAddress, multisigAddress } from "algosdk";
 
 const store = useAppStore();
 const form = ref();
@@ -77,8 +77,7 @@ const thresholdOptions = computed(() =>
 );
 
 const required = (v: string) => !!v || "Required";
-const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid address";
+const validAddress = (v: string) => isValidAddress(v) || "Invalid address";
 
 const addrs = ref([]);
 const mparams = computed(() => ({
@@ -88,11 +87,10 @@ const mparams = computed(() => ({
 }));
 const msigAddr = computed(() => {
   if (
-    addrs.value.filter((addr) => algosdk.isValidAddress(addr)).length !==
-    numAddrs.value
+    addrs.value.filter((addr) => isValidAddress(addr)).length !== numAddrs.value
   )
     return "";
-  return algosdk.multisigAddress(mparams.value).toString();
+  return multisigAddress(mparams.value).toString();
 });
 
 const emit = defineEmits(["add"]);

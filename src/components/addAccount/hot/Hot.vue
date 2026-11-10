@@ -33,7 +33,7 @@
 import Keystore from "@/services/Keystore";
 import type { LuteAccount, Unlocker } from "@/types";
 import { isCancelled } from "@/utils";
-import algosdk from "algosdk";
+import { mnemonicToSecretKey } from "algosdk";
 
 const emit = defineEmits(["close"]);
 const store = useAppStore();
@@ -43,7 +43,7 @@ const unlocker = ref<Unlocker>();
 
 async function handleMnemonic(mn: string) {
   try {
-    const address = algosdk.mnemonicToSecretKey(mn).addr.toString();
+    const address = mnemonicToSecretKey(mn).addr.toString();
     if (store.accounts.some((a) => a.addr === address)) {
       emit("close");
       throw Error(

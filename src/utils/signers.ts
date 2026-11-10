@@ -6,7 +6,9 @@ import { priceTxns } from "@/utils/simulateFees";
 import { findSigner } from "@/utils/findSigner";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import algosdk, {
+import {
+  appendSignRawMultisigSignature,
+  createMultisigTransaction,
   signTransactionWithSigner,
   Transaction,
   type TransactionSigner,
@@ -125,13 +127,9 @@ function attachMsigSig(msig: LuteMsig, txn: Transaction, sig: Uint8Array) {
     threshold: Number(msig.app.arc55_threshold),
     addrs: msig.app.addrs,
   };
-  const msigTxn = algosdk.createMultisigTransaction(txn, mparams);
-  return algosdk.appendSignRawMultisigSignature(
-    msigTxn,
-    mparams,
-    msig.signerAddr,
-    sig
-  ).blob;
+  const msigTxn = createMultisigTransaction(txn, mparams);
+  return appendSignRawMultisigSignature(msigTxn, mparams, msig.signerAddr, sig)
+    .blob;
 }
 
 async function ledgerSign(

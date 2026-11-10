@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import algosdk from "algosdk";
+import {
+  decodeSignedTransaction,
+  generateAccount,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  multisigAddress,
+  signTransaction,
+  type SuggestedParams,
+  Transaction,
+} from "algosdk";
 import type { Arc55App, MsigGroup } from "@/types";
 
 // Msig.ts loads the router and the Ledger-aware signers for its app calls;
@@ -10,12 +18,12 @@ vi.mock("@/utils/signers", () => ({ luteSigner: vi.fn() }));
 const { default: Msig } = await import("@/services/Msig");
 const { testStore } = await import("./stubs/store");
 
-const members = [0, 1, 2].map(() => algosdk.generateAccount());
+const members = [0, 1, 2].map(() => generateAccount());
 const addrs = members.map((m) => m.addr);
 const mparams = { version: 1, threshold: 2, addrs };
-const msigAddr = algosdk.multisigAddress(mparams);
+const msigAddr = multisigAddress(mparams);
 
-const params: algosdk.SuggestedParams = {
+const params: SuggestedParams = {
   fee: 1000n,
   minFee: 1000n,
   firstValid: 1n,
@@ -26,7 +34,7 @@ const params: algosdk.SuggestedParams = {
 };
 
 function payment(amount: number) {
-  return algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  return makePaymentTxnWithSuggestedParamsFromObject({
     sender: msigAddr,
     receiver: addrs[0]!,
     amount,
@@ -34,7 +42,7 @@ function payment(amount: number) {
   });
 }
 
-function sigsFor(signer: number, txns: algosdk.Transaction[]) {
+function sigsFor(signer: number, txns: Transaction[]) {
   return {
     addr: addrs[signer]!.toString(),
     sigs: txns.map((t) => t.rawSignTxn(members[signer]!.sk).toBase64()),
@@ -53,7 +61,7 @@ function app(groups: MsigGroup[]): Arc55App {
 }
 
 function subsigs(blob: Uint8Array) {
-  const st = algosdk.decodeSignedTransaction(blob);
+  const st = decodeSignedTransaction(blob);
   return st.msig!.subsig.map((s) => s.s);
 }
 
@@ -72,7 +80,7 @@ describe("Msig.buildGroup", () => {
 
     expect(out).toHaveLength(2);
     out.forEach((blob, idx) => {
-      const st = algosdk.decodeSignedTransaction(blob);
+      const st = decodeSignedTransaction(blob);
       expect(st.txn.txID()).toBe(txns[idx]!.txID());
       expect(st.msig!.thr).toBe(2);
       const got = subsigs(blob);
@@ -84,10 +92,7 @@ describe("Msig.buildGroup", () => {
 
   it("passes a pre-signed txn through untouched", async () => {
     const txns = [payment(1), payment(2)];
-    const presigned = algosdk.signTransaction(
-      txns[1]!,
-      algosdk.generateAccount().sk
-    ).blob;
+    const presigned = signTransaction(txns[1]!, generateAccount().sk).blob;
     const grp: MsigGroup = {
       nonce: 1n,
       txns,
@@ -125,9 +130,7 @@ describe("Msig.buildGroup", () => {
 
     const [blob] = await Msig.buildGroup(app(groups), 2n);
 
-    expect(algosdk.decodeSignedTransaction(blob!).txn.txID()).toBe(
-      second[0]!.txID()
-    );
+    expect(decodeSignedTransaction(blob!).txn.txID()).toBe(second[0]!.txID());
   });
 
   describe("reports and returns nothing", () => {
@@ -153,7 +156,7 @@ describe("Msig.buildGroup", () => {
 
     it("for a signature from an address outside the multisig", async () => {
       const txns = [payment(1)];
-      const outsider = algosdk.generateAccount();
+      const outsider = generateAccount();
       const grp: MsigGroup = {
         nonce: 1n,
         txns,

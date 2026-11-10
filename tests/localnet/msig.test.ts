@@ -1,7 +1,7 @@
 // ARC-55 multisig against a real app on localnet: Lute reads the app's boxes,
 // assembles the members' signatures and the result executes on chain.
 import { microAlgo } from "@algorandfoundation/algokit-utils";
-import type algosdk from "algosdk";
+import type { Transaction } from "algosdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WalletTransaction } from "@/types";
 import {
@@ -27,7 +27,7 @@ vi.mock("@/utils", async (orig) => ({
 }));
 vi.mock("@/utils/signers", () => ({
   signer: async (
-    group: algosdk.Transaction[],
+    group: Transaction[],
     idxs: number[],
     _authAddrs?: unknown,
     password?: string

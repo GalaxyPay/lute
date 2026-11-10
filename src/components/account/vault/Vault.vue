@@ -32,7 +32,7 @@
 import Algo from "@/services/Algo";
 import { nfdsByAddress } from "@/services/NameService";
 import type { AccountInfo } from "@/types";
-import algosdk from "algosdk";
+import { getApplicationAddress } from "algosdk";
 
 const props = defineProps({
   acct: { type: Object as PropType<AccountInfo>, required: true },
@@ -49,7 +49,7 @@ onMounted(async () => {
 });
 
 async function getAssets() {
-  const vaultAddr = algosdk.getApplicationAddress(nfd.value.appID!);
+  const vaultAddr = getApplicationAddress(nfd.value.appID!);
   vaultAssets.value = (
     await Algo.algod.accountInformation(vaultAddr).do()
   ).assets?.filter((a) => a.amount);
