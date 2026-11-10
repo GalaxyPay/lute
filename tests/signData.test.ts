@@ -339,3 +339,55 @@ describe("legacy SIWA requests (LuteDataOld)", () => {
     ]);
   });
 });
+
+describe("isSiwa", () => {
+  const base = {
+    domain: DOMAIN,
+    account_address: "A",
+    uri: `https://${DOMAIN}`,
+    version: "1",
+    chain_id: "283",
+    type: "ed25519",
+  };
+  let isSiwa: (v: unknown) => boolean;
+  beforeEach(async () => {
+    isSiwa = (await import("@/classes/LuteData")).isSiwa;
+  });
+
+  it("accepts required fields with every optional one", () => {
+    expect(isSiwa(base)).toBe(true);
+    expect(
+      isSiwa({
+        ...base,
+        type: "falcon-1024-det",
+        statement: "s",
+        nonce: "n",
+        "issued-at": "i",
+        "expiration-time": "e",
+        "not-before": "b",
+        "request-id": "r",
+        resources: ["x", "y"],
+      })
+    ).toBe(true);
+  });
+
+  it.each([
+    ["null", null],
+    ["an array", [base]],
+    ["a string", "{}"],
+    ["a missing required field", { ...base, chain_id: undefined }],
+    ["a non-string required field", { ...base, version: 1 }],
+    ["a null optional field", { ...base, nonce: null }],
+    ["non-string resources", { ...base, resources: ["x", 1] }],
+    ["resources that is not an array", { ...base, resources: "x" }],
+    ["an unknown type", { ...base, type: "falcon1024" }],
+    ["an inherited type name", { ...base, type: "toString" }],
+    ["an unknown key", { ...base, extra: "x" }],
+    [
+      "a __proto__ key",
+      JSON.parse(`{"__proto__":{},${JSON.stringify(base).slice(1)}`),
+    ],
+  ])("rejects %s", (_, v) => {
+    expect(isSiwa(v)).toBe(false);
+  });
+});

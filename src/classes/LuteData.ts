@@ -19,7 +19,6 @@ import algosdk, { encodeAddress } from "algosdk";
 import { canonify } from "canonify";
 import { FALCON_DET1024_PUBKEY_SIZE } from "falcon-1024";
 import { AlgorandApp } from "ledger-algorand-js";
-import { z } from "zod";
 
 export enum ScopeType {
   UNKNOWN = -1,
@@ -62,6 +61,50 @@ const SIGNER_SIZE: Record<Siwa["type"], number> = {
   ed25519: 32,
   "falcon-1024-det": FALCON_DET1024_PUBKEY_SIZE,
 };
+
+const SIWA_REQUIRED = [
+  "domain",
+  "account_address",
+  "uri",
+  "version",
+  "chain_id",
+] as const;
+const SIWA_OPTIONAL = [
+  "statement",
+  "nonce",
+  "issued-at",
+  "expiration-time",
+  "not-before",
+  "request-id",
+] as const;
+const SIWA_KEYS = new Set<string>([
+  ...SIWA_REQUIRED,
+  ...SIWA_OPTIONAL,
+  "resources",
+  "type",
+]);
+
+/**
+ * Whether `v` is a SIWA message. Unknown keys are rejected: the message must
+ * match its canonical JSON exactly, so an extra key could never pass anyway.
+ */
+export function isSiwa(v: unknown): v is Siwa {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  const o = v as Record<string, unknown>;
+  if (Object.keys(o).some((k) => !SIWA_KEYS.has(k))) return false;
+  if (SIWA_REQUIRED.some((k) => typeof o[k] !== "string")) return false;
+  if (SIWA_OPTIONAL.some((k) => k in o && typeof o[k] !== "string"))
+    return false;
+  if (
+    "resources" in o &&
+    !(
+      Array.isArray(o.resources) &&
+      o.resources.every((r) => typeof r === "string")
+    )
+  )
+    return false;
+  return typeof o.type === "string" && Object.hasOwn(SIGNER_SIZE, o.type);
+}
 
 export default class LuteData {
   stdSignData: StdSignData;
@@ -114,22 +157,6 @@ export default class LuteData {
   async validate() {
     this.validated = false;
     try {
-      const siwaSchema = z.object({
-        domain: z.string(),
-        account_address: z.string(),
-        uri: z.string(),
-        version: z.string(),
-        statement: z.string().optional(),
-        nonce: z.string().optional(),
-        "issued-at": z.string().optional(),
-        "expiration-time": z.string().optional(),
-        "not-before": z.string().optional(),
-        "request-id": z.string().optional(),
-        chain_id: z.string(),
-        resources: z.string().array().optional(),
-        type: z.enum(["ed25519", "falcon-1024-det"]),
-      }) as z.ZodType<Siwa>;
-
       switch (this.metadata.encoding) {
         case "base64":
           this.jsonString = new TextDecoder().decode(
@@ -155,12 +182,15 @@ export default class LuteData {
       // validate against schema
       switch (this.metadata.scope) {
         case ScopeType.AUTH:
+          let parsed: unknown;
           try {
-            this.siwa = siwaSchema.parse(JSON.parse(this.jsonString));
+            parsed = JSON.parse(this.jsonString);
           } catch (err: any) {
             console.error(err);
             throw ERROR_BAD_JSON;
           }
+          if (!isSiwa(parsed)) throw ERROR_BAD_JSON;
+          this.siwa = parsed;
 
           const canonifiedJson = canonify(this.siwa);
           if (!canonifiedJson || canonifiedJson !== this.jsonString) {
@@ -168,7 +198,7 @@ export default class LuteData {
           }
 
           // scheme defaults to ed25519 when omitted and must match siwa.type;
-          // the schema above limits siwa.type to known schemes, so any unknown
+          // isSiwa limits siwa.type to known schemes, so any unknown
           // scheme fails here too.
           if (this.siwa.type !== (this.stdSignData.scheme ?? "ed25519"))
             throw ERROR_UNSUPPORTED_SCHEME;

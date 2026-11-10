@@ -8,8 +8,8 @@ import { VitePWA } from "vite-plugin-pwa";
 import sri from "vite-plugin-sri-gen";
 import Vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 import VueRouter from "vue-router/vite";
-import { algosdkSideEffectFree } from "./scripts/treeshake";
-import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback";
+import { algosdkSideEffectFree } from "./scripts/treeshake.ts";
+import { vuetifyStylesFallback } from "./scripts/vuetifyStylesFallback.ts";
 
 const vuetifySettings = fileURLToPath(
   new URL("./src/styles/settings.scss", import.meta.url)
