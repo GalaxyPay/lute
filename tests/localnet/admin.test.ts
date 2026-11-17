@@ -3,7 +3,7 @@
 // the dialog (signDialog below) runs LuteTxns the way SignView does, so the
 // handshake, the dialog's checks, the signer's account choice and the chain
 // are all real; only the user's click and the key store are not.
-import type { Account } from "algosdk";
+import type { Account, Transaction } from "algosdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Deployed, deploy, payFrom, propose, sign } from "./arc55";
 import { useLocalNet } from "./helpers";
@@ -16,10 +16,10 @@ vi.mock("@/services/Signer", async () => {
   const { ed25519Sign } = await import("@/utils/keys");
   return {
     default: {
-      async signBytes(acct: { addr: string }, bytes: Uint8Array) {
+      async signTxn(acct: { addr: string }, txn: Transaction) {
         const sk = held.get(acct.addr);
         if (!sk) throw Error(`No key for ${acct.addr}`);
-        return await ed25519Sign(sk.slice(0, 32), bytes);
+        return await ed25519Sign(sk.slice(0, 32), txn.bytesToSign());
       },
     },
     SignContext: class {

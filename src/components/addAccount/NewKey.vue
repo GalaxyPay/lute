@@ -49,8 +49,7 @@
   >
     <div class="word-check">
       <p class="text-text-body">
-        What is word number <b class="text-high-emphasis">{{ challenge }}</b
-        >?
+        What is word number <b class="text-high-emphasis">{{ challenge }}</b>?
       </p>
       <v-text-field
         density="compact"

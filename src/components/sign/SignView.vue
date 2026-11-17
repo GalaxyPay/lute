@@ -170,6 +170,13 @@ const siteName = computed(() => {
 
 onMounted(() => whenLoaded(ready));
 
+// The modal signer starts without waiting for a refresh, and info can change
+// while a request is open: keep "cannot sign" in step with what is loaded.
+watch(
+  () => store.acctInfo,
+  () => luteTxns.value.recheckSigners()
+);
+
 async function ready() {
   if (store.luteTxns) {
     luteTxns.value = store.luteTxns;

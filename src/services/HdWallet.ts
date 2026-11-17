@@ -14,7 +14,7 @@ const HdWallet = {
   async deriveAccts(seed: Uint8Array, startIndex: number = 0) {
     const accts: AccountSubs[] = [];
     const cryptoService = new XHDWalletAPI();
-    const rootKey = await fromSeed(seed);
+    const rootKey = fromSeed(seed);
     for (let i = startIndex; i < 4 + startIndex; i++) {
       const key = await cryptoService.keyGen(rootKey, KeyContext.Address, i, 0);
       const addr = new Address(key).toString();
@@ -41,25 +41,54 @@ const HdWallet = {
     return encodeAddress(childPub);
   },
 
+  /**
+   * Signs `bytes` exactly as given, so they must already be domain-separated
+   * (ARC-60 signs a hash). Transactions go through signTxn. Zeroes `seed`.
+   */
   async sign(
     seed: Uint8Array,
     slot: number,
     bytes: Uint8Array,
     addrIdx: number = 0
   ) {
-    const cryptoService = new XHDWalletAPI();
-    const rootKey = await fromSeed(seed);
-    seed.fill(0);
-    const sig = await cryptoService.signData(
-      rootKey,
-      KeyContext.Address,
-      slot,
-      addrIdx,
-      bytes
+    return await withRootKey(seed, (api, rootKey) =>
+      api.signData(rootKey, KeyContext.Address, slot, addrIdx, bytes)
     );
-    rootKey.fill(0);
-    return sig;
+  },
+
+  /**
+   * Signs a txn's bytesToSign ("TX" || encoded txn); the library refuses
+   * anything without the "TX" tag. Zeroes `seed`.
+   */
+  async signTxn(
+    seed: Uint8Array,
+    slot: number,
+    bytesToSign: Uint8Array,
+    addrIdx: number = 0
+  ) {
+    return await withRootKey(seed, (api, rootKey) =>
+      api.signAlgoTransaction(
+        rootKey,
+        KeyContext.Address,
+        slot,
+        addrIdx,
+        bytesToSign
+      )
+    );
   },
 };
+
+async function withRootKey(
+  seed: Uint8Array,
+  sign: (api: XHDWalletAPI, rootKey: Uint8Array) => Promise<Uint8Array>
+) {
+  const rootKey = fromSeed(seed);
+  seed.fill(0);
+  try {
+    return await sign(new XHDWalletAPI(), rootKey);
+  } finally {
+    rootKey.fill(0);
+  }
+}
 
 export default HdWallet;

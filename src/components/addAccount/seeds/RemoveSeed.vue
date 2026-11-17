@@ -53,8 +53,7 @@
         <template v-if="words.length">
           <v-card-text class="pt-0">
             To confirm you have the mnemonic, what is word number
-            <b class="text-high-emphasis">{{ challenge }}</b
-            >?
+            <b class="text-high-emphasis">{{ challenge }}</b>?
             <v-text-field
               v-model="answer"
               class="challenge-field"

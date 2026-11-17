@@ -437,6 +437,36 @@ describe("prepare", () => {
       expect(lastError()).toMatchObject({ code: 4100 });
     });
 
+    it("clears once the signer's account loads", async () => {
+      // Opened before the account was loaded, as the modal signer can be.
+      testStore.accounts = [{ addr: alice }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError?.message).toMatch(/is not in Lute$/);
+      testStore.acctInfo = [{ addr: alice, canSign: true }];
+      lt.recheckSigners();
+      expect(lt.signerError).toBeUndefined();
+      await lt.sign();
+      expect(signer).toHaveBeenCalled();
+    });
+
+    it("judges by the info loaded when Sign is pressed", async () => {
+      testStore.accounts = [{ addr: alice }];
+      testStore.acctInfo = [{ addr: alice, canSign: true }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError).toBeUndefined();
+      // A refresh found it rekeyed away while the request was open.
+      testStore.info = [{ address: alice, authAddr: bob }];
+      await lt.sign();
+      expect(signer).not.toHaveBeenCalled();
+      expect(lastError()).toMatchObject({ code: 4100 });
+    });
+
+    it("does not recheck before prepare got that far", async () => {
+      const lt = new LuteTxns([wtxn(pay())], 1);
+      lt.recheckSigners();
+      expect(lt.signerError).toBeUndefined();
+    });
+
     it("ignores txns the request does not ask Lute to sign", async () => {
       // bob holds no account here, but his txn is signed elsewhere.
       testStore.accounts = [{ addr: alice }];

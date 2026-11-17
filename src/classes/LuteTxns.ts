@@ -42,6 +42,8 @@ export default class LuteTxns {
    * The dialog shows it instead of Sign and replies with it on close.
    */
   signerError?: Error;
+  // prepare() got as far as signerCheck, so later rechecks are meaningful.
+  private signersChecked = false;
   // The ATC calls its signer without a password, so the msig signer reads the
   // one handed to sign() from here.
   private password?: string;
@@ -163,8 +165,19 @@ export default class LuteTxns {
     await this.validateGroup();
     if (!this.groupValid) return false;
     await this.msigCheck();
-    if (!this.finished) this.signerCheck();
+    if (!this.finished) {
+      this.signersChecked = true;
+      this.signerCheck();
+    }
     return !this.finished;
+  }
+
+  /**
+   * Account info changed while the request was open (a refresh, or rekey and
+   * HD rows still loading): judge the signers by what is loaded now.
+   */
+  recheckSigners() {
+    if (this.signersChecked && !this.finished) this.signerCheck();
   }
 
   /**
@@ -367,6 +380,8 @@ export default class LuteTxns {
     try {
       if (this.finished || !this.networkValid || !this.groupValid)
         throw Error("Invalid Request", INVALID);
+      // Not the verdict from prepare(): account info may have changed since.
+      this.recheckSigners();
       if (this.signerError) throw this.signerError;
       if (this.atc.getStatus()) {
         this.password = password;

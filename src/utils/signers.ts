@@ -100,7 +100,7 @@ export async function signer(
           if (!algoApp) algoApp = new AlgorandApp(transport);
           sig = await ledgerSign(txn, algoApp, acct.slot);
         } else {
-          sig = await Signer.signBytes(acct, txn.bytesToSign(), ctx);
+          sig = await Signer.signTxn(acct, txn, ctx);
         }
         let signedTxn: Uint8Array;
         if (msig?.bypass) {

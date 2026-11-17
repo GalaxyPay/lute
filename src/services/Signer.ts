@@ -21,6 +21,7 @@ import {
   type Address,
   addressWithSignersFromRawFalcon1024Signer,
   type Falcon1024SigningKey,
+  type Transaction,
   type TransactionSigner,
 } from "algosdk";
 import { generateKey, signCompressed } from "falcon-1024";
@@ -149,30 +150,45 @@ async function falconKeySeed(acct: AccountInfo, ctx: SignContext) {
   });
 }
 
+/** `isTxn`: `bytes` are a txn's bytesToSign, which HD signing checks. */
+async function ed25519(
+  acct: AccountInfo,
+  bytes: Uint8Array,
+  ctx: SignContext,
+  isTxn: boolean
+) {
+  if (acct.seedId && acct.slot != null) {
+    const seed = await hdSeed(acct, ctx);
+    // HdWallet zeroes what it is given; keep the cached copy intact.
+    const sign = isTxn ? HdWallet.signTxn : HdWallet.sign;
+    return await sign(seed.slice(), acct.slot, bytes, acct.info?.addrIdx);
+  }
+  if (acct.isFalcon25)
+    throw Error("Falcon accounts cannot produce an ed25519 signature");
+  const id = `algo25:${acct.addr}`;
+  const rec: KeystoreRecord | undefined = await get("keystore", id);
+  if (rec) {
+    const seed = await ctx.cached(id, () => fromKeystore(ctx, rec));
+    return await ed25519Sign(seed, bytes);
+  }
+  // @legacy-read The key itself needs no unwrapping, but it is a local
+  // secret like any other: the wallet password gates it.
+  await ctx.masterKey();
+  return await hotSign(acct.addr, bytes);
+}
+
 const Signer = {
+  /**
+   * An ed25519 signature over `bytes` as given: the caller domain-separates
+   * them (ARC-60 signs a hash). Transactions go through signTxn.
+   */
   async signBytes(acct: AccountInfo, bytes: Uint8Array, ctx: SignContext) {
-    if (acct.seedId && acct.slot != null) {
-      const seed = await hdSeed(acct, ctx);
-      // HdWallet.sign zeroes what it is given; keep the cached copy intact.
-      return await HdWallet.sign(
-        seed.slice(),
-        acct.slot,
-        bytes,
-        acct.info?.addrIdx
-      );
-    }
-    if (acct.isFalcon25)
-      throw Error("Falcon accounts cannot produce an ed25519 signature");
-    const id = `algo25:${acct.addr}`;
-    const rec: KeystoreRecord | undefined = await get("keystore", id);
-    if (rec) {
-      const seed = await ctx.cached(id, () => fromKeystore(ctx, rec));
-      return await ed25519Sign(seed, bytes);
-    }
-    // @legacy-read The key itself needs no unwrapping, but it is a local
-    // secret like any other: the wallet password gates it.
-    await ctx.masterKey();
-    return await hotSign(acct.addr, bytes);
+    return await ed25519(acct, bytes, ctx, false);
+  },
+
+  /** An ed25519 signature over the txn's bytesToSign ("TX" || txn). */
+  async signTxn(acct: AccountInfo, txn: Transaction, ctx: SignContext) {
+    return await ed25519(acct, txn.bytesToSign(), ctx, true);
   },
 
   async signFalconBytes(
