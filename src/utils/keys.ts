@@ -1,6 +1,10 @@
 // Kept out of utils/index.ts, whose re-exports reach the network and store,
 // so the keystore can import these without dragging that in.
-import algosdk from "algosdk";
+import {
+  addressFromPQKey,
+  FALCON_1024_SCHEME,
+  pq25WordMnemonicToSeed,
+} from "algosdk";
 import { generateKey } from "falcon-1024";
 
 export function isBadPassword(err: any) {
@@ -30,7 +34,7 @@ export function badPassword() {
 
 /** Returns both from one keygen, which is costly. */
 export function getFalconKey(mn: string) {
-  const seed = algosdk.pq25WordMnemonicToSeed(mn, algosdk.FALCON_1024_SCHEME);
+  const seed = pq25WordMnemonicToSeed(mn, FALCON_1024_SCHEME);
   try {
     return falconKeyFromKeySeed(seed);
   } finally {
@@ -45,10 +49,7 @@ export function getFalconAddress(mn: string) {
 /** A key seed is the hashed form of a 25-word seed. */
 export function falconKeyFromKeySeed(keySeed: Uint8Array) {
   const { publicKey } = generateKey(keySeed);
-  const { address } = algosdk.addressFromPQKey(
-    algosdk.FALCON_1024_SCHEME,
-    publicKey
-  );
+  const { address } = addressFromPQKey(FALCON_1024_SCHEME, publicKey);
   return { address, publicKey };
 }
 

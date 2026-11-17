@@ -6,7 +6,7 @@ import {
 import { hmac } from "@noble/hashes/hmac.js";
 import { sha256, sha512 } from "@noble/hashes/sha2.js";
 import * as bip39 from "@scure/bip39";
-import algosdk from "algosdk";
+import { mnemonicFromSeed } from "algosdk";
 
 // Recovers the accounts a Ledger device's Algorand app derives from its BIP39
 // mnemonic, as plain Algo25 keys. Break-glass only: the key leaves the device.
@@ -43,7 +43,7 @@ async function mnemonic(rootKey: Uint8Array, account: number) {
     true,
     BIP32DerivationType.Khovratovich
   );
-  const mn = algosdk.mnemonicFromSeed(node.subarray(0, 32));
+  const mn = mnemonicFromSeed(node.subarray(0, 32));
   node.fill(0);
   return mn;
 }

@@ -1,4 +1,4 @@
-import algosdk from "algosdk";
+import { mnemonicFromSeed, mnemonicToSecretKey } from "algosdk";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildV3,
@@ -14,10 +14,10 @@ import {
 } from "./fixtures/v3db";
 import { type Env, fresh, pairedTransports } from "./helpers";
 
-const NEW_HOT = algosdk.mnemonicFromSeed(new Uint8Array(32).fill(11));
-const NEW_HOT_ADDR = algosdk.mnemonicToSecretKey(NEW_HOT).addr.toString();
-const B_HOT = algosdk.mnemonicFromSeed(new Uint8Array(32).fill(12));
-const B_HOT_ADDR = algosdk.mnemonicToSecretKey(B_HOT).addr.toString();
+const NEW_HOT = mnemonicFromSeed(new Uint8Array(32).fill(11));
+const NEW_HOT_ADDR = mnemonicToSecretKey(NEW_HOT).addr.toString();
+const B_HOT = mnemonicFromSeed(new Uint8Array(32).fill(12));
+const B_HOT_ADDR = mnemonicToSecretKey(B_HOT).addr.toString();
 
 /** A 1.x web wallet after its first password entry, one upgrade and one new account. */
 async function senderWallet() {

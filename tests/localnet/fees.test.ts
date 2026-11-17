@@ -1,7 +1,11 @@
 // Fee pricing against algod's own simulate: what the wallet sets must be what
 // the network accepts.
 import { microAlgo } from "@algorandfoundation/algokit-utils";
-import algosdk from "algosdk";
+import {
+  computeGroupID,
+  decodeUnsignedTransaction,
+  Transaction,
+} from "algosdk";
 import { beforeEach, describe, expect, it } from "vitest";
 import { priceTxns, probeFee, simulateFees } from "@/utils/simulateFees";
 import { algorand, funded, submit, useLocalNet } from "./helpers";
@@ -50,7 +54,7 @@ describe("fee pricing", () => {
     expect(txns[0]!.fee).toBe(2n * (await minFee()));
     expect(txns[1]!.fee).toBe(0n);
     expect(txns[0]!.group).toEqual(txns[1]!.group);
-    expect(algosdk.computeGroupID(txns.map(ungrouped))).toEqual(txns[0]!.group);
+    expect(computeGroupID(txns.map(ungrouped))).toEqual(txns[0]!.group);
     await submit([
       txns[0]!.signTxn(a.account.sk),
       txns[1]!.signTxn(b.account.sk),
@@ -87,8 +91,8 @@ describe("fee pricing", () => {
   });
 });
 
-function ungrouped(t: algosdk.Transaction) {
-  const c = algosdk.decodeUnsignedTransaction(t.toByte());
+function ungrouped(t: Transaction) {
+  const c = decodeUnsignedTransaction(t.toByte());
   c.group = undefined;
   return c;
 }

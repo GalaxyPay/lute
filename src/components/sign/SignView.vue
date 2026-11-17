@@ -46,6 +46,15 @@
           }}
         </div>
         <v-alert
+          v-if="luteTxns.signerError"
+          type="error"
+          variant="tonal"
+          density="compact"
+          class="sign-summary"
+          title="Lute cannot sign this request"
+          :text="luteTxns.signerError.message"
+        />
+        <v-alert
           v-if="luteTxns.summary"
           type="info"
           variant="tonal"
@@ -68,6 +77,15 @@
         </div>
         <div class="ext-footer">
           <v-btn
+            v-if="luteTxns.signerError"
+            block
+            size="large"
+            variant="flat"
+            text="Close"
+            @click="luteTxns.rejectUnsignable()"
+          />
+          <v-btn
+            v-else
             block
             size="large"
             variant="flat"
@@ -151,6 +169,13 @@ const siteName = computed(() => {
 });
 
 onMounted(() => whenLoaded(ready));
+
+// The modal signer starts without waiting for a refresh, and info can change
+// while a request is open: keep "cannot sign" in step with what is loaded.
+watch(
+  () => store.acctInfo,
+  () => luteTxns.value.recheckSigners()
+);
 
 async function ready() {
   if (store.luteTxns) {
@@ -262,6 +287,9 @@ async function handlePass(success: boolean, pass: string) {
 }
 
 window.onbeforeunload = () => {
+  // Closed by the window's own X: still give the dapp the reason.
+  if (luteTxns.value.signerError && !luteTxns.value.finished)
+    return luteTxns.value.rejectUnsignable();
   const message = { action: "close", debug: store.debug };
   sendOrPostMessage(message, tabId);
 };

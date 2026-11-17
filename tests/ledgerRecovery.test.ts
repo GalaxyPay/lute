@@ -1,5 +1,5 @@
 import LedgerRecovery from "@/services/LedgerRecovery";
-import algosdk from "algosdk";
+import { mnemonicToSecretKey, signBytes, verifyBytes } from "algosdk";
 import { describe, expect, it } from "vitest";
 
 // APP_SEED and expected key from Zondax/ledger-algorand tests_zemu, which run
@@ -10,7 +10,7 @@ const APP_SEED =
 async function addr(account: number, passphrase?: string) {
   const root = LedgerRecovery.root(APP_SEED, passphrase);
   const mn = await LedgerRecovery.mnemonic(root, account);
-  return algosdk.mnemonicToSecretKey(mn);
+  return mnemonicToSecretKey(mn);
 }
 
 describe("LedgerRecovery", () => {
@@ -30,8 +30,8 @@ describe("LedgerRecovery", () => {
       "D3GP2HWALZASL6XGSDHMFJ3YHGU2GYRV3VXC5L52PHFCLQG2MD4KIPKKAA"
     );
     const msg = new Uint8Array([1, 2, 3]);
-    const sig = algosdk.signBytes(msg, acct.sk);
-    expect(algosdk.verifyBytes(msg, sig, acct.addr.toString())).toBe(true);
+    const sig = signBytes(msg, acct.sk);
+    expect(verifyBytes(msg, sig, acct.addr.toString())).toBe(true);
   });
 
   it("derives different accounts with a passphrase", async () => {

@@ -1,5 +1,9 @@
 import { bytesEqual } from "@/utils/keys";
-import algosdk, { type Transaction } from "algosdk";
+import {
+  OnApplicationComplete,
+  type Transaction,
+  TransactionType,
+} from "algosdk";
 
 /**
  * Most ALGO a swap may cost beyond its input and router fee: txn fees plus
@@ -82,13 +86,13 @@ export function validateSwapGroup(
     if (t.rekeyTo) throw Error("Invalid Swap: rekey");
     cost += t.fee;
     switch (t.type) {
-      case algosdk.TransactionType.pay: {
+      case TransactionType.pay: {
         if (t.payment!.closeRemainderTo) throw Error("Invalid Swap: close");
         if (exp.fromASAID === 0n) input += t.payment!.amount;
         else cost += t.payment!.amount;
         break;
       }
-      case algosdk.TransactionType.axfer: {
+      case TransactionType.axfer: {
         const x = t.assetTransfer!;
         if (x.closeRemainderTo) throw Error("Invalid Swap: close");
         if (x.assetSender) throw Error("Invalid Swap: clawback");
@@ -98,11 +102,11 @@ export function validateSwapGroup(
         input += x.amount;
         break;
       }
-      case algosdk.TransactionType.appl: {
+      case TransactionType.appl: {
         const oc = t.applicationCall!.onComplete;
         if (
-          oc !== algosdk.OnApplicationComplete.NoOpOC &&
-          oc !== algosdk.OnApplicationComplete.OptInOC
+          oc !== OnApplicationComplete.NoOpOC &&
+          oc !== OnApplicationComplete.OptInOC
         )
           throw Error("Invalid Swap: app call");
         break;

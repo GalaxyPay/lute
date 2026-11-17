@@ -2,7 +2,7 @@
 // deployed as CreateMsig.vue does, groups and signatures added through the
 // app's own methods.
 import { microAlgo } from "@algorandfoundation/algokit-utils";
-import algosdk from "algosdk";
+import { multisigAddress, type MultisigMetadata, Transaction } from "algosdk";
 import { MsigAppFactory, type MsigAppClient } from "@/clients/MsigApp.client";
 import { algorand, funded } from "./helpers";
 
@@ -14,7 +14,7 @@ export interface Deployed {
   client: MsigAppClient;
   members: Acct[];
   msigAddr: string;
-  mparams: algosdk.MultisigMetadata;
+  mparams: MultisigMetadata;
 }
 
 /** A 2-of-3 ARC-55 app, as CreateMsig.vue deploys it. */
@@ -32,17 +32,13 @@ export async function deploy(): Promise<Deployed> {
     admin,
     client: appClient,
     members,
-    msigAddr: algosdk.multisigAddress(mparams).toString(),
+    msigAddr: multisigAddress(mparams).toString(),
     mparams,
   };
 }
 
 /** Store txns as a new group, the way any member's wallet would. */
-export async function propose(
-  d: Deployed,
-  by: Acct,
-  txns: algosdk.Transaction[]
-) {
+export async function propose(d: Deployed, by: Acct, txns: Transaction[]) {
   const client = d.client.clone({ defaultSender: by });
   await algorand.send.payment({
     sender: by,
@@ -71,7 +67,7 @@ export async function sign(
   d: Deployed,
   member: Acct,
   nonce: bigint,
-  txns: algosdk.Transaction[]
+  txns: Transaction[]
 ) {
   const client = d.client.clone({ defaultSender: member });
   const costs = await algorand.createTransaction.payment({

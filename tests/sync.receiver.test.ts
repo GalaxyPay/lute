@@ -1,12 +1,12 @@
 // The receiver against a scripted sender that misbehaves: every refusal must
 // tell the sender why and write nothing to the receiving wallet.
-import algosdk from "algosdk";
+import { mnemonicFromSeed, mnemonicToSecretKey } from "algosdk";
 import { describe, expect, it } from "vitest";
 import type { SyncMessage, SyncTransport } from "@/services/SyncSession";
 import { type Env, fresh, pairedTransports } from "./helpers";
 
-const HOT = algosdk.mnemonicFromSeed(new Uint8Array(32).fill(21));
-const HOT_ADDR = algosdk.mnemonicToSecretKey(HOT).addr.toString();
+const HOT = mnemonicFromSeed(new Uint8Array(32).fill(21));
+const HOT_ADDR = mnemonicToSecretKey(HOT).addr.toString();
 
 /** One end of a session, driven step by step by the test. */
 function scripted(t: SyncTransport) {

@@ -51,7 +51,7 @@ import Algo from "@/services/Algo";
 import Keystore from "@/services/Keystore";
 import type { LuteAccount, Unlocker } from "@/types";
 import { bigintToString, formatAddr, isCancelled } from "@/utils";
-import algosdk, { type Account, modelsv2 } from "algosdk";
+import { type Account, Address, modelsv2 } from "algosdk";
 
 const selected = ref([]);
 const loading = ref(false);
@@ -89,7 +89,7 @@ onMounted(async () => {
       })
     );
     accts.value = keys.map((k) => ({
-      addr: new algosdk.Address(k.private_key.slice(32)),
+      addr: new Address(k.private_key.slice(32)),
       sk: k.private_key,
     }));
     Algo.kmd.releaseWalletHandle(wallet_handle_token);

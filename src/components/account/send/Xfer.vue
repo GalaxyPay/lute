@@ -163,15 +163,19 @@ import {
 } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiInformationOutline } from "@mdi/js";
-import algosdk, { modelsv2 } from "algosdk";
+import {
+  isValidAddress,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  modelsv2,
+} from "algosdk";
 
 const props = defineProps<{ acct: AccountInfo; rekey: boolean }>();
 
 const store = useAppStore();
 const form = ref();
 const required = (v: any) => !!v || v === 0 || "Required";
-const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid address";
+const validAddress = (v: string) => isValidAddress(v) || "Invalid address";
 const ns = computed(() =>
   !store.nsSend
     ? ""
@@ -221,7 +225,7 @@ const closeRemainderToTip = computed(() =>
 
 function toProps(item: any) {
   return {
-    subtitle: !algosdk.isValidAddress(item?.title) ? item?.value : undefined,
+    subtitle: !isValidAddress(item?.title) ? item?.value : undefined,
   };
 }
 
@@ -282,7 +286,7 @@ async function submit() {
     const note64 = note.value ? enc.encode(note.value) : undefined;
     let txn;
     if (asset.value.index) {
-      txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      txn = makeAssetTransferTxnWithSuggestedParamsFromObject({
         assetIndex: asset.value.index,
         receiver: to.value,
         sender: props.acct.addr,
@@ -298,7 +302,7 @@ async function submit() {
       }
     } else {
       if (props.rekey) {
-        txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        txn = makePaymentTxnWithSuggestedParamsFromObject({
           receiver: props.acct.addr,
           sender: props.acct.addr,
           suggestedParams,
@@ -306,7 +310,7 @@ async function submit() {
           rekeyTo: rekeyTo.value,
         });
       } else {
-        txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        txn = makePaymentTxnWithSuggestedParamsFromObject({
           receiver: to.value,
           sender: props.acct.addr,
           note: note64,

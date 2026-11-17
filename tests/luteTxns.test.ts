@@ -1,6 +1,12 @@
 // ARC-1 sign requests through LuteTxns: what it refuses before anything is
 // signed. The signer itself is stubbed; it is covered by signer.test.ts.
-import algosdk from "algosdk";
+import {
+  assignGroupID,
+  generateAccount,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  signTransaction,
+  Transaction,
+} from "algosdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WalletTransaction } from "@/types";
 
@@ -23,8 +29,8 @@ const testStore = (await import("./stubs/store")).testStore as any;
 
 const LOCAL_HASH = new Uint8Array(32).fill(1);
 const TEST_HASH = new Uint8Array(32).fill(2);
-const alice = algosdk.generateAccount().addr.toString();
-const bob = algosdk.generateAccount().addr.toString();
+const alice = generateAccount().addr.toString();
+const bob = generateAccount().addr.toString();
 
 function pay(
   opts: {
@@ -34,7 +40,7 @@ function pay(
     genesisHash?: Uint8Array;
   } = {}
 ) {
-  return algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  return makePaymentTxnWithSuggestedParamsFromObject({
     sender: opts.sender ?? alice,
     receiver: bob,
     amount: opts.amount ?? 1,
@@ -50,11 +56,11 @@ function pay(
   });
 }
 
-const wtxn = (t: algosdk.Transaction, extra: Partial<WalletTransaction> = {}) =>
+const wtxn = (t: Transaction, extra: Partial<WalletTransaction> = {}) =>
   ({ txn: t.toByte().toBase64(), ...extra }) as WalletTransaction;
 
-function grouped(...txns: algosdk.Transaction[]) {
-  return algosdk.assignGroupID(txns);
+function grouped(...txns: Transaction[]) {
+  return assignGroupID(txns);
 }
 
 beforeEach(() => {
@@ -71,6 +77,8 @@ beforeEach(() => {
     networkName: "MainNet",
     refresh: 0,
     accounts: [],
+    acctInfo: [],
+    info: [],
     device: { transport: undefined },
     allNetworks: [
       {
@@ -216,10 +224,7 @@ describe("validateGroup", () => {
 describe("sign", () => {
   it("signs what the request asks for and passes the rest through", async () => {
     const [a, b, c] = grouped(pay(), pay({ amount: 2 }), pay({ amount: 3 }));
-    const presigned = algosdk.signTransaction(
-      b!,
-      algosdk.generateAccount().sk
-    ).blob;
+    const presigned = signTransaction(b!, generateAccount().sk).blob;
     const lt = await validated([
       wtxn(a!),
       wtxn(b!, { signers: [], stxn: presigned.toBase64() }),
@@ -251,10 +256,7 @@ describe("sign", () => {
     [
       "Signed Transaction Mismatch",
       () => {
-        const other = algosdk.signTransaction(
-          pay({ amount: 7 }),
-          algosdk.generateAccount().sk
-        );
+        const other = signTransaction(pay({ amount: 7 }), generateAccount().sk);
         return [wtxn(pay(), { signers: [], stxn: other.blob.toBase64() })];
       },
     ],
@@ -262,7 +264,7 @@ describe("sign", () => {
       "Transaction already signed",
       () => {
         const t = pay();
-        const st = algosdk.signTransaction(t, algosdk.generateAccount().sk);
+        const st = signTransaction(t, generateAccount().sk);
         return [wtxn(t, { stxn: st.blob.toBase64() })];
       },
     ],
@@ -338,7 +340,7 @@ describe("sign", () => {
 describe("msigCheck", () => {
   it("accepts a request with nothing to sign", async () => {
     const t = pay();
-    const st = algosdk.signTransaction(t, algosdk.generateAccount().sk);
+    const st = signTransaction(t, generateAccount().sk);
     const lt = await validated([
       wtxn(t, { signers: [], stxn: st.blob.toBase64() }),
     ]);
@@ -359,6 +361,7 @@ describe("prepare", () => {
   it("is ready once the network and group pass", async () => {
     // A wallet account, so msigCheck needs no algod lookup.
     testStore.accounts = [{ addr: alice }];
+    testStore.acctInfo = [{ addr: alice, canSign: true }];
     const lt = new LuteTxns([wtxn(pay())], 1);
     await lt.validateNetwork();
     expect(await lt.prepare()).toBe(true);
@@ -385,5 +388,92 @@ describe("prepare", () => {
   it("is not ready before the network was checked", async () => {
     const lt = new LuteTxns([wtxn(pay())], 1);
     expect(await lt.prepare()).toBe(false);
+  });
+
+  describe("a request Lute cannot sign", () => {
+    /** Shown, not answered: the user reads the reason and closes it. */
+    async function prepared(txns: WalletTransaction[]) {
+      const lt = new LuteTxns(txns, 1);
+      await lt.validateNetwork();
+      expect(await lt.prepare()).toBe(true);
+      expect(posted).toEqual([]);
+      return lt;
+    }
+
+    it("names a watch account and replies with it on close", async () => {
+      testStore.accounts = [{ addr: alice }];
+      testStore.acctInfo = [{ addr: alice, canSign: false }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError?.message).toMatch(/has no signing key in Lute$/);
+      lt.rejectUnsignable();
+      expect(posted).toEqual([
+        expect.objectContaining({
+          action: "error",
+          code: 4100,
+          message: lt.signerError!.message,
+        }),
+      ]);
+    });
+
+    it("names the signer of an account rekeyed away from Lute", async () => {
+      testStore.accounts = [{ addr: alice }];
+      testStore.acctInfo = [{ addr: alice, canSign: true }];
+      testStore.info = [{ address: alice, authAddr: bob }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError?.message).toMatch(
+        /is rekeyed to .+, which is not in Lute$/
+      );
+    });
+
+    it("refuses to sign it anyway", async () => {
+      // Saved, but set to another network, so acctInfo leaves it out.
+      testStore.accounts = [{ addr: alice, network: "TestNet" }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError?.message).toMatch(
+        /is limited to TestNet in Lute, not LocalNet$/
+      );
+      await lt.sign();
+      expect(signer).not.toHaveBeenCalled();
+      expect(lastError()).toMatchObject({ code: 4100 });
+    });
+
+    it("clears once the signer's account loads", async () => {
+      // Opened before the account was loaded, as the modal signer can be.
+      testStore.accounts = [{ addr: alice }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError?.message).toMatch(/is not in Lute$/);
+      testStore.acctInfo = [{ addr: alice, canSign: true }];
+      lt.recheckSigners();
+      expect(lt.signerError).toBeUndefined();
+      await lt.sign();
+      expect(signer).toHaveBeenCalled();
+    });
+
+    it("judges by the info loaded when Sign is pressed", async () => {
+      testStore.accounts = [{ addr: alice }];
+      testStore.acctInfo = [{ addr: alice, canSign: true }];
+      const lt = await prepared([wtxn(pay())]);
+      expect(lt.signerError).toBeUndefined();
+      // A refresh found it rekeyed away while the request was open.
+      testStore.info = [{ address: alice, authAddr: bob }];
+      await lt.sign();
+      expect(signer).not.toHaveBeenCalled();
+      expect(lastError()).toMatchObject({ code: 4100 });
+    });
+
+    it("does not recheck before prepare got that far", async () => {
+      const lt = new LuteTxns([wtxn(pay())], 1);
+      lt.recheckSigners();
+      expect(lt.signerError).toBeUndefined();
+    });
+
+    it("ignores txns the request does not ask Lute to sign", async () => {
+      // bob holds no account here, but his txn is signed elsewhere.
+      testStore.accounts = [{ addr: alice }];
+      testStore.acctInfo = [{ addr: alice, canSign: true }];
+      const [a, b] = grouped(pay(), pay({ sender: bob }));
+      const lt = await prepared([wtxn(a!), wtxn(b!, { signers: [] })]);
+      expect(lt.signerError).toBeUndefined();
+    });
   });
 });

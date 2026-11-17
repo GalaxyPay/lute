@@ -6,6 +6,7 @@ import type {
   StdSignMetadata,
 } from "@/types";
 import {
+  formatAddr,
   isBadPassword,
   needsPassword,
   signDataResponseSafe,
@@ -14,11 +15,10 @@ import {
 } from "@/utils";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import algosdk, { encodeAddress } from "algosdk";
+import { addressFromPQKey, encodeAddress, FALCON_1024_SCHEME } from "algosdk";
 import { canonify } from "canonify";
 import { FALCON_DET1024_PUBKEY_SIZE } from "falcon-1024";
 import { AlgorandApp } from "ledger-algorand-js";
-import { z } from "zod";
 
 export enum ScopeType {
   UNKNOWN = -1,
@@ -62,6 +62,50 @@ const SIGNER_SIZE: Record<Siwa["type"], number> = {
   "falcon-1024-det": FALCON_DET1024_PUBKEY_SIZE,
 };
 
+const SIWA_REQUIRED = [
+  "domain",
+  "account_address",
+  "uri",
+  "version",
+  "chain_id",
+] as const;
+const SIWA_OPTIONAL = [
+  "statement",
+  "nonce",
+  "issued-at",
+  "expiration-time",
+  "not-before",
+  "request-id",
+] as const;
+const SIWA_KEYS = new Set<string>([
+  ...SIWA_REQUIRED,
+  ...SIWA_OPTIONAL,
+  "resources",
+  "type",
+]);
+
+/**
+ * Whether `v` is a SIWA message. Unknown keys are rejected: the message must
+ * match its canonical JSON exactly, so an extra key could never pass anyway.
+ */
+export function isSiwa(v: unknown): v is Siwa {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  const o = v as Record<string, unknown>;
+  if (Object.keys(o).some((k) => !SIWA_KEYS.has(k))) return false;
+  if (SIWA_REQUIRED.some((k) => typeof o[k] !== "string")) return false;
+  if (SIWA_OPTIONAL.some((k) => k in o && typeof o[k] !== "string"))
+    return false;
+  if (
+    "resources" in o &&
+    !(
+      Array.isArray(o.resources) &&
+      o.resources.every((r) => typeof r === "string")
+    )
+  )
+    return false;
+  return typeof o.type === "string" && Object.hasOwn(SIGNER_SIZE, o.type);
+}
+
 export default class LuteData {
   stdSignData: StdSignData;
   metadata: StdSignMetadata;
@@ -72,6 +116,13 @@ export default class LuteData {
   siwa?: Siwa;
   // siwa is parsed before checks that can fail, so siwa alone does not mean valid.
   validated = false;
+  /**
+   * Why Lute cannot sign this request, found before the user pressed Sign.
+   * The page shows it instead of Sign and replies with it on close.
+   */
+  signerError?: SignDataError;
+  // A reply was sent; the dapp gets only one.
+  finished = false;
 
   constructor(
     stdSignData: StdSignData,
@@ -86,36 +137,26 @@ export default class LuteData {
     this.tabId = tabId;
   }
 
+  private sendAndClose(message: any) {
+    this.finished = true;
+    sendOrPostMessage(message, this.tabId);
+    window.close();
+  }
+
   async handleError(err: SignDataError) {
-    const message = {
+    // The dapp already has its answer.
+    if (this.finished) return;
+    this.sendAndClose({
       action: "error",
       code: err.code || 4300,
       message: err.message,
       debug: this.store.debug,
-    };
-    sendOrPostMessage(message, this.tabId);
-    window.close();
+    });
   }
 
   async validate() {
     this.validated = false;
     try {
-      const siwaSchema = z.object({
-        domain: z.string(),
-        account_address: z.string(),
-        uri: z.string(),
-        version: z.string(),
-        statement: z.string().optional(),
-        nonce: z.string().optional(),
-        "issued-at": z.string().optional(),
-        "expiration-time": z.string().optional(),
-        "not-before": z.string().optional(),
-        "request-id": z.string().optional(),
-        chain_id: z.string(),
-        resources: z.string().array().optional(),
-        type: z.enum(["ed25519", "falcon-1024-det"]),
-      }) as z.ZodType<Siwa>;
-
       switch (this.metadata.encoding) {
         case "base64":
           this.jsonString = new TextDecoder().decode(
@@ -141,12 +182,15 @@ export default class LuteData {
       // validate against schema
       switch (this.metadata.scope) {
         case ScopeType.AUTH:
+          let parsed: unknown;
           try {
-            this.siwa = siwaSchema.parse(JSON.parse(this.jsonString));
+            parsed = JSON.parse(this.jsonString);
           } catch (err: any) {
             console.error(err);
             throw ERROR_BAD_JSON;
           }
+          if (!isSiwa(parsed)) throw ERROR_BAD_JSON;
+          this.siwa = parsed;
 
           const canonifiedJson = canonify(this.siwa);
           if (!canonifiedJson || canonifiedJson !== this.jsonString) {
@@ -154,7 +198,7 @@ export default class LuteData {
           }
 
           // scheme defaults to ed25519 when omitted and must match siwa.type;
-          // the schema above limits siwa.type to known schemes, so any unknown
+          // isSiwa limits siwa.type to known schemes, so any unknown
           // scheme fails here too.
           if (this.siwa.type !== (this.stdSignData.scheme ?? "ed25519"))
             throw ERROR_UNSUPPORTED_SCHEME;
@@ -172,10 +216,67 @@ export default class LuteData {
         default:
           throw ERROR_INVALID_SCOPE;
       }
+      this.signerError = undefined;
+      try {
+        this.earlySignerCheck();
+      } catch (err: any) {
+        this.signerError = err;
+      }
       this.validated = true;
     } catch (err: any) {
       this.handleError(err);
     }
+  }
+
+  /**
+   * The wallet account holding the key the request names, or a 4603 saying
+   * why there is none, worded for the dapp to show as is.
+   */
+  private signerAddr() {
+    if (!this.siwa) throw ERROR_BAD_JSON;
+    const signer = this.stdSignData.signer;
+    // A Falcon address is a hash of its public key, an ed25519 address is
+    // the key itself.
+    return this.siwa.type === "falcon-1024-det"
+      ? addressFromPQKey(FALCON_1024_SCHEME, signer).address.toString()
+      : encodeAddress(signer);
+  }
+
+  private signerAcct() {
+    const signerAddr = this.signerAddr();
+    const signer = this.stdSignData.signer;
+    const isFalcon = this.siwa!.type === "falcon-1024-det";
+    const acct = this.store.acctInfo.find((a) => a.addr === signerAddr);
+    const who = `Account ${formatAddr(signerAddr)}`;
+    const fail = (why: string) => new SignDataError(`${who} ${why}`, 4603);
+    if (!acct) throw fail("is not in Lute");
+    // A rekey row borrows its signer's canSign but holds no key of its own.
+    if (acct.subType === "rekey")
+      throw fail("is rekeyed; sign in with the account it is rekeyed to");
+    // A watch or multi-sig account.
+    if (!acct.canSign) throw fail("has no signing key in Lute");
+    // The account must sign with the scheme the request names.
+    if (!!acct.isFalcon25 !== isFalcon)
+      throw fail(`is not a ${isFalcon ? "Falcon" : "ed25519"} account`);
+    return { acct, isFalcon, signer };
+  }
+
+  /**
+   * signerAcct before the user presses Sign, for what it can already tell:
+   * HD sibling and rekey rows come from on-chain info, which a modal page
+   * may not have loaded yet, so a miss is only final with none possible.
+   */
+  private earlySignerCheck() {
+    const addr = this.signerAddr();
+    const mayLoadLater =
+      !this.store.acctInfo.some((a) => a.addr === addr) &&
+      this.store.accounts.some((a) => a.xpub && a.idxs?.length);
+    if (!mayLoadLater) this.signerAcct();
+  }
+
+  /** The user closed a request earlySignerCheck refused: tell the dapp why. */
+  rejectUnsignable() {
+    if (this.signerError) this.handleError(this.signerError);
   }
 
   async setNetwork() {
@@ -209,20 +310,7 @@ export default class LuteData {
     try {
       if (!this.validated || !this.jsonString || !this.siwa)
         throw ERROR_INVALID;
-      const signer = this.stdSignData.signer;
-      const isFalcon = this.siwa.type === "falcon-1024-det";
-      // A Falcon address is a hash of its public key, an ed25519 address is
-      // the key itself.
-      const signerAddr = isFalcon
-        ? algosdk
-            .addressFromPQKey(algosdk.FALCON_1024_SCHEME, signer)
-            .address.toString()
-        : encodeAddress(signer);
-      const acct = this.store.acctInfo
-        .filter((a) => a.canSign && a.subType !== "rekey")
-        .find((a) => a.addr === signerAddr);
-      // The account must sign with the scheme the request names.
-      if (!acct || !!acct.isFalcon25 !== isFalcon) throw ERROR_INVALID_SIGNER;
+      const { acct, isFalcon, signer } = this.signerAcct();
 
       const enc = new TextEncoder();
       const dataHash = await sha256(enc.encode(this.jsonString));
@@ -290,8 +378,7 @@ export default class LuteData {
         debug: this.store.debug,
       };
       this.store.snackbar.display = false;
-      sendOrPostMessage(message, this.tabId);
-      window.close();
+      this.sendAndClose(message);
       return true;
     } catch (err: any) {
       const t = this.store.device.transport;

@@ -73,7 +73,7 @@
             Transaction {{ tix + 1 }}
             {{ grp.stxns[tix] ? "(Not to be Signed)" : "" }}
           </div>
-          <pre>{{ algosdk.encodeJSON(txn, { space: 2 }) }}</pre>
+          <pre>{{ encodeJSON(txn, { space: 2 }) }}</pre>
         </div>
       </div>
       <div class="msig-box msig-sigs">
@@ -156,7 +156,11 @@ import Msig from "@/services/Msig";
 import type { Arc55App, MsigGroup, WalletTransaction } from "@/types";
 import { luteSignerWT } from "@/utils/signers";
 import { mdiCheck, mdiClose, mdiDelete, mdiInformationOutline } from "@mdi/js";
-import algosdk from "algosdk";
+import {
+  decodeSignedTransaction,
+  encodeJSON,
+  makePaymentTxnWithSuggestedParamsFromObject,
+} from "algosdk";
 
 const props = defineProps<{ appId: bigint }>();
 const app = ref<Arc55App>();
@@ -354,11 +358,11 @@ async function sendSigs() {
     const appClient = Msig.getAppClient(app.value.info.id, signingAddr.value!);
     const grp = app.value!.groups[Number(signGroup.value?.nonce) - 1]!;
     const sigs = signedTxns.value.map(
-      (t) => algosdk.decodeSignedTransaction(t).sig || new Uint8Array(64)
+      (t) => decodeSignedTransaction(t).sig || new Uint8Array(64)
     ) as Uint8Array[];
     const suggestedParams = await Algo.algod.getTransactionParams().do();
     const mbrIncrease = 2500 + 400 * (42 + 64 * grp.txns.length);
-    const mbrPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const mbrPayment = makePaymentTxnWithSuggestedParamsFromObject({
       sender: signingAddr.value!,
       suggestedParams,
       receiver: app.value!.acct.address,

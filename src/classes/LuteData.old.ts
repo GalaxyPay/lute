@@ -1,6 +1,6 @@
 import LuteData, { ERROR_BAD_JSON } from "./LuteData";
 import { Address } from "algosdk";
-import { createHash } from "crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { sendOrPostMessage } from "@/utils";
 import type { Siwa, StdSignData, StdSignMetadata } from "@/types";
 
@@ -19,9 +19,7 @@ export default class LuteDataOld extends LuteData {
         data,
         signer: Address.fromString(siwa.account_address).publicKey,
         domain: siwa.domain,
-        authenticatorData: new Uint8Array(
-          createHash("sha256").update(referrer).digest()
-        ),
+        authenticatorData: sha256(new TextEncoder().encode(referrer)),
       };
     } catch (err: any) {
       const store = useAppStore();

@@ -81,7 +81,10 @@ import type { AccountInfo } from "@/types";
 import { getAssetInfo, priceTxns, send } from "@/utils";
 import { luteSigner, reportSignError } from "@/utils/signers";
 import { mdiClose, mdiMagnify, mdiPlus } from "@mdi/js";
-import algosdk, { modelsv2 } from "algosdk";
+import {
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  modelsv2,
+} from "algosdk";
 
 const props = defineProps({
   acct: { type: Object as PropType<AccountInfo>, required: true },
@@ -170,7 +173,7 @@ async function optIn() {
     const { valid } = await form.value.validate();
     if (!valid || !asset.value) return;
     const suggestedParams = await Algo.algod.getTransactionParams().do();
-    const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    const txn = makeAssetTransferTxnWithSuggestedParamsFromObject({
       assetIndex: assetId.value,
       receiver: props.acct.addr,
       sender: props.acct.addr,

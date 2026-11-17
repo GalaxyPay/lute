@@ -1,5 +1,5 @@
 // Transfer.addPayload against payloads a well-behaved sender never builds.
-import algosdk from "algosdk";
+import { mnemonicFromSeed, mnemonicToSecretKey } from "algosdk";
 import { describe, expect, it } from "vitest";
 import type { TransferPayload } from "@/services/Transfer";
 import {
@@ -12,9 +12,9 @@ import {
 } from "./fixtures/v3db";
 import { fresh } from "./helpers";
 
-const HOT = algosdk.mnemonicFromSeed(new Uint8Array(32).fill(31));
-const HOT_ADDR = algosdk.mnemonicToSecretKey(HOT).addr.toString();
-const OTHER = algosdk.mnemonicFromSeed(new Uint8Array(32).fill(32));
+const HOT = mnemonicFromSeed(new Uint8Array(32).fill(31));
+const HOT_ADDR = mnemonicToSecretKey(HOT).addr.toString();
+const OTHER = mnemonicFromSeed(new Uint8Array(32).fill(32));
 const FALCON_ADDR = falconAddress(FALCON_MN).addr;
 
 /** A payload from a wallet holding one Algo25 and one Falcon account. */

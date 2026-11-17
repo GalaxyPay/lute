@@ -1,11 +1,19 @@
 // Swap links come from another person; the taker signs txn2.
-import algosdk from "algosdk";
+import {
+  assignGroupID,
+  generateAccount,
+  makeApplicationOptInTxnFromObject,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  signTransaction,
+  Transaction,
+} from "algosdk";
 import { describe, expect, it } from "vitest";
 import { parseSwap, validateSwap } from "@/utils/p2pSwap";
 
-const maker = algosdk.generateAccount();
-const taker = algosdk.generateAccount().addr;
-const thief = algosdk.generateAccount().addr;
+const maker = generateAccount();
+const taker = generateAccount().addr;
+const thief = generateAccount().addr;
 
 const params = (genesisHash = new Uint8Array(32).fill(1)) => ({
   fee: 1000n,
@@ -18,7 +26,7 @@ const params = (genesisHash = new Uint8Array(32).fill(1)) => ({
 });
 
 const offer = () =>
-  algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  makePaymentTxnWithSuggestedParamsFromObject({
     sender: maker.addr,
     receiver: taker,
     amount: 5,
@@ -26,7 +34,7 @@ const offer = () =>
   });
 
 const ask = (extra: Record<string, unknown> = {}) =>
-  algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+  makeAssetTransferTxnWithSuggestedParamsFromObject({
     sender: taker,
     receiver: maker.addr,
     assetIndex: 7,
@@ -36,16 +44,16 @@ const ask = (extra: Record<string, unknown> = {}) =>
   });
 
 /** A link the way Swap.vue builds it. */
-function link(txn1: algosdk.Transaction, txn2: algosdk.Transaction) {
+function link(txn1: Transaction, txn2: Transaction) {
   const b64url = (b: Uint8Array) => b.toBase64({ alphabet: "base64url" });
   return {
-    tx1: b64url(algosdk.signTransaction(txn1, maker.sk).blob),
+    tx1: b64url(signTransaction(txn1, maker.sk).blob),
     tx2: b64url(txn2.toByte()),
   };
 }
 
-function grouped(...txns: algosdk.Transaction[]) {
-  return algosdk.assignGroupID(txns);
+function grouped(...txns: Transaction[]) {
+  return assignGroupID(txns);
 }
 
 describe("swap links", () => {
@@ -71,7 +79,7 @@ describe("swap links", () => {
   });
 
   it("refuses a close on the taker's Algo payment", () => {
-    const pay = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const pay = makePaymentTxnWithSuggestedParamsFromObject({
       sender: taker,
       receiver: maker.addr,
       amount: 1,
@@ -83,7 +91,7 @@ describe("swap links", () => {
   });
 
   it("refuses a group that holds a third, hidden txn", () => {
-    const hidden = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const hidden = makePaymentTxnWithSuggestedParamsFromObject({
       sender: maker.addr,
       receiver: maker.addr,
       amount: 0,
@@ -106,7 +114,7 @@ describe("swap links", () => {
   });
 
   it("refuses anything but payments and asset transfers", () => {
-    const optIn = algosdk.makeApplicationOptInTxnFromObject({
+    const optIn = makeApplicationOptInTxnFromObject({
       sender: taker,
       appIndex: 1,
       suggestedParams: params(),

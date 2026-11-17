@@ -5,7 +5,19 @@ import type { Arc55App, MsigGroup, MultisigMetadata } from "@/types";
 import { send } from "@/utils";
 import { pricedSigner } from "@/utils/signers";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
-import algosdk, { Transaction } from "algosdk";
+import {
+  ABIType,
+  appendSignRawMultisigSignature,
+  createMultisigTransaction,
+  decodeObj,
+  decodeSignedTransaction,
+  decodeUint64,
+  decodeUnsignedTransaction,
+  encodeAddress,
+  getApplicationAddress,
+  mergeMultisigTransactions,
+  Transaction,
+} from "algosdk";
 
 const Msig = {
   /** Global state only, skipping the box reads loadApp does. */
@@ -15,9 +27,7 @@ const Msig = {
     let threshold: number | undefined;
     for (const s of appInfo.params?.globalState ?? []) {
       if (s.key.length === 8)
-        addrs[algosdk.decodeUint64(s.key, "safe")] = algosdk.encodeAddress(
-          s.value.bytes
-        );
+        addrs[decodeUint64(s.key, "safe")] = encodeAddress(s.value.bytes);
       else if (new TextDecoder().decode(s.key) === "arc55_threshold")
         threshold = Number(s.value.uint);
     }
@@ -34,7 +44,7 @@ const Msig = {
   async loadApp(appId: bigint, ignore404: boolean = false) {
     try {
       const appInfo = await Algo.algod.getApplicationByID(appId).do();
-      const appAddr = algosdk.getApplicationAddress(appId);
+      const appAddr = getApplicationAddress(appId);
       const acct = await Algo.algod.accountInformation(appAddr).do();
       const app: Arc55App = {
         info: appInfo,
@@ -47,13 +57,10 @@ const Msig = {
       gs?.forEach((s) => {
         const k = s.key;
         if (k.length === 8) {
-          addrs[algosdk.decodeUint64(k, "safe")] = algosdk.encodeAddress(
-            s.value.bytes
-          );
+          addrs[decodeUint64(k, "safe")] = encodeAddress(s.value.bytes);
         } else {
           const key = new TextDecoder().decode(k);
-          if (key === "arc55_admin")
-            app[key] = algosdk.encodeAddress(s.value.bytes);
+          if (key === "arc55_admin") app[key] = encodeAddress(s.value.bytes);
           else if (key.startsWith("arc55_")) {
             app[key] = s.value.type == 1 ? s.value.bytes : s.value.uint;
           }
@@ -79,25 +86,25 @@ const Msig = {
             const nonce = Number(Buffer.from(box.name).readBigInt64BE());
             const idx = Buffer.from(box.name).readUInt8(8);
 
-            const test: any = algosdk.decodeObj(boxInfo.value);
+            const test: any = decodeObj(boxInfo.value);
             let txn: Transaction;
             let stxn: string | null;
             if (test.txn) {
               stxn = boxInfo.value.toBase64();
-              txn = algosdk.decodeSignedTransaction(boxInfo.value).txn;
+              txn = decodeSignedTransaction(boxInfo.value).txn;
             } else {
               stxn = null;
-              txn = algosdk.decodeUnsignedTransaction(boxInfo.value);
+              txn = decodeUnsignedTransaction(boxInfo.value);
             }
 
             groups[nonce - 1]!.txns[idx] = txn;
             groups[nonce - 1]!.stxns[idx] = stxn;
           } else if (box.name.length === 40) {
             const nonce = Buffer.from(box.name).readInt32BE(4);
-            const addr = algosdk.encodeAddress(box.name.slice(8));
+            const addr = encodeAddress(box.name.slice(8));
             const sigs: string[] = [];
 
-            const abiType = algosdk.ABIType.from("byte[64][]");
+            const abiType = ABIType.from("byte[64][]");
             const abiData = abiType.decode(boxInfo.value) as number[][];
             // ABI byte arrays decode to number[], not Uint8Array.
             abiData.forEach((sig) =>
@@ -140,14 +147,14 @@ const Msig = {
       const txns = grp.txns.map((txn, idx) =>
         grp.stxns[idx]
           ? Uint8Array.fromBase64(grp.stxns[idx]!)
-          : algosdk.createMultisigTransaction(txn, mparams)
+          : createMultisigTransaction(txn, mparams)
       );
       const txnsSigs = txns.map((txn, idx) =>
         grp.stxns[idx]
           ? [txn]
           : grp.sigs.map(
               (s) =>
-                algosdk.appendSignRawMultisigSignature(
+                appendSignRawMultisigSignature(
                   txn,
                   mparams,
                   s.addr,
@@ -156,9 +163,7 @@ const Msig = {
             )
       );
       const signedTxns = txnsSigs.map((arr: Uint8Array[]) => {
-        return arr.length > 1
-          ? algosdk.mergeMultisigTransactions(arr)
-          : arr[0]!;
+        return arr.length > 1 ? mergeMultisigTransactions(arr) : arr[0]!;
       });
       return signedTxns;
     } catch (err: any) {

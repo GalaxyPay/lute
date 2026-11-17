@@ -1,11 +1,18 @@
 // The review screen is what the user approves: anything that moves funds or
 // control away from the signer must show up in it.
-import algosdk from "algosdk";
+import {
+  Address,
+  generateAccount,
+  makeApplicationNoOpTxnFromObject,
+  makeAssetFreezeTxnWithSuggestedParamsFromObject,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  makePaymentTxnWithSuggestedParamsFromObject,
+} from "algosdk";
 import { describe, expect, it } from "vitest";
 import { formatTxn } from "@/utils/formatTxn";
 
-const [me, them, thief] = [0, 1, 2].map(() => algosdk.generateAccount().addr);
-const short = (a: algosdk.Address) =>
+const [me, them, thief] = [0, 1, 2].map(() => generateAccount().addr);
+const short = (a: Address) =>
   `${a.toString().slice(0, 6)}…${a.toString().slice(52)}`;
 const suggestedParams = {
   fee: 2000n,
@@ -20,7 +27,7 @@ const asset = { index: 7n, params: { unitName: "TOK", decimals: 2 } } as any;
 
 describe("formatTxn", () => {
   it("summarises a payment", () => {
-    const t = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const t = makePaymentTxnWithSuggestedParamsFromObject({
       sender: me!,
       receiver: them!,
       amount: 1_500_000,
@@ -41,7 +48,7 @@ describe("formatTxn", () => {
   });
 
   it("shows a rekey and a close", () => {
-    const t = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const t = makePaymentTxnWithSuggestedParamsFromObject({
       sender: me!,
       receiver: them!,
       amount: 0,
@@ -55,7 +62,7 @@ describe("formatTxn", () => {
   });
 
   it("shows whose asset a clawback takes", () => {
-    const t = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    const t = makeAssetTransferTxnWithSuggestedParamsFromObject({
       sender: me!,
       receiver: them!,
       assetSender: thief!,
@@ -72,7 +79,7 @@ describe("formatTxn", () => {
   });
 
   it("shows an asset close", () => {
-    const t = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    const t = makeAssetTransferTxnWithSuggestedParamsFromObject({
       sender: me!,
       receiver: them!,
       closeRemainderTo: thief!,
@@ -84,7 +91,7 @@ describe("formatTxn", () => {
   });
 
   it("names every txn type", () => {
-    const freeze = algosdk.makeAssetFreezeTxnWithSuggestedParamsFromObject({
+    const freeze = makeAssetFreezeTxnWithSuggestedParamsFromObject({
       sender: me!,
       freezeTarget: them!,
       assetIndex: 7,
@@ -92,7 +99,7 @@ describe("formatTxn", () => {
       suggestedParams,
     });
     expect(formatTxn(freeze, undefined, "Algo").type).toBe("Asset Freeze");
-    const call = algosdk.makeApplicationNoOpTxnFromObject({
+    const call = makeApplicationNoOpTxnFromObject({
       sender: me!,
       appIndex: 5,
       suggestedParams,

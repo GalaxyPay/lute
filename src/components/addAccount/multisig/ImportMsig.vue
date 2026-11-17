@@ -19,7 +19,7 @@
 <script lang="ts" setup>
 import Msig from "@/services/Msig";
 import type { Arc55App } from "@/types";
-import algosdk from "algosdk";
+import { isValidAddress, multisigAddress } from "algosdk";
 
 const store = useAppStore();
 const form = ref();
@@ -44,11 +44,11 @@ const mparams = computed(() => ({
 }));
 const msigAddr = computed(() => {
   if (
-    app.addrs.filter((addr: string) => algosdk.isValidAddress(addr)).length !==
+    app.addrs.filter((addr: string) => isValidAddress(addr)).length !==
     app.addrs.length
   )
     return "";
-  return algosdk.multisigAddress(mparams.value).toString();
+  return multisigAddress(mparams.value).toString();
 });
 
 const emit = defineEmits(["add"]);

@@ -1,4 +1,4 @@
-import algosdk from "algosdk";
+import { mnemonicToSecretKey } from "algosdk";
 import { describe, expect, it } from "vitest";
 import {
   FALCON_MN,
@@ -10,7 +10,7 @@ import {
 } from "./fixtures/v3db";
 import { fresh } from "./helpers";
 
-const hotAddr = algosdk.mnemonicToSecretKey(HOT_MN).addr.toString();
+const hotAddr = mnemonicToSecretKey(HOT_MN).addr.toString();
 const falconAddr = falconAddress(FALCON_MN).addr;
 
 describe("device mode", () => {

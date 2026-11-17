@@ -211,7 +211,7 @@ import {
   mdiPencilOutline,
   mdiRefresh,
 } from "@mdi/js";
-import algosdk, { modelsv2 } from "algosdk";
+import { Address, encodeAddress, modelsv2 } from "algosdk";
 import { useDisplay } from "vuetify";
 
 const ASSETS = "Assets";
@@ -326,11 +326,11 @@ async function getInbox() {
   let inbox: string;
   inboxInfo.value = undefined;
   try {
-    const boxName = algosdk.Address.fromString(props.addr).publicKey;
+    const boxName = Address.fromString(props.addr).publicKey;
     const resp = await Algo.algod
       .getApplicationBoxByName(store.network.inboxRouter, boxName)
       .do();
-    inbox = algosdk.encodeAddress(resp.value);
+    inbox = encodeAddress(resp.value);
   } catch {
     return;
   }

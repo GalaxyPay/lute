@@ -15,9 +15,8 @@
           This mnemonic gives full control of
           <b class="text-high-emphasis">{{
             hd ? "every account on this seed" : "this account"
-          }}</b
-          >. Anyone who sees it can take your funds, so only reveal it somewhere
-          private.
+          }}</b>. Anyone who sees it can take your funds, so only reveal it
+          somewhere private.
         </v-card-text>
         <v-card-text
           v-if="!passkey && store.keystoreMode === 'device'"

@@ -3,7 +3,7 @@
 // the dialog (signDialog below) runs LuteTxns the way SignView does, so the
 // handshake, the dialog's checks, the signer's account choice and the chain
 // are all real; only the user's click and the key store are not.
-import algosdk from "algosdk";
+import type { Account, Transaction } from "algosdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Deployed, deploy, payFrom, propose, sign } from "./arc55";
 import { useLocalNet } from "./helpers";
@@ -16,10 +16,10 @@ vi.mock("@/services/Signer", async () => {
   const { ed25519Sign } = await import("@/utils/keys");
   return {
     default: {
-      async signBytes(acct: { addr: string }, bytes: Uint8Array) {
+      async signTxn(acct: { addr: string }, txn: Transaction) {
         const sk = held.get(acct.addr);
         if (!sk) throw Error(`No key for ${acct.addr}`);
-        return await ed25519Sign(sk.slice(0, 32), bytes);
+        return await ed25519Sign(sk.slice(0, 32), txn.bytesToSign());
       },
     },
     SignContext: class {
@@ -79,7 +79,9 @@ function signDialog(answer: "sign" | "close" = "sign") {
           );
           store.luteTxns = undefined;
         } else if ((await lt.validateNetwork()) && (await lt.prepare())) {
-          await lt.sign();
+          // A request Lute cannot sign shows why; the user closes it.
+          if (lt.signerError) lt.rejectUnsignable();
+          else await lt.sign();
         }
       }
       await new Promise((r) => setTimeout(r, 20));
@@ -110,7 +112,7 @@ async function group(d: Deployed, nonce: bigint) {
 }
 
 /** Give the wallet this account's key, as an ordinary hot account. */
-function holds(acct: { toString(): string; account: algosdk.Account }) {
+function holds(acct: { toString(): string; account: Account }) {
   held.set(acct.toString(), acct.account.sk);
   store.acctInfo.push({ addr: acct.toString(), canSign: true });
 }
@@ -205,7 +207,10 @@ describe("the sign dialog refusing", () => {
 
     await Msig.clearSigs(d.appId, nonce, d.members[1]!.toString());
 
-    expect(errors()).toEqual(["Account Not Found"]);
+    const addr = d.members[1]!.toString();
+    expect(errors()).toEqual([
+      `Account ${addr.slice(0, 6)}…${addr.slice(52)} is not in Lute`,
+    ]);
     expect((await group(d, nonce)).sigs).toHaveLength(2);
   });
 });

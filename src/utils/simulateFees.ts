@@ -1,11 +1,18 @@
 import Algo from "@/services/Algo";
 import { prepareGroupForSending } from "@algorandfoundation/algokit-utils";
 import type { TransactionComposer } from "@algorandfoundation/algokit-utils/types/composer";
-import algosdk, {
-  SignedTransaction,
-  Transaction,
+import {
   type Algodv2,
+  assignGroupID,
+  decodeSignedTransaction,
+  decodeUnsignedTransaction,
+  encodeMsgpack,
+  FALCON_1024_SCHEME,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  modelsv2,
+  SignedTransaction,
   type SuggestedParams,
+  Transaction,
   type TransactionSigner,
 } from "algosdk";
 
@@ -24,11 +31,11 @@ export function feeForUsage(usage: bigint, minFee: bigint) {
  */
 export const falconPlaceholderSigner: TransactionSigner = async (group, idxs) =>
   idxs.map((idx) =>
-    algosdk.encodeMsgpack(
+    encodeMsgpack(
       new SignedTransaction({
         txn: group[idx]!,
         pqsig: {
-          sch: algosdk.FALCON_1024_SCHEME,
+          sch: FALCON_1024_SCHEME,
           slt: 0,
           pk: new Uint8Array(),
           sig: new Uint8Array(),
@@ -73,7 +80,7 @@ export async function priceTxns(
  */
 export async function probeFee(acct: { addr: string; isFalcon25?: boolean }) {
   const sp = await Algo.algod.getTransactionParams().do();
-  const probe = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  const probe = makePaymentTxnWithSuggestedParamsFromObject({
     sender: acct.addr,
     receiver: acct.addr,
     amount: 0,
@@ -138,7 +145,7 @@ export async function simulateFees(
 
   let addedFees = 0n;
   const simTxns = txns.map(({ txn, maxFee, simTxn }) => {
-    const copy = algosdk.decodeUnsignedTransaction(txn.toByte());
+    const copy = decodeUnsignedTransaction(txn.toByte());
     if (maxFee && maxFee > copy.fee) {
       const raise = maxFee - copy.fee;
       addedFees += raise;
@@ -157,17 +164,17 @@ export async function simulateFees(
       const signer = txns[idx]!.simSigner;
       if (!signer) return new SignedTransaction({ txn });
       const [blob] = await signer(simTxns, [idx]);
-      return algosdk.decodeSignedTransaction(blob!);
+      return decodeSignedTransaction(blob!);
     })
   );
 
   const { txnGroups } = await algod
     .simulateTransactions(
-      new algosdk.modelsv2.SimulateRequest({
+      new modelsv2.SimulateRequest({
         allowEmptySignatures: true,
         fixSigners: true,
         txnGroups: [
-          new algosdk.modelsv2.SimulateRequestTransactionGroup({ txns: stxns }),
+          new modelsv2.SimulateRequestTransactionGroup({ txns: stxns }),
         ],
       })
     )
@@ -199,5 +206,5 @@ export async function simulateFees(
 
 function regroup(txns: Transaction[], grouped: boolean) {
   for (const txn of txns) txn.group = undefined;
-  if (grouped) algosdk.assignGroupID(txns);
+  if (grouped) assignGroupID(txns);
 }

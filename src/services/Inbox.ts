@@ -6,10 +6,15 @@ import { Arc59Factory } from "@/clients/Arc59Client";
 import Algo from "@/services/Algo";
 import { composerTxns } from "@/utils/simulateFees";
 import { AlgorandClient } from "@algorandfoundation/algokit-utils";
-import algosdk from "algosdk";
+import {
+  Address,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  makeEmptyTransactionSigner,
+  makePaymentTxnWithSuggestedParamsFromObject,
+} from "algosdk";
 
 // Building a group only simulates it; nothing here is ever signed.
-const unsigned = algosdk.makeEmptyTransactionSigner();
+const unsigned = makeEmptyTransactionSigner();
 const SIMULATE = {
   allowEmptySignatures: true,
   allowUnnamedResources: true,
@@ -71,7 +76,7 @@ const Inbox = {
       : 0n;
     const composer = appClient.newGroup();
     const appAddr = appClient.appClient.appAddress;
-    const axfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    const axfer = makeAssetTransferTxnWithSuggestedParamsFromObject({
       assetIndex: s.assetId,
       receiver: appAddr,
       sender: s.sender,
@@ -83,7 +88,7 @@ const Inbox = {
     });
     if (mbr || receiverAlgo)
       composer.addTransaction(
-        algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        makePaymentTxnWithSuggestedParamsFromObject({
           receiver: appAddr,
           sender: s.sender,
           suggestedParams,
@@ -111,7 +116,7 @@ const Inbox = {
         additionalReceiverFunds: receiverAlgo,
       },
       staticFee: fee,
-      boxReferences: [algosdk.Address.fromString(s.receiver).publicKey],
+      boxReferences: [Address.fromString(s.receiver).publicKey],
       accountReferences: [s.receiver, inbox!],
       assetReferences: [s.assetId],
     });
@@ -140,7 +145,7 @@ const Inbox = {
     const suggestedParams = await Algo.algod.getTransactionParams().do();
     if (!claimerOptedIn)
       composer.addTransaction(
-        algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+        makeAssetTransferTxnWithSuggestedParamsFromObject({
           sender: claimer,
           receiver: claimer,
           amount: 0,

@@ -1,5 +1,19 @@
 import { emptySignatures, encodeEmptySignature } from "@/utils/emptySignature";
-import algosdk from "algosdk";
+import {
+  Address,
+  addressFromPQKey,
+  addressFromPQSig,
+  addressWithSignersFromRawFalcon1024Signer,
+  ALGORAND_ZERO_ADDRESS_STRING,
+  decodeSignedTransaction,
+  encodeMsgpack,
+  FALCON_1024_SCHEME,
+  generateAccount,
+  makePaymentTxnWithSuggestedParamsFromObject,
+  msgpackRawDecodeAsMap,
+  msgpackRawEncode,
+  multisigAddress,
+} from "algosdk";
 import { generateKey } from "falcon-1024";
 import { describe, expect, it, vi } from "vitest";
 
@@ -10,14 +24,14 @@ const SIGNATURE_FIELDS = new Set(["sig", "msig", "lsig", "pqsig", "sgnr"]);
  * fields, at most one besides sgnr, and it must parse as a SignedTransaction.
  */
 function decode(emptySig: string) {
-  const map = algosdk.msgpackRawDecodeAsMap(Uint8Array.fromBase64(emptySig));
+  const map = msgpackRawDecodeAsMap(Uint8Array.fromBase64(emptySig));
   if (!(map instanceof Map)) throw Error("not a map");
   const keys = [...map.keys()] as string[];
   expect(keys.every((k) => SIGNATURE_FIELDS.has(k))).toBe(true);
   expect(keys.filter((k) => k !== "sgnr").length).toBeLessThanOrEqual(1);
-  const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: algosdk.ALGORAND_ZERO_ADDRESS_STRING,
-    receiver: algosdk.ALGORAND_ZERO_ADDRESS_STRING,
+  const txn = makePaymentTxnWithSuggestedParamsFromObject({
+    sender: ALGORAND_ZERO_ADDRESS_STRING,
+    receiver: ALGORAND_ZERO_ADDRESS_STRING,
     amount: 0,
     suggestedParams: {
       fee: 0,
@@ -28,15 +42,15 @@ function decode(emptySig: string) {
       flatFee: true,
     },
   });
-  map.set("txn", algosdk.msgpackRawDecodeAsMap(algosdk.encodeMsgpack(txn)));
-  return algosdk.decodeSignedTransaction(algosdk.msgpackRawEncode(map));
+  map.set("txn", msgpackRawDecodeAsMap(encodeMsgpack(txn)));
+  return decodeSignedTransaction(msgpackRawEncode(map));
 }
 
-const addr = () => algosdk.generateAccount().addr.toString();
+const addr = () => generateAccount().addr.toString();
 const info = (address: string, authAddr?: string) =>
   ({
     address,
-    authAddr: authAddr ? algosdk.Address.fromString(authAddr) : undefined,
+    authAddr: authAddr ? Address.fromString(authAddr) : undefined,
   }) as any;
 
 function hot(a: string, authAddr?: string) {
@@ -51,10 +65,7 @@ function hot(a: string, authAddr?: string) {
 
 function falcon() {
   const { publicKey } = generateKey(crypto.getRandomValues(new Uint8Array(48)));
-  const { address } = algosdk.addressFromPQKey(
-    algosdk.FALCON_1024_SCHEME,
-    publicKey
-  );
+  const { address } = addressFromPQKey(FALCON_1024_SCHEME, publicKey);
   const a = address.toString();
   return {
     publicKey,
@@ -71,7 +82,7 @@ function falcon() {
 
 function msig() {
   const params = { version: 1, threshold: 2, addrs: [addr(), addr(), addr()] };
-  const a = algosdk.multisigAddress(params).toString();
+  const a = multisigAddress(params).toString();
   return {
     params,
     acct: {
@@ -107,11 +118,11 @@ describe("encodeEmptySignature", () => {
 
   it("matches algosdk's own Falcon placeholder", async () => {
     const { publicKey, acct } = falcon();
-    const signer = algosdk.addressWithSignersFromRawFalcon1024Signer({
+    const signer = addressWithSignersFromRawFalcon1024Signer({
       falcon1024PublicKey: publicKey,
       falcon1024Signer: async () => new Uint8Array(),
     });
-    const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const txn = makePaymentTxnWithSuggestedParamsFromObject({
       sender: acct.addr,
       receiver: acct.addr,
       amount: 0,
@@ -125,7 +136,7 @@ describe("encodeEmptySignature", () => {
       },
     });
     const [blob] = await signer.emptyTxnSigner([txn], [0]);
-    const { pqsig } = algosdk.decodeSignedTransaction(blob!);
+    const { pqsig } = decodeSignedTransaction(blob!);
     const out = await emptySignatures([acct.addr], [acct], noMsig);
     expect(out[acct.addr]).toBe(encodeEmptySignature({ pqsig: pqsig! }));
   });
@@ -152,7 +163,7 @@ describe("emptySignatures", () => {
     const { acct } = falcon();
     const out = await emptySignatures([acct.addr], [acct], noMsig);
     const { pqsig, sgnr } = decode(out[acct.addr]!);
-    expect(algosdk.addressFromPQSig(pqsig!).toString()).toBe(acct.addr);
+    expect(addressFromPQSig(pqsig!).toString()).toBe(acct.addr);
     expect(sgnr).toBeUndefined();
   });
 
@@ -177,13 +188,11 @@ describe("emptySignatures", () => {
     expect(m!.thr).toBe(2);
     expect(m!.subsig.every((s) => !s.s)).toBe(true);
     expect(
-      algosdk
-        .multisigAddress({
-          version: m!.v,
-          threshold: m!.thr,
-          addrs: m!.subsig.map((s) => new algosdk.Address(s.pk)),
-        })
-        .toString()
+      multisigAddress({
+        version: m!.v,
+        threshold: m!.thr,
+        addrs: m!.subsig.map((s) => new Address(s.pk)),
+      }).toString()
     ).toBe(acct.addr);
     expect(decode(out[rekeyed.addr]!).sgnr?.toString()).toBe(acct.addr);
   });
@@ -209,7 +218,7 @@ describe("emptySignatures", () => {
     expect(viaHot.sig).toBeUndefined();
     const viaFalcon = decode(out[toFalcon.addr]!);
     expect(viaFalcon.sgnr?.toString()).toBe(f.addr);
-    expect(algosdk.addressFromPQSig(viaFalcon.pqsig!).toString()).toBe(f.addr);
+    expect(addressFromPQSig(viaFalcon.pqsig!).toString()).toBe(f.addr);
   });
 
   it("leaves out watch accounts, foreign authorizers and unloaded info", async () => {

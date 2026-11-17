@@ -128,7 +128,7 @@ import {
 import { HDKey } from "@scure/bip32";
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
-import algosdk from "algosdk";
+import { mnemonicFromSeed } from "algosdk";
 import slip10 from "micro-key-producer/slip10.js";
 
 defineEmits(["close", "back"]);
@@ -185,6 +185,6 @@ async function handleMnemonic(mn: string) {
     hdKey = rootKey.derive(`m/44'/283'/0'/0'/0'`);
   }
   if (!hdKey.privateKey) throw Error("Invalid Key");
-  mn25.value = algosdk.mnemonicFromSeed(hdKey.privateKey);
+  mn25.value = mnemonicFromSeed(hdKey.privateKey);
 }
 </script>

@@ -2,7 +2,10 @@
 // Xfer.vue's submit sends it, must execute and leave the sender at exactly
 // its min balance, for every kind of signer and min balance.
 import { microAlgo } from "@algorandfoundation/algokit-utils";
-import algosdk from "algosdk";
+import {
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  makePaymentTxnWithSuggestedParamsFromObject,
+} from "algosdk";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   bigintToString,
@@ -41,7 +44,7 @@ async function payFrom(
   fields: { receiver: string; amount?: bigint; rekeyTo?: string },
   sender = auth.addr
 ) {
-  const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  const txn = makePaymentTxnWithSuggestedParamsFromObject({
     sender,
     amount: 0,
     suggestedParams: await algod.getTransactionParams().do(),
@@ -65,7 +68,7 @@ async function optIn(holder: Auth, amount = 0n, sender = holder.addr) {
     // Distinct, or two creates in one round are the same txn.
     note: crypto.getRandomValues(new Uint8Array(8)),
   });
-  const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+  const txn = makeAssetTransferTxnWithSuggestedParamsFromObject({
     sender,
     receiver: sender,
     assetIndex: assetId,
@@ -97,7 +100,7 @@ async function sendMax(auth: Auth, sender = auth.addr) {
   expect(amount).toBeGreaterThan(0n);
 
   const sink = (await funded(0.1)).toString();
-  const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  const txn = makePaymentTxnWithSuggestedParamsFromObject({
     sender,
     receiver: sink,
     amount,

@@ -101,7 +101,11 @@ import {
   mdiStarOutline,
   mdiSwapHorizontal,
 } from "@mdi/js";
-import algosdk, { modelsv2 } from "algosdk";
+import {
+  isValidAddress,
+  makeAssetTransferTxnWithSuggestedParamsFromObject,
+  modelsv2,
+} from "algosdk";
 
 const store = useAppStore();
 const props = defineProps({
@@ -120,8 +124,7 @@ const emit = defineEmits<{ toggleFavorite: []; swap: [] }>();
 const image = ref();
 const form = ref();
 const required = (v: string) => !!v || "Required";
-const validAddress = (v: string) =>
-  algosdk.isValidAddress(v) || "Invalid address";
+const validAddress = (v: string) => isValidAddress(v) || "Invalid address";
 const showReceiver = ref(false);
 const receiver = ref();
 const creator = ref(false);
@@ -176,7 +179,7 @@ async function closeOut() {
   try {
     showReceiver.value = false;
     const suggestedParams = await Algo.algod.getTransactionParams().do();
-    const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    const txn = makeAssetTransferTxnWithSuggestedParamsFromObject({
       sender: props.acct.addr,
       receiver: props.acct.addr,
       closeRemainderTo: receiver.value,

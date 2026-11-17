@@ -3,10 +3,12 @@ import Signer, { SignContext } from "@/services/Signer";
 import type { LuteMsig, WalletTransaction } from "@/types";
 import { selectDevice } from "@/utils";
 import { priceTxns } from "@/utils/simulateFees";
-import { signingAddr } from "@/utils/signingAddr";
+import { findSigner } from "@/utils/findSigner";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
-import algosdk, {
+import {
+  appendSignRawMultisigSignature,
+  createMultisigTransaction,
   signTransactionWithSigner,
   Transaction,
   type TransactionSigner,
@@ -71,9 +73,8 @@ export async function signer(
     const signedTxns: Uint8Array[] = [];
     for (const [idx, txn] of txnGroup.entries()) {
       if (!indexesToSign || indexesToSign.includes(idx)) {
-        const addr = signingAddr(txn, authAddrs?.[idx], msig, store.info);
-        const acct = store.acctInfo.find((a) => a.addr === addr);
-        if (!acct) throw Error("Account Not Found");
+        const acct = findSigner(txn, authAddrs?.[idx], msig, store);
+        const addr = acct.addr;
         let sig: Uint8Array;
         if (acct.isFalcon25) {
           const f25 = await Signer.falconSigner(acct, ctx);
@@ -99,7 +100,7 @@ export async function signer(
           if (!algoApp) algoApp = new AlgorandApp(transport);
           sig = await ledgerSign(txn, algoApp, acct.slot);
         } else {
-          sig = await Signer.signBytes(acct, txn.bytesToSign(), ctx);
+          sig = await Signer.signTxn(acct, txn, ctx);
         }
         let signedTxn: Uint8Array;
         if (msig?.bypass) {
@@ -126,13 +127,9 @@ function attachMsigSig(msig: LuteMsig, txn: Transaction, sig: Uint8Array) {
     threshold: Number(msig.app.arc55_threshold),
     addrs: msig.app.addrs,
   };
-  const msigTxn = algosdk.createMultisigTransaction(txn, mparams);
-  return algosdk.appendSignRawMultisigSignature(
-    msigTxn,
-    mparams,
-    msig.signerAddr,
-    sig
-  ).blob;
+  const msigTxn = createMultisigTransaction(txn, mparams);
+  return appendSignRawMultisigSignature(msigTxn, mparams, msig.signerAddr, sig)
+    .blob;
 }
 
 async function ledgerSign(

@@ -1,5 +1,10 @@
 import { bytesEqual } from "@/utils/keys";
-import algosdk, { type Transaction } from "algosdk";
+import {
+  computeGroupID,
+  decodeSignedTransaction,
+  decodeUnsignedTransaction,
+  type Transaction,
+} from "algosdk";
 
 /**
  * `tx1` is the maker's signed offer, `tx2` is for the taker. The link comes
@@ -7,8 +12,8 @@ import algosdk, { type Transaction } from "algosdk";
  */
 export function parseSwap(tx1: string, tx2: string) {
   const stxn1 = Uint8Array.fromBase64(tx1, { alphabet: "base64url" });
-  const txn1 = algosdk.decodeSignedTransaction(stxn1).txn;
-  const txn2 = algosdk.decodeUnsignedTransaction(
+  const txn1 = decodeSignedTransaction(stxn1).txn;
+  const txn2 = decodeUnsignedTransaction(
     Uint8Array.fromBase64(tx2, { alphabet: "base64url" })
   );
   validateSwap(txn1, txn2);
@@ -20,11 +25,11 @@ export function validateSwap(txn1: Transaction, txn2: Transaction) {
   // The group must be these two txns and nothing else.
   if (!txn1.group || !txn2.group) throw Error("Invalid Group");
   const strip = (t: Transaction) => {
-    const c = algosdk.decodeUnsignedTransaction(t.toByte());
+    const c = decodeUnsignedTransaction(t.toByte());
     c.group = undefined;
     return c;
   };
-  const gid = algosdk.computeGroupID([strip(txn1), strip(txn2)]);
+  const gid = computeGroupID([strip(txn1), strip(txn2)]);
   if (!bytesEqual(gid, txn1.group) || !bytesEqual(gid, txn2.group))
     throw Error("Invalid Group");
 

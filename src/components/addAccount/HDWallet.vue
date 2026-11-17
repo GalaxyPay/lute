@@ -63,7 +63,7 @@ const pending = ref(true);
 const loading = ref(false);
 const rows = ref<SeedRow[]>([]);
 const accounts = ref<AccountSubs[]>([]);
-const seed = shallowRef<Buffer>();
+const seed = shallowRef<Uint8Array>();
 const seedId = ref<number>();
 let picked: SeedRow;
 
@@ -149,9 +149,7 @@ async function pick(row: SeedRow) {
     const id = `bip39:${picked.id}`;
     if (await get("keystore", id)) {
       const { rec, plaintext } = await Keystore.getSecret(mk, id);
-      const seed = Buffer.from(
-        Keystore.signingMaterial(rec.kind, rec.form, plaintext)
-      );
+      const seed = Keystore.signingMaterial(rec.kind, rec.form, plaintext);
       plaintext.fill(0);
       await handleSeed(picked.id, seed);
       return;
@@ -191,7 +189,7 @@ async function getAddrs(startIndex: number = 0) {
   }
 }
 
-async function handleSeed(id: number, data: Buffer) {
+async function handleSeed(id: number, data: Uint8Array) {
   seedId.value = id;
   seed.value = data;
   accounts.value = [];
