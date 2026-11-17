@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^9.2.3",
-    "@algorandfoundation/xhd-wallet-api": "2.0.0-canary.1",
+    "@algorandfoundation/xhd-wallet-api": "file:vendor/xhd-wallet-api-2.0.0-canary.2-noble.1.tgz",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@ledgerhq/hw-transport-webhid": "^6.36.0",

@@ -11,10 +11,10 @@ import {
 import { Address, encodeAddress } from "algosdk";
 
 const HdWallet = {
-  async deriveAccts(seed: Buffer, startIndex: number = 0) {
+  async deriveAccts(seed: Uint8Array, startIndex: number = 0) {
     const accts: AccountSubs[] = [];
     const cryptoService = new XHDWalletAPI();
-    const rootKey = fromSeed(seed);
+    const rootKey = await fromSeed(seed);
     for (let i = startIndex; i < 4 + startIndex; i++) {
       const key = await cryptoService.keyGen(rootKey, KeyContext.Address, i, 0);
       const addr = new Address(key).toString();
@@ -42,15 +42,15 @@ const HdWallet = {
   },
 
   async sign(
-    seed: Buffer,
+    seed: Uint8Array,
     slot: number,
     bytes: Uint8Array,
     addrIdx: number = 0
   ) {
     const cryptoService = new XHDWalletAPI();
-    const rootKey = fromSeed(seed);
+    const rootKey = await fromSeed(seed);
     seed.fill(0);
-    const sig = await cryptoService.signAlgoTransaction(
+    const sig = await cryptoService.signData(
       rootKey,
       KeyContext.Address,
       slot,

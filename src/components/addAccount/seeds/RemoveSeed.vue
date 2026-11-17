@@ -118,6 +118,7 @@ import HdWallet from "@/services/HdWallet";
 import Keystore from "@/services/Keystore";
 import type { AccountSubs, SeedRow, Unlocker } from "@/types";
 import { bigintToString, formatAddr, isCancelled } from "@/utils";
+import { bytesEqual } from "@/utils/keys";
 import { mdiClose } from "@mdi/js";
 import * as bip39 from "@scure/bip39";
 
@@ -130,7 +131,7 @@ const emit = defineEmits(["close", "removed"]);
 const store = useAppStore();
 const unlocker = ref<Unlocker>();
 const busy = ref(false);
-const seed = shallowRef<Buffer>();
+const seed = shallowRef<Uint8Array>();
 const words = ref<string[]>([]);
 const challenge = ref(0);
 const answer = ref("");
@@ -161,14 +162,12 @@ async function unlock() {
         words.value = Keystore.mnemonicFromPlaintext(rec.kind, plaintext).split(
           " "
         );
-      seed.value = Buffer.from(
-        Keystore.signingMaterial(rec.kind, rec.form, plaintext)
-      );
+      seed.value = Keystore.signingMaterial(rec.kind, rec.form, plaintext);
     } finally {
       plaintext.fill(0);
     }
     challenge.value = Math.floor(Math.random() * 24) + 1;
-    scan(Buffer.from(seed.value));
+    scan(seed.value.slice());
   } catch (err: any) {
     if (isCancelled(err)) return;
     console.error(err);
@@ -178,7 +177,7 @@ async function unlock() {
   }
 }
 
-async function scan(sd: Buffer) {
+async function scan(sd: Uint8Array) {
   scanning.value = true;
   try {
     const accts: AccountSubs[] = [];
@@ -198,8 +197,8 @@ async function scan(sd: Buffer) {
 }
 
 function checkMnemonic(mn: string) {
-  const other = Buffer.from(bip39.mnemonicToSeedSync(mn));
-  mnemonicOk.value = !!seed.value && other.equals(seed.value);
+  const other = bip39.mnemonicToSeedSync(mn);
+  mnemonicOk.value = !!seed.value && bytesEqual(other, seed.value);
   other.fill(0);
   if (!mnemonicOk.value)
     store.setSnackbar("That mnemonic is not this seed's", "error");

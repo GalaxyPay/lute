@@ -119,7 +119,7 @@ async function fromLegacy(
   }
   const rec: KeystoreRecord | undefined = await get("keystore", id);
   if (rec) return await fromKeystore(ctx, rec);
-  return new Uint8Array(await Seed.decryptSeed(ctx.pass, sd));
+  return await Seed.decryptSeed(ctx.pass, sd);
 }
 
 async function hdSeed(acct: AccountInfo, ctx: SignContext) {
@@ -127,7 +127,7 @@ async function hdSeed(acct: AccountInfo, ctx: SignContext) {
   return await ctx.cached(id, async () => {
     const sd: SeedData | undefined = await get("seeds", acct.seedId!);
     if (sd?.credentialId)
-      return new Uint8Array((await Seed.getPasskeySeed(sd.credentialId)).seed);
+      return (await Seed.getPasskeySeed(sd.credentialId)).seed;
     const rec: KeystoreRecord | undefined = await get("keystore", id);
     if (rec) return await fromKeystore(ctx, rec);
     if (sd?.data) return await fromLegacy(ctx, sd, id);
@@ -155,7 +155,7 @@ const Signer = {
       const seed = await hdSeed(acct, ctx);
       // HdWallet.sign zeroes what it is given; keep the cached copy intact.
       return await HdWallet.sign(
-        Buffer.from(seed),
+        seed.slice(),
         acct.slot,
         bytes,
         acct.info?.addrIdx

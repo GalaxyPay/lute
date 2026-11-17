@@ -111,7 +111,7 @@ async function submit() {
     const mk = await unlocker.value!.ensureMk();
     if (isBip39.value) {
       const id = await Keystore.storeMnemonic(mk, "bip39", mn);
-      const seed = Buffer.from(bip39.mnemonicToSeedSync(mn));
+      const seed = bip39.mnemonicToSeedSync(mn);
       emit("seed", Number(id.split(":")[1]), seed);
       return;
     }

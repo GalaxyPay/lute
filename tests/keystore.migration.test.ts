@@ -167,7 +167,7 @@ describe("envelope migration", () => {
     try {
       const sig = await Signer.signBytes(hdAcct(fx.hdA2.addr, 2, 1), MSG, ctx);
       const expected = await HdWallet.sign(
-        Buffer.from(bip39.mnemonicToSeedSync(HD_MN)),
+        bip39.mnemonicToSeedSync(HD_MN),
         2,
         MSG,
         0
@@ -199,7 +199,7 @@ describe("envelope migration", () => {
     ).rejects.toThrow("Password Required");
     const sig = await Signer.signBytes(acct, MSG, new SignContext(OTHER_PASS));
     const expected = await HdWallet.sign(
-      Buffer.from(bip39.mnemonicToSeedSync(HD_OTHER_MN)),
+      bip39.mnemonicToSeedSync(HD_OTHER_MN),
       0,
       MSG,
       0

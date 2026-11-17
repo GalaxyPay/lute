@@ -75,13 +75,9 @@ export default defineConfig({
       styles: { configFile: vuetifySettings },
     }),
     vuetifyStylesFallback(vuetifySettings),
-    nodePolyfills({
-      overrides: {
-        crypto: fileURLToPath(
-          new URL("./src/shims/crypto.ts", import.meta.url)
-        ),
-      },
-    }),
+    // No crypto polyfill (crypto-browserify, ~490 kB): only tweetnacl imports it,
+    // for a fallback it never reaches in a browser, where self.crypto exists.
+    nodePolyfills({ exclude: ["crypto"] }),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: [
@@ -138,7 +134,7 @@ export default defineConfig({
     headers: { "content-security-policy": csp },
   },
   build: {
-    chunkSizeWarningLimit: 1024,
+    chunkSizeWarningLimit: 512,
     rollupOptions: {
       // Timing report only; slowest is vite-plugin-pwa generating the SW (expected).
       checks: { bundlerTimings: false },

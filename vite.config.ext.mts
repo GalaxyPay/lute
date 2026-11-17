@@ -61,7 +61,9 @@ export const sharedConfig: UserConfig = {
       // generate `components.d.ts` for ts support with Volar
       dts: r("src/components.d.ts"),
     }),
-    nodePolyfills({ overrides: { crypto: r("src/shims/crypto.ts") } }),
+    // No crypto polyfill (crypto-browserify, ~490 kB): only tweetnacl imports it,
+    // for a fallback it never reaches in a browser, where self.crypto exists.
+    nodePolyfills({ exclude: ["crypto"] }),
 
     // rewrite assets to use relative path
     {
@@ -122,7 +124,7 @@ export default defineConfig(({ command }) => ({
     terserOptions: {
       mangle: false,
     },
-    chunkSizeWarningLimit: 1024,
+    chunkSizeWarningLimit: 512,
     rollupOptions: {
       input: {
         client: r("src/ext/client.ts"),

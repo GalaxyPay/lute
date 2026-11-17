@@ -54,7 +54,7 @@ const Seed = {
     const iterations = sd.iterations ?? KDF_LEGACY_ITERATIONS;
     const key = await deriveKeyFromPassSalt(pass, sd.salt, iterations);
     const ent = await crypto.subtle.decrypt(seedGcmParams(sd), key, sd.data);
-    return Buffer.from(ent);
+    return new Uint8Array(ent);
   },
 
   /**
@@ -118,7 +118,7 @@ const Seed = {
 
   async getPasskeySeed(credentialId?: string) {
     const { mn, credential } = await this.getPasskeyMnemonic(credentialId);
-    const seed = Buffer.from(bip39.mnemonicToSeedSync(mn));
+    const seed = bip39.mnemonicToSeedSync(mn);
     return { seed, credentialId: credential.id };
   },
 

@@ -42,7 +42,7 @@ export const MSIG_ADDR = encodeAddress(filled(32, 8));
 export const PASSKEY_ADDR = encodeAddress(filled(32, 9));
 
 export async function hdAccount(mn: string, slot: number) {
-  const root = fromSeed(Buffer.from(bip39.mnemonicToSeedSync(mn)));
+  const root = await fromSeed(bip39.mnemonicToSeedSync(mn));
   const api = new XHDWalletAPI();
   const pk = await api.keyGen(root, KeyContext.Address, slot, 0);
   const xpub = await api.deriveKey(

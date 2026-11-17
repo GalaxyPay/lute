@@ -702,9 +702,7 @@ const Keystore = {
 
   async seedMatches(seed: Uint8Array, accts: LuteAccount[]) {
     if (!accts.length) return false;
-    const copy = Buffer.from(seed);
-    const root = fromSeed(copy);
-    copy.fill(0);
+    const root = await fromSeed(seed);
     const api = new XHDWalletAPI();
     try {
       for (const a of accts) {
