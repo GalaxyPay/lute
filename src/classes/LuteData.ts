@@ -16,7 +16,7 @@ import {
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 import { addressFromPQKey, encodeAddress, FALCON_1024_SCHEME } from "algosdk";
-import { canonify } from "canonify";
+import canonicalize from "canonicalize";
 import { FALCON_DET1024_PUBKEY_SIZE } from "falcon-1024";
 import { AlgorandApp } from "ledger-algorand-js";
 
@@ -192,7 +192,7 @@ export default class LuteData {
           if (!isSiwa(parsed)) throw ERROR_BAD_JSON;
           this.siwa = parsed;
 
-          const canonifiedJson = canonify(this.siwa);
+          const canonifiedJson = canonicalize(this.siwa);
           if (!canonifiedJson || canonifiedJson !== this.jsonString) {
             throw ERROR_BAD_JSON;
           }

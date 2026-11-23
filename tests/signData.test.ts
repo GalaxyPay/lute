@@ -6,7 +6,7 @@ import {
   FALCON_1024_SCHEME,
   pq25WordMnemonicToSeed,
 } from "algosdk";
-import { canonify } from "canonify";
+import canonicalize from "canonicalize";
 import { generateKey, verifyCompressed } from "falcon-1024";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildV3, FALCON_MN, PASS } from "./fixtures/v3db";
@@ -78,7 +78,7 @@ async function request(
     chain_id: "283",
     type,
   };
-  const json = canonify(siwa)!;
+  const json = canonicalize(siwa)!;
   const authenticatorData = await sha256(new TextEncoder().encode(DOMAIN));
   const ld = new LuteData(
     {
@@ -317,7 +317,7 @@ describe("legacy SIWA requests (LuteDataOld)", () => {
       type: "ed25519",
     };
     const ld = await legacy(
-      new TextEncoder().encode(canonify(siwa)!).toBase64()
+      new TextEncoder().encode(canonicalize(siwa)!).toBase64()
     );
     await ld.validate();
     expect(await ld.sign(PASS)).toBe(true);
