@@ -4,4 +4,4 @@ allowBuilds:
   esbuild: true
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - '@algorandfoundation/xhd-wallet-api@2.0.0-canary.3'
+  - "@algorandfoundation/xhd-wallet-api@2.0.0-canary.3"
